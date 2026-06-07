@@ -1,15 +1,13 @@
 const express = require('express');
-const http = require('http');
 const cors = require('cors');
 const path = require('path');
-const { initializeDatabase } = require('./db');
+
+require('dotenv').config();
 
 // Import routes
 const authRoutes = require('./routes/auth');
 const transactionRoutes = require('./routes/transactions');
 const adminRoutes = require('./routes/admin');
-
-require('dotenv').config();
 
 const app = express();
 
@@ -18,51 +16,67 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve static upload folders (transaction screenshots)
+// Static uploads
 const uploadDir = process.env.UPLOAD_DIR || 'uploads';
 app.use('/uploads', express.static(path.join(__dirname, uploadDir)));
 
-// Healthcheck
+// Healthcheck — no DB required, always responds immediately
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', message: 'Le serveur Crash Game fonctionne parfaitement.', env: process.env.NODE_ENV || 'development' });
+  res.json({
+    status: 'OK',
+    message: 'Crash Game server running.',
+    env: process.env.VERCEL_ENV || process.env.NODE_ENV || 'development'
+  });
 });
 
-// Bind routes
-app.use('/api/auth', authRoutes);
-app.use('/api/transactions', transactionRoutes);
-app.use('/api/admin', adminRoutes);
+// Lazy DB initialization — only runs once on first API call
+let dbReady = false;
+const ensureDb = async (req, res, next) => {
+  if (!dbReady) {
+    try {
+      const { initializeDatabase } = require('./db');
+      await initializeDatabase();
+      dbReady = true;
+    } catch (err) {
+      console.error('DB init failed:', err.message);
+      // Continue — individual queries will fail with their own errors
+    }
+  }
+  next();
+};
 
-// Error handling middleware
+// API routes (with lazy DB init)
+app.use('/api/auth', ensureDb, authRoutes);
+app.use('/api/transactions', ensureDb, transactionRoutes);
+app.use('/api/admin', ensureDb, adminRoutes);
+
+// Global error handler
 app.use((err, req, res, next) => {
-  console.error('Unhandled server error:', err);
-  res.status(500).json({ error: 'Une erreur interne est survenue sur le serveur.' });
+  console.error('Unhandled error:', err);
+  res.status(500).json({ error: 'Erreur interne du serveur.' });
 });
 
-const PORT = process.env.PORT || 5000;
-
-// Detect if running on Vercel (serverless) – skip WebSockets and game loop
-const isVercel = process.env.VERCEL === '1';
+// VERCEL_ENV is injected automatically by Vercel in all deploy environments
+const isVercel = !!process.env.VERCEL_ENV;
 
 if (isVercel) {
-  // Serverless mode: only initialize DB and export the HTTP app
-  initializeDatabase().catch(err => {
-    console.error('DB init error (serverless):', err);
-  });
+  // Vercel serverless — export Express app, no persistent server or Socket.io
   module.exports = app;
 } else {
-  // Full server mode: include Socket.io and game engine
+  // Local / self-hosted — start full server with Socket.io + game engine
+  const http = require('http');
   const socketIo = require('socket.io');
   const { initGameEngine } = require('./gameEngine');
-  const server = http.createServer(app);
+  const { initializeDatabase } = require('./db');
 
+  const server = http.createServer(app);
   const io = socketIo(server, {
-    cors: {
-      origin: '*',
-      methods: ['GET', 'POST']
-    }
+    cors: { origin: '*', methods: ['GET', 'POST'] }
   });
 
-  const startServer = async () => {
+  const PORT = process.env.PORT || 5000;
+
+  (async () => {
     await initializeDatabase();
     initGameEngine(io);
     server.listen(PORT, () => {
@@ -71,10 +85,7 @@ if (isVercel) {
       console.log(`URL API : http://localhost:${PORT}`);
       console.log(`===================================================`);
     });
-  };
-
-  startServer().catch(err => {
-    console.error('Fatal: Failed to start the Crash Game server:', err);
+  })().catch(err => {
+    console.error('Fatal: Could not start server:', err);
   });
 }
-

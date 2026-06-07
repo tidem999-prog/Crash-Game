@@ -8,7 +8,7 @@ import Admin from './pages/Admin';
 import VerifyEmail from './pages/VerifyEmail';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
-import { LogOut, User, RefreshCw, Landmark, ShieldAlert, Plane } from 'lucide-react';
+import { LogOut, User, RefreshCw, Landmark, ShieldAlert, Gamepad2 } from 'lucide-react';
 
 // Protected Route for normal users
 const ProtectedRoute = ({ children }) => {
@@ -47,11 +47,11 @@ const Navbar = () => {
         
         {/* Logo */}
         <Link to="/" className="flex items-center space-x-2 group">
-          <div className="bg-indigo-600 p-2 rounded-lg text-white transform group-hover:scale-105 transition-all duration-300 shadow-md shadow-indigo-500/20">
-            <Plane className="h-5 w-5 rotate-45" />
+          <div className="bg-gradient-to-tr from-yellow-500 to-indigo-600 p-2 rounded-lg text-white transform group-hover:scale-105 transition-all duration-300 shadow-md shadow-indigo-500/20">
+            <Gamepad2 className="h-5 w-5" />
           </div>
-          <span className="font-display font-extrabold text-xl tracking-tight bg-gradient-to-r from-white via-slate-200 to-indigo-400 bg-clip-text text-transparent">
-            CRASH<span className="text-indigo-500">PLANE</span>
+          <span className="font-display font-black text-xl tracking-tight bg-gradient-to-r from-white via-slate-200 to-indigo-400 bg-clip-text text-transparent uppercase">
+            KetMesye<span className="text-yellow-500">Arena</span>
           </span>
         </Link>
 
@@ -142,7 +142,7 @@ const AppContent = () => {
       {/* Premium Footer */}
       <footer className="border-t border-slate-900 py-6 bg-brand-dark text-slate-500 text-center text-xs">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <p>© {new Date().getFullYear()} Crash Plane HTG. Tous droits réservés.</p>
+          <p>© {new Date().getFullYear()} KetMesye Arena. Tous droits réservés.</p>
           <p className="flex items-center space-x-1">
             <span>Sécurisé avec House Edge de 5%</span>
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>

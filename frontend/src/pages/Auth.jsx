@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Mail, Lock, ArrowRight, Eye, EyeOff, Plane, Info } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Eye, EyeOff, Gamepad2, Info } from 'lucide-react';
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -61,11 +61,11 @@ export default function Auth() {
         
         {/* Logo Banner */}
         <div className="text-center mb-8">
-          <div className="inline-flex bg-indigo-600 p-3 rounded-2xl text-white transform hover:rotate-12 transition-transform duration-300 shadow-lg shadow-indigo-500/20 mb-4">
-            <Plane className="h-7 w-7 rotate-45" />
+          <div className="inline-flex bg-gradient-to-tr from-yellow-500 to-indigo-600 p-3 rounded-2xl text-white transform hover:rotate-12 transition-transform duration-300 shadow-lg shadow-indigo-500/20 mb-4">
+            <Gamepad2 className="h-7 w-7" />
           </div>
           <h2 className="font-display font-black text-3xl tracking-tight text-white">
-            {isLogin ? 'Bon retour parmi nous' : 'Rejoignez Crash Plane'}
+            {isLogin ? 'Bon retour parmi nous' : 'Rejoignez KetMesye Arena'}
           </h2>
           <p className="mt-2 text-sm text-slate-400">
             {isLogin ? 'Connectez-vous pour commencer à miser' : 'Créez votre portefeuille de jeu en HTG'}

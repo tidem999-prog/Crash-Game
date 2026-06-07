@@ -17,9 +17,12 @@ router.get('/stats', async (req, res) => {
     const totalDeposits = parseFloat(depRes.rows[0].total || 0);
 
     // Total approved withdrawals
-    const wdRes = await query("SELECT SUM(amount) as total, SUM(fee) as total_fees FROM transactions WHERE type = 'withdrawal' AND status = 'approved'");
+    const wdRes = await query("SELECT SUM(amount) as total FROM transactions WHERE type = 'withdrawal' AND status = 'approved'");
     const totalWithdrawals = parseFloat(wdRes.rows[0].total || 0);
-    const totalWithdrawalFees = parseFloat(wdRes.rows[0].total_fees || 0);
+
+    // Total withdrawal fees (10% fees from all withdrawal requests that are pending or approved)
+    const feesRes = await query("SELECT SUM(fee) as total_fees FROM transactions WHERE type = 'withdrawal' AND status != 'rejected'");
+    const totalWithdrawalFees = parseFloat(feesRes.rows[0].total_fees || 0);
 
     // Total user balances
     const balRes = await query("SELECT SUM(balance) as total FROM users WHERE role = 'user'");

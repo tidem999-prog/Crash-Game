@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Mail, Lock, ArrowRight, Eye, EyeOff, Plane, Info } from 'lucide-react';
 
@@ -35,11 +35,9 @@ export default function Auth() {
         navigate('/dashboard');
       } else {
         await signup(email, password);
-        setSignupSuccessMessage("Votre compte a été créé ! Un email de simulation a été envoyé à votre console serveur. Vous êtes maintenant connecté.");
-        // Redirect to dashboard after a short delay so they can read the message
-        setTimeout(() => {
-          navigate('/dashboard');
-        }, 3000);
+        setSignupSuccessMessage("Votre compte a été créé ! Un e-mail de confirmation vous a été envoyé. Veuillez vérifier votre boîte de réception pour valider votre compte.");
+        setEmail('');
+        setPassword('');
       }
     } catch (err) {
       setFormError(err.message || 'Une erreur est survenue.');
@@ -139,7 +137,14 @@ export default function Auth() {
 
             {/* Password Input */}
             <div>
-              <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Mot de passe</label>
+              <div className="flex justify-between items-center mb-2">
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">Mot de passe</label>
+                {isLogin && (
+                  <Link to="/forgot-password" className="text-[11px] font-bold text-indigo-400 hover:text-indigo-300 transition-colors">
+                    Mot de passe oublié ?
+                  </Link>
+                )}
+              </div>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
                   <Lock className="h-4 w-4" />

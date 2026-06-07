@@ -24,8 +24,13 @@ const initializeDatabase = async () => {
         balance DECIMAL(12, 2) DEFAULT 0.00,
         role VARCHAR(20) DEFAULT 'user',
         is_suspended BOOLEAN DEFAULT false,
+        is_verified BOOLEAN DEFAULT false,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+    `);
+    // Ensure is_verified column exists for existing tables
+    await query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT false;
     `);
     console.log('Database: Table "users" checked/created.');
 
@@ -81,13 +86,16 @@ const initializeDatabase = async () => {
       const adminPass = 'AdminCrash2026!';
       const hash = await bcrypt.hash(adminPass, 10);
       await query(
-        "INSERT INTO users (email, password_hash, role, balance) VALUES ($1, $2, 'admin', 1000000.00)",
+        "INSERT INTO users (email, password_hash, role, balance, is_verified) VALUES ($1, $2, 'admin', 1000000.00, true)",
         [adminEmail, hash]
       );
       console.log(`Database: Seeded default admin account!`);
       console.log(`Email: ${adminEmail}`);
       console.log(`Password: ${adminPass}`);
       console.log(`IMPORTANT: Please change this password in production.`);
+    } else {
+      // Ensure existing admin accounts are verified
+      await query("UPDATE users SET is_verified = true WHERE role = 'admin'");
     }
 
   } catch (err) {

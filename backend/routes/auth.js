@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { query } = require('../db');
 const { authenticateToken } = require('../middleware/auth');
+const { sendEmail } = require('../utils/email');
 
 // Signup
 router.post('/signup', async (req, res) => {
@@ -24,38 +25,45 @@ router.post('/signup', async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
-    // Create user (starting balance 0.00 HTG)
+    // Create user (starting balance 0.00 HTG, is_verified false)
     const result = await query(
-      "INSERT INTO users (email, password_hash, role, balance) VALUES ($1, $2, 'user', 0.00) RETURNING id, email, role, balance, created_at",
+      "INSERT INTO users (email, password_hash, role, balance, is_verified) VALUES ($1, $2, 'user', 0.00, false) RETURNING id, email, role, balance, created_at",
       [email.toLowerCase(), passwordHash]
     );
 
     const user = result.rows[0];
 
-    // Generate token
-    const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
+    // Generate email verification token (expires in 1 day)
+    const verifyToken = jwt.sign(
+      { id: user.id, purpose: 'email-verification' },
       process.env.JWT_SECRET,
-      { expiresIn: '7d' }
+      { expiresIn: '1d' }
     );
 
-    // Simulated email confirmation log
-    console.log('\n===================================================');
-    console.log(`SIMULATION D'ENVOI D'EMAIL`);
-    console.log(`Pour: ${user.email}`);
-    console.log(`Sujet: Bienvenue sur Crash Plane - Confirmez votre compte`);
-    console.log(`Lien d'activation: http://localhost:3000/verify?id=${user.id}`);
-    console.log('===================================================\n');
+    const origin = req.get('origin') || 'http://localhost:3000';
+    const verifyUrl = `${origin}/verify-email?token=${verifyToken}`;
+
+    // Send confirmation email
+    await sendEmail({
+      to: user.email,
+      subject: 'Confirmez votre compte - Crash Plane',
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
+          <h2 style="color: #6366f1; text-align: center;">Bienvenue sur Crash Plane !</h2>
+          <p>Bonjour,</p>
+          <p>Merci de vous être inscrit sur notre plateforme. Veuillez confirmer votre adresse e-mail en cliquant sur le bouton ci-dessous :</p>
+          <div style="margin: 30px 0; text-align: center;">
+            <a href="${verifyUrl}" style="background-color: #6366f1; color: white; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 8px; display: inline-block;">Confirmer mon compte</a>
+          </div>
+          <p style="color: #64748b; font-size: 12px;">Si le bouton ne fonctionne pas, vous pouvez copier et coller ce lien dans votre navigateur :<br/>${verifyUrl}</p>
+          <p>Si vous n'avez pas créé de compte, vous pouvez ignorer cet e-mail.</p>
+        </div>
+      `,
+      text: `Bonjour,\n\nMerci de vous être inscrit sur Crash Plane. Veuillez confirmer votre adresse e-mail en cliquant sur le lien suivant :\n${verifyUrl}`
+    });
 
     res.status(201).json({
-      message: 'Compte créé avec succès (Simulé : email envoyé).',
-      token,
-      user: {
-        id: user.id,
-        email: user.email,
-        role: user.role,
-        balance: parseFloat(user.balance)
-      }
+      message: 'Compte créé avec succès. Veuillez vérifier vos e-mails pour confirmer votre compte.'
     });
 
   } catch (err) {
@@ -84,6 +92,10 @@ router.post('/login', async (req, res) => {
       return res.status(403).json({ error: 'Ce compte a été suspendu pour suspicion de fraude.' });
     }
 
+    if (!user.is_verified) {
+      return res.status(403).json({ error: 'Veuillez confirmer votre compte par e-mail avant de vous connecter.' });
+    }
+
     const isMatch = await bcrypt.compare(password, user.password_hash);
     if (!isMatch) {
       return res.status(400).json({ error: 'Identifiants invalides.' });
@@ -108,6 +120,132 @@ router.post('/login', async (req, res) => {
   } catch (err) {
     console.error('Login error:', err);
     res.status(500).json({ error: 'Erreur lors de la connexion.' });
+  }
+});
+
+// Verify Email Endpoint
+router.post('/verify-email', async (req, res) => {
+  const { token } = req.body;
+
+  if (!token) {
+    return res.status(400).json({ error: 'Token manquant.' });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (decoded.purpose !== 'email-verification') {
+      return res.status(400).json({ error: 'Token invalide.' });
+    }
+
+    const result = await query(
+      "UPDATE users SET is_verified = true WHERE id = $1 RETURNING id, email",
+      [decoded.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Utilisateur introuvable.' });
+    }
+
+    res.json({ message: 'Votre adresse e-mail a été vérifiée avec succès ! Vous pouvez maintenant vous connecter.' });
+
+  } catch (err) {
+    console.error('Verify email error:', err);
+    res.status(400).json({ error: 'Le lien de confirmation est invalide ou expiré.' });
+  }
+});
+
+// Forgot Password Request Endpoint
+router.post('/forgot-password', async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    return res.status(400).json({ error: 'Veuillez fournir votre adresse e-mail.' });
+  }
+
+  try {
+    const userRes = await query('SELECT * FROM users WHERE email = $1', [email.toLowerCase()]);
+    if (userRes.rows.length === 0) {
+      // Return success anyway to avoid user enumeration
+      return res.json({ message: 'Si cet e-mail existe, un lien de réinitialisation a été envoyé.' });
+    }
+
+    const user = userRes.rows[0];
+
+    // Generate secure stateless reset token (expires in 1h)
+    const resetToken = jwt.sign(
+      { id: user.id, purpose: 'password-reset' },
+      process.env.JWT_SECRET + user.password_hash,
+      { expiresIn: '1h' }
+    );
+
+    const origin = req.get('origin') || 'http://localhost:3000';
+    const resetUrl = `${origin}/reset-password?token=${resetToken}&id=${user.id}`;
+
+    // Send reset email
+    await sendEmail({
+      to: user.email,
+      subject: 'Réinitialisation de votre mot de passe - Crash Plane',
+      html: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
+          <h2 style="color: #6366f1; text-align: center;">Réinitialisation de mot de passe</h2>
+          <p>Bonjour,</p>
+          <p>Vous avez demandé la réinitialisation de votre mot de passe pour votre compte Crash Plane.</p>
+          <p>Veuillez cliquer sur le bouton ci-dessous pour modifier votre mot de passe (ce lien est valide pendant 1 heure) :</p>
+          <div style="margin: 30px 0; text-align: center;">
+            <a href="${resetUrl}" style="background-color: #6366f1; color: white; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 8px; display: inline-block;">Réinitialiser mon mot de passe</a>
+          </div>
+          <p style="color: #64748b; font-size: 12px;">Si le bouton ne fonctionne pas, vous pouvez copier et coller ce lien dans votre navigateur :<br/>${resetUrl}</p>
+          <p>Si vous n'avez pas demandé ce changement, vous pouvez ignorer cet e-mail en toute sécurité.</p>
+        </div>
+      `,
+      text: `Bonjour,\n\nVous avez demandé la réinitialisation de votre mot de passe sur Crash Plane.\n\nVeuillez cliquer sur le lien suivant (valide 1h) pour modifier votre mot de passe :\n${resetUrl}`
+    });
+
+    res.json({ message: 'Un e-mail de réinitialisation de mot de passe a été envoyé.' });
+
+  } catch (err) {
+    console.error('Forgot password error:', err);
+    res.status(500).json({ error: 'Erreur lors du traitement de la demande.' });
+  }
+});
+
+// Reset Password Execution Endpoint
+router.post('/reset-password', async (req, res) => {
+  const { token, userId, newPassword } = req.body;
+
+  if (!token || !userId || !newPassword) {
+    return res.status(400).json({ error: 'Paramètres manquants.' });
+  }
+
+  try {
+    const userRes = await query('SELECT * FROM users WHERE id = $1', [userId]);
+    if (userRes.rows.length === 0) {
+      return res.status(404).json({ error: 'Utilisateur introuvable.' });
+    }
+
+    const user = userRes.rows[0];
+
+    // Verify stateless token using secret appended with current password hash
+    const decoded = jwt.verify(token, process.env.JWT_SECRET + user.password_hash);
+    if (decoded.purpose !== 'password-reset' || decoded.id !== userId) {
+      return res.status(400).json({ error: 'Token de réinitialisation invalide.' });
+    }
+
+    // Hash new password
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(newPassword, salt);
+
+    // Update password
+    await query(
+      "UPDATE users SET password_hash = $1 WHERE id = $2",
+      [passwordHash, userId]
+    );
+
+    res.json({ message: 'Votre mot de passe a été modifié avec succès ! Vous pouvez maintenant vous connecter.' });
+
+  } catch (err) {
+    console.error('Reset password error:', err);
+    res.status(400).json({ error: 'Le lien de réinitialisation est invalide ou expiré.' });
   }
 });
 

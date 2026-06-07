@@ -89,15 +89,20 @@ router.post('/deposit', authenticateToken, upload.single('screenshot'), async (r
 
 // 2. Submit Withdrawal Request
 router.post('/withdraw', authenticateToken, async (req, res) => {
-  const { amount, phone_number } = req.body;
+  const { amount, phone_number, provider } = req.body;
 
-  if (!amount || !phone_number) {
-    return res.status(400).json({ error: 'Montant et numéro de téléphone de retrait requis.' });
+  if (!amount || !phone_number || !provider) {
+    return res.status(400).json({ error: 'Montant, numéro de téléphone et fournisseur (moncash/natcash) de retrait requis.' });
   }
 
   const withdrawAmount = parseFloat(amount);
   if (isNaN(withdrawAmount) || withdrawAmount < 10) {
     return res.status(400).json({ error: 'Le montant minimal de retrait est de 10 HTG.' });
+  }
+
+  const selectedProvider = provider.toLowerCase();
+  if (selectedProvider !== 'moncash' && selectedProvider !== 'natcash') {
+    return res.status(400).json({ error: 'Fournisseur de retrait invalide.' });
   }
 
   try {
@@ -132,9 +137,9 @@ router.post('/withdraw', authenticateToken, async (req, res) => {
 
     // Create pending withdrawal transaction
     await query(
-      `INSERT INTO transactions (user_id, type, status, amount, fee, net_amount, phone_number) 
-       VALUES ($1, 'withdrawal', 'pending', $2, $3, $4, $5)`,
-      [req.user.id, withdrawAmount, fee, netAmount, phone_number]
+      `INSERT INTO transactions (user_id, type, status, amount, fee, net_amount, provider, phone_number) 
+       VALUES ($1, 'withdrawal', 'pending', $2, $3, $4, $5, $6)`,
+      [req.user.id, withdrawAmount, fee, netAmount, selectedProvider, phone_number]
     );
 
     await query('COMMIT');

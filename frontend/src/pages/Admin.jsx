@@ -289,7 +289,10 @@ export default function Admin() {
                         </span>
                       </td>
                       <td className="py-4 text-slate-300 font-medium">
-                        {tx.type === 'deposit' ? tx.provider.toUpperCase() : `Vers ${tx.phone_number}`}
+                        {tx.type === 'deposit' 
+                          ? tx.provider.toUpperCase() 
+                          : `${tx.provider ? tx.provider.toUpperCase() : 'MONCASH'} (Vers ${tx.phone_number})`
+                        }
                       </td>
                       <td className="py-4 font-mono font-bold text-slate-400">{tx.amount.toFixed(2)}</td>
                       <td className="py-4 font-mono font-bold text-slate-200">{tx.net_amount.toFixed(2)}</td>

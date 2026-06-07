@@ -40,6 +40,7 @@ export default function Dashboard() {
   // Withdrawal state
   const [wdAmount, setWdAmount] = useState('');
   const [wdPhone, setWdPhone] = useState('');
+  const [wdProvider, setWdProvider] = useState('moncash');
   const [wdSuccess, setWdSuccess] = useState('');
   const [wdError, setWdError] = useState('');
   const [wdLoading, setWdLoading] = useState(false);
@@ -660,7 +661,7 @@ export default function Dashboard() {
     try {
       const data = await apiRequest('/api/transactions/withdraw', {
         method: 'POST',
-        body: { amount: amt, phone_number: wdPhone }
+        body: { amount: amt, phone_number: wdPhone, provider: wdProvider }
       });
       setWdSuccess(`Demande enregistrée. ${(amt - amt * 0.1).toFixed(2)} HTG (après 10% de frais) seront transférés.`);
       updateBalance(data.newBalance);
@@ -1118,6 +1119,31 @@ export default function Dashboard() {
                   {wdSuccess}
                 </div>
               )}
+
+              {/* Provider choice */}
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Choisir la méthode de retrait</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setWdProvider('moncash')}
+                    className={`py-3 px-4 rounded-xl text-sm font-bold border transition-all ${
+                      wdProvider === 'moncash' ? 'border-yellow-500/50 bg-yellow-500/5 text-yellow-400' : 'border-slate-800 text-slate-400'
+                    }`}
+                  >
+                    MonCash
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setWdProvider('natcash')}
+                    className={`py-3 px-4 rounded-xl text-sm font-bold border transition-all ${
+                      wdProvider === 'natcash' ? 'border-red-500/50 bg-red-500/5 text-red-400' : 'border-slate-800 text-slate-400'
+                    }`}
+                  >
+                    NatCash
+                  </button>
+                </div>
+              </div>
 
               {/* Amount */}
               <div>

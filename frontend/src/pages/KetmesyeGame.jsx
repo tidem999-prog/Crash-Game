@@ -539,13 +539,13 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification })
           // Skip if segment is way off screen
           if (sx < -40 || sx > w + 40 || sy < -40 || sy > h + 40) continue;
 
-          // Segment size decays slightly towards tail
-          const segmentRadius = Math.max(10, 16 - i * 0.08);
+          // Segment size decays slightly towards tail (optimized for mobile/desktop to match 18px backend collision geometry)
+          const segmentRadius = Math.max(6, 10 - i * 0.04);
 
           // Apply glow to local player
           if (isLocal) {
             ctx.shadowColor = s.color;
-            ctx.shadowBlur = i === 0 ? 15 : 2;
+            ctx.shadowBlur = i === 0 ? 10 : 2;
           }
 
           // Apply blinking overlay if invincible
@@ -561,10 +561,10 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification })
           ctx.shadowBlur = 0; // reset
         }
 
-        // Draw Head Eyes looking at s.angle
+        // Draw Head Eyes looking at s.angle (scaled down to fit 10px radius head)
         const hx = head.x + offsetX;
         const hy = head.y + offsetY;
-        const eyeOffsetRadius = 8;
+        const eyeOffsetRadius = 6;
         const eyeAngleSpacing = 0.45; // angle from central line
 
         const eyeLeftX = hx + Math.cos(s.angle - eyeAngleSpacing) * eyeOffsetRadius;
@@ -574,23 +574,23 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification })
 
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
-        ctx.arc(eyeLeftX, eyeLeftY, 4, 0, Math.PI * 2);
-        ctx.arc(eyeRightX, eyeRightY, 4, 0, Math.PI * 2);
+        ctx.arc(eyeLeftX, eyeLeftY, 2.5, 0, Math.PI * 2);
+        ctx.arc(eyeRightX, eyeRightY, 2.5, 0, Math.PI * 2);
         ctx.fill();
 
         // Pupils
         ctx.fillStyle = '#000000';
         ctx.beginPath();
-        ctx.arc(eyeLeftX + Math.cos(s.angle) * 1.5, eyeLeftY + Math.sin(s.angle) * 1.5, 2, 0, Math.PI * 2);
-        ctx.arc(eyeRightX + Math.cos(s.angle) * 1.5, eyeRightY + Math.sin(s.angle) * 1.5, 2, 0, Math.PI * 2);
+        ctx.arc(eyeLeftX + Math.cos(s.angle) * 1.0, eyeLeftY + Math.sin(s.angle) * 1.0, 1.2, 0, Math.PI * 2);
+        ctx.arc(eyeRightX + Math.cos(s.angle) * 1.0, eyeRightY + Math.sin(s.angle) * 1.0, 1.2, 0, Math.PI * 2);
         ctx.fill();
 
-        // Draw name and value above head
+        // Draw name and value above head (positioned closer for cleaner layout)
         ctx.fillStyle = isLocal ? '#34d399' : '#e2e8f0';
-        ctx.font = 'bold 12px Inter';
+        ctx.font = 'bold 11px Inter';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
-        ctx.fillText(`${s.email} (${s.value.toFixed(2)} HTG)`, hx, hy - 20);
+        ctx.fillText(`${s.email.split('@')[0]} (${s.value.toFixed(2)} G)`, hx, hy - 14);
       });
 
       requestRef.current = requestAnimationFrame(draw);
@@ -627,7 +627,45 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification })
       snakesRef.current[myId].angle = angle;
     }
 
-    // Emit to socket only if angle has changed significantly or periodically (rate limit to 100ms)
+    // Emit to socket only if angle has changed significantly
+    if (Math.abs(angle - lastAngleEmitRef.current) > 0.05) {
+      lastAngleEmitRef.current = angle;
+      if (isLocalSim) {
+        // Handled locally
+      } else if (socket && socket.connected) {
+        socket.emit('ketmesye_input', { angle });
+      }
+    }
+  };
+
+  // Track touch coordinates on canvas to compute moving direction (mobile support)
+  const handleTouchMove = (e) => {
+    const canvas = canvasRef.current;
+    if (!canvas || !isPlaying || e.touches.length === 0) return;
+
+    // Prevent scrolling or bouncing the screen while steering
+    e.preventDefault();
+
+    const rect = canvas.getBoundingClientRect();
+    const touch = e.touches[0];
+    const x = touch.clientX - rect.left;
+    const y = touch.clientY - rect.top;
+
+    // Center of the canvas
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+
+    const dx = x - centerX;
+    const dy = y - centerY;
+    const angle = Math.atan2(dy, dx);
+
+    // Update locally immediately
+    const myId = mySnakeIdRef.current;
+    if (myId && snakesRef.current[myId]) {
+      snakesRef.current[myId].angle = angle;
+    }
+
+    // Emit to socket if changed
     if (Math.abs(angle - lastAngleEmitRef.current) > 0.05) {
       lastAngleEmitRef.current = angle;
       if (isLocalSim) {
@@ -709,51 +747,53 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification })
       <div className="flex-grow flex flex-col md:flex-row relative">
         
         {/* Game Canvas Container */}
-        <div className="flex-grow relative h-[450px] overflow-hidden bg-slate-950/80">
+        <div className="flex-grow relative h-[420px] sm:h-[450px] overflow-hidden bg-slate-950/80">
           
           {/* Main game Canvas */}
           <canvas 
             ref={canvasRef} 
             onMouseMove={handleMouseMove}
-            className="block w-full h-full cursor-crosshair" 
+            onTouchStart={handleTouchMove}
+            onTouchMove={handleTouchMove}
+            className="block w-full h-full cursor-crosshair touch-none" 
           />
 
           {/* Floating HUD controls (While playing) */}
           {isPlaying && mySnake && (
             <>
-              {/* Leaderboard panel on top-right */}
-              <div className="absolute top-4 right-4 bg-slate-950/85 backdrop-blur-md border border-slate-800 p-4 rounded-2xl w-52 pointer-events-none shadow-xl">
-                <div className="flex items-center space-x-2 border-b border-slate-800 pb-2 mb-2">
-                  <Trophy className="h-4 w-4 text-yellow-500" />
-                  <span className="text-xs font-bold text-slate-200 uppercase tracking-wide">Top Joueurs</span>
+              {/* Leaderboard panel on top-right (Hidden on small mobile screens to save space) */}
+              <div className="absolute top-3 right-3 bg-slate-950/85 backdrop-blur-md border border-slate-800 p-3 rounded-2xl w-48 pointer-events-none shadow-xl hidden sm:block">
+                <div className="flex items-center space-x-2 border-b border-slate-800 pb-1.5 mb-1.5">
+                  <Trophy className="h-3.5 w-3.5 text-yellow-500" />
+                  <span className="text-[10px] font-bold text-slate-200 uppercase tracking-wide">Top Joueurs</span>
                 </div>
-                <div className="space-y-1.5">
+                <div className="space-y-1">
                   {leaderboard.map((item, index) => (
-                    <div key={index} className="flex justify-between items-center text-[11px]">
-                      <span className="text-slate-400 font-medium truncate max-w-[100px]">{index + 1}. {item.email}</span>
+                    <div key={index} className="flex justify-between items-center text-[10px]">
+                      <span className="text-slate-400 font-medium truncate max-w-[90px]">{index + 1}. {item.email.split('@')[0]}</span>
                       <span className="font-mono text-yellow-500 font-bold">{item.value.toFixed(1)}</span>
                     </div>
                   ))}
                   {leaderboard.length === 0 && (
-                    <p className="text-slate-500 text-[10px] text-center">Aucun joueur actif</p>
+                    <p className="text-slate-500 text-[9px] text-center">Aucun joueur actif</p>
                   )}
                 </div>
               </div>
 
-              {/* Floating Bottom Center Wager / Cashout Box */}
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-950/90 backdrop-blur-md border border-slate-800 p-4 rounded-2xl flex items-center space-x-6 shadow-2xl z-20 min-w-[280px]">
-                <div className="flex flex-col">
-                  <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider">Valeur Actuelle</span>
-                  <span className="font-mono text-xl font-black text-emerald-400">{mySnake.value.toFixed(2)} HTG</span>
-                  <span className="text-[9px] text-slate-400">{mySnake.eliminations} éliminations</span>
+              {/* Floating Bottom Center Wager / Cashout Box (Highly optimized and responsive for mobile) */}
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-slate-950/90 backdrop-blur-md border border-slate-800 p-3 rounded-2xl flex items-center space-x-4 shadow-2xl z-20 w-[92%] sm:w-auto sm:min-w-[280px]">
+                <div className="flex flex-col shrink-0">
+                  <span className="text-[9px] text-slate-500 uppercase font-bold tracking-wider">Solde Arena</span>
+                  <span className="font-mono text-base sm:text-lg font-black text-emerald-400">{mySnake.value.toFixed(2)} G</span>
+                  <span className="text-[8px] text-slate-400">{mySnake.eliminations} kills</span>
                 </div>
 
                 <button
                   onClick={handleCashout}
-                  className="flex-grow flex items-center justify-center space-x-2 bg-emerald-600 hover:bg-emerald-500 text-white font-black px-6 py-3 rounded-xl shadow-lg shadow-emerald-600/20 transition-all transform hover:-translate-y-0.5 active:translate-y-0 text-sm"
+                  className="flex-grow flex items-center justify-center space-x-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black px-4 py-2.5 rounded-xl shadow-lg shadow-emerald-600/25 transition-all text-xs sm:text-sm"
                 >
-                  <Coins className="h-4 w-4" />
-                  <span>ENCAISSER (Retrait)</span>
+                  <Coins className="h-3.5 w-3.5" />
+                  <span>CASH OUT (RETRAIT)</span>
                 </button>
               </div>
             </>

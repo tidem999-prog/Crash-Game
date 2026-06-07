@@ -46,6 +46,15 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification })
 
     setIsLocalSim(false);
 
+    // Clean up any existing listeners on this socket first to prevent duplication
+    socket.off('ketmesye_tick');
+    socket.off('ketmesye_join_success');
+    socket.off('ketmesye_death');
+    socket.off('ketmesye_cashout_success');
+    socket.off('ketmesye_kill');
+    socket.off('ketmesye_player_cashed_out');
+    socket.off('ketmesye_error');
+
     // Socket listeners
     socket.on('ketmesye_tick', (data) => {
       snakesRef.current = data.snakes;
@@ -253,7 +262,14 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification })
           const dist = Math.hypot(myHead.x - pellet.x, myHead.y - pellet.y);
           if (dist < 20) {
             me.value = parseFloat((me.value + pellet.value).toFixed(2));
-            me.segments.push({ ...me.segments[me.segments.length - 1] });
+            me.growthPoints = (me.growthPoints || 0) + pellet.value;
+            const segsToAdd = Math.floor(me.growthPoints / 2.0);
+            if (segsToAdd > 0) {
+              me.growthPoints -= segsToAdd * 2.0;
+              for (let g = 0; g < segsToAdd; g++) {
+                me.segments.push({ ...me.segments[me.segments.length - 1] });
+              }
+            }
             pls.splice(i, 1);
 
             // Respawn
@@ -282,7 +298,14 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification })
           const dist = Math.hypot(botHead.x - p.x, botHead.y - p.y);
           if (dist < 20) {
             bot.value = parseFloat((bot.value + p.value).toFixed(2));
-            bot.segments.push({ ...bot.segments[bot.segments.length - 1] });
+            bot.growthPoints = (bot.growthPoints || 0) + p.value;
+            const segsToAdd = Math.floor(bot.growthPoints / 2.0);
+            if (segsToAdd > 0) {
+              bot.growthPoints -= segsToAdd * 2.0;
+              for (let g = 0; g < segsToAdd; g++) {
+                bot.segments.push({ ...bot.segments[bot.segments.length - 1] });
+              }
+            }
             pls.splice(idx, 1);
             
             pls.push({

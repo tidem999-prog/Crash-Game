@@ -46,30 +46,30 @@ const Navbar = () => {
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         
         {/* Logo */}
-        <Link to="/" className="flex items-center space-x-2 group">
-          <div className="bg-gradient-to-tr from-yellow-500 to-indigo-600 p-2 rounded-lg text-white transform group-hover:scale-105 transition-all duration-300 shadow-md shadow-indigo-500/20">
-            <Gamepad2 className="h-5 w-5" />
+        <Link to="/" className="flex items-center space-x-1.5 group shrink-0">
+          <div className="bg-gradient-to-tr from-yellow-500 to-indigo-600 p-1.5 sm:p-2 rounded-lg text-white transform group-hover:scale-105 transition-all duration-300 shadow-md shadow-indigo-500/20">
+            <Gamepad2 className="h-4 w-4 sm:h-5 sm:w-5" />
           </div>
-          <span className="font-display font-black text-xl tracking-tight bg-gradient-to-r from-white via-slate-200 to-indigo-400 bg-clip-text text-transparent uppercase">
-            KetMesye<span className="text-yellow-500">Arena</span>
+          <span className="font-display font-black text-sm sm:text-base tracking-tight bg-gradient-to-r from-white via-slate-200 to-indigo-400 bg-clip-text text-transparent uppercase">
+            Ket<span className="hidden sm:inline">mesye</span><span className="text-yellow-500">Arena</span>
           </span>
         </Link>
 
         {/* Action Controls & Profile */}
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-2 sm:space-x-4">
           
           {/* Balance Widget */}
-          <div className="flex items-center space-x-2 bg-slate-950/60 border border-slate-800 px-3 py-1.5 rounded-full shadow-inner">
-            <Landmark className="h-4 w-4 text-emerald-400" />
-            <span className="font-mono font-bold text-sm text-emerald-400">
-              {user.balance.toLocaleString('en-US', { minimumFractionDigits: 2 })} HTG
+          <div className="flex items-center space-x-1 sm:space-x-2 bg-slate-950/60 border border-slate-800 px-1.5 py-0.5 sm:px-3 sm:py-1 rounded-full shadow-inner">
+            <Landmark className="h-3.5 w-3.5 text-emerald-400 hidden sm:block" />
+            <span className="font-mono font-bold text-[10px] sm:text-sm text-emerald-400">
+              {user.balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}<span className="text-[8px] sm:text-xs ml-0.5 text-emerald-500/80">G</span>
             </span>
             <button 
               onClick={refreshBalance} 
-              className="p-1 text-slate-400 hover:text-indigo-400 rounded-full hover:bg-slate-800 transition-all duration-200"
+              className="p-0.5 text-slate-400 hover:text-indigo-400 rounded-full hover:bg-slate-800 transition-all duration-200"
               title="Actualiser le solde"
             >
-              <RefreshCw className="h-3.5 w-3.5" />
+              <RefreshCw className="h-2.5 w-2.5 sm:h-3.5 sm:w-3.5" />
             </button>
           </div>
 
@@ -140,14 +140,14 @@ const AppContent = () => {
       </main>
       
       {/* Premium Footer */}
-      <footer className="border-t border-slate-900 py-6 bg-brand-dark text-slate-500 text-center text-xs">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <footer className="border-t border-slate-900 py-4 sm:py-6 bg-slate-950 text-slate-500 text-center text-[10px] sm:text-xs">
+        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-4">
           <p>© {new Date().getFullYear()} KetMesye Arena. Tous droits réservés.</p>
-          <p className="flex items-center space-x-1">
+          <div className="flex flex-wrap items-center justify-center gap-1 sm:space-x-1.5 text-[9px] sm:text-xs">
             <span>Sécurisé avec House Edge de 5%</span>
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+            <span className="h-1 w-1 sm:h-1.5 sm:w-1.5 rounded-full bg-emerald-500"></span>
             <span>Retraits validés manuellement</span>
-          </p>
+          </div>
         </div>
       </footer>
     </div>

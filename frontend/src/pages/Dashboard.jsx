@@ -925,10 +925,10 @@ export default function Dashboard() {
                   // Placed but waiting for round start
                   <button
                     disabled
-                    className="w-full py-4 px-4 bg-indigo-900/40 text-indigo-300 border border-indigo-800/40 rounded-xl font-bold text-sm select-none"
+                    className="w-full py-4 px-4 bg-emerald-600 text-slate-950 font-black rounded-xl font-bold text-sm select-none border border-emerald-500 glow-emerald shadow-lg shadow-emerald-500/20"
                   >
                     PARI ENREGISTRÉ
-                    <span className="block text-[10px] font-medium text-indigo-400/80 mt-0.5">
+                    <span className="block text-[10px] font-bold text-slate-900/80 mt-0.5">
                       Attente du décollage de l'avion...
                     </span>
                   </button>
@@ -1353,13 +1353,13 @@ export default function Dashboard() {
         </div>
 
         {/* Small informational widget */}
-        <div className="glass-panel p-5 rounded-2xl space-y-3 bg-gradient-to-br from-indigo-950/20 to-purple-950/15 border border-indigo-900/25">
-          <h4 className="font-bold text-xs text-indigo-300 uppercase tracking-wider">Comment Jouer ?</h4>
-          <ol className="list-decimal pl-4 text-[11px] text-slate-400 space-y-1.5 leading-relaxed">
+        <div className="glass-panel p-4 rounded-xl space-y-2 bg-gradient-to-br from-indigo-950/15 to-purple-950/10 border border-indigo-900/20 w-full">
+          <h4 className="font-bold text-[10px] text-indigo-300 uppercase tracking-wider">Comment Jouer ?</h4>
+          <ol className="list-decimal pl-4 text-[10px] text-slate-400 space-y-1 leading-relaxed">
             <li>Déposez des fonds en HTG sur MonCash ou NatCash.</li>
             <li>Placez votre pari avant que l'avion ne décolle.</li>
             <li>Observez le multiplicateur augmenter.</li>
-            <li>Cliquez sur <strong className="text-emerald-400">CASH OUT</strong> pour récupérer vos gains avant que l'avion ne s'écrase.</li>
+            <li>Cliquez sur <strong className="text-emerald-400 font-bold">CASH OUT</strong> pour récupérer vos gains avant l'écrasement.</li>
             <li>Si l'avion s'écrase avant, le pari est perdu.</li>
           </ol>
         </div>

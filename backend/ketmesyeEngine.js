@@ -156,6 +156,9 @@ const handleGameTick = async () => {
     if (snake) {
       console.log(`Ketmesye: Snake owned by ${snake.email} died.`);
       
+      // Delete from memory IMMEDIATELY to prevent concurrent ticks from processing this snake again
+      delete snakes[deadId];
+
       // Notify killer if any
       const killInfo = collisionKills.find(k => k.deadId === deadId);
       if (killInfo) {
@@ -206,8 +209,6 @@ const handleGameTick = async () => {
           valueLost: snake.value
         });
       }
-
-      delete snakes[deadId];
     }
   }
 
@@ -224,13 +225,15 @@ const handleGameTick = async () => {
         // Eat pellet
         snake.value = parseFloat((snake.value + pellet.value).toFixed(2));
         
-        // Growth logic:
-        // Regular pellet adds 0.1 of a segment, cash pellet adds segments based on its value
-        const segmentsToAdd = pellet.isCashDrop ? Math.max(1, Math.floor(pellet.value * 2)) : 1;
-        
-        for (let g = 0; g < segmentsToAdd; g++) {
-          const lastSegment = snake.segments[snake.segments.length - 1];
-          snake.segments.push({ ...lastSegment });
+        // Consumption logic: grow 1 segment per 2.0 HTG value gained (normal pellet worth 0.10 HTG adds 0.05 segment)
+        snake.growthPoints = (snake.growthPoints || 0) + pellet.value;
+        const segmentsToAdd = Math.floor(snake.growthPoints / 2.0);
+        if (segmentsToAdd > 0) {
+          snake.growthPoints -= segmentsToAdd * 2.0;
+          for (let g = 0; g < segmentsToAdd; g++) {
+            const lastSegment = snake.segments[snake.segments.length - 1];
+            snake.segments.push({ ...lastSegment });
+          }
         }
 
         // Remove pellet

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import io from 'socket.io-client';
 import { useAuth, apiRequest } from '../context/AuthContext';
 import { 
@@ -1014,6 +1015,26 @@ export default function Dashboard() {
 
       {/* Right Sidebar: Active Bets list & Statistics */}
       <div className="space-y-6">
+        
+        {/* Admin Control Widget */}
+        {user && user.role === 'admin' && (
+          <div className="glass-panel p-5 rounded-3xl bg-purple-950/20 border border-purple-500/25 flex flex-col space-y-3">
+            <h3 className="font-display font-black text-sm text-purple-300 flex items-center space-x-2">
+              <ShieldAlert className="h-4 w-4 text-purple-450" />
+              <span>Contrôle Administrateur</span>
+            </h3>
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              Vous êtes connecté en tant qu'administrateur. Vous pouvez valider les transactions et modérer les comptes jwè yo.
+            </p>
+            <Link
+              to="/admin"
+              className="w-full py-2.5 px-4 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl text-xs text-center transition-all flex items-center justify-center space-x-1.5 shadow-md shadow-purple-500/10"
+            >
+              <ShieldAlert className="h-3.5 w-3.5" />
+              <span>Ouvrir le Portail Admin</span>
+            </Link>
+          </div>
+        )}
         
         {/* Card for Active Players list in the current round */}
         <div className="glass-panel p-6 rounded-3xl flex flex-col max-h-[500px]">

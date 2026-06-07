@@ -6,11 +6,16 @@ const fs = require('fs');
 const { query } = require('../db');
 const { authenticateToken } = require('../middleware/auth');
 
-// Make sure upload directory exists
+// Make sure upload directory exists (skipped silently on read-only filesystems like Vercel)
 const uploadDir = process.env.UPLOAD_DIR || 'uploads';
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
+try {
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
+} catch (err) {
+  console.warn('Could not create upload directory (read-only filesystem?):', err.message);
 }
+
 
 // Multer Storage Configuration
 const storage = multer.diskStorage({

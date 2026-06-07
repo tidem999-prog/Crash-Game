@@ -8,7 +8,10 @@
     "backend": {
       "root": "backend",
       "entrypoint": "index.js",
-      "routePrefix": "/_/backend"
+      "routePrefix": "/_/backend",
+      "env": {
+        "VERCEL": "1"
+      }
     }
   }
 }

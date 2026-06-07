@@ -56,6 +56,7 @@ export default function Dashboard() {
   const localLoopRef = useRef(null);
   const localBetRef = useRef(null);
   const userBalanceRef = useRef(0);
+  const prevStatusRef = useRef('');
 
   useEffect(() => {
     if (user) {
@@ -220,11 +221,14 @@ export default function Dashboard() {
       setActiveBets(data.activeBetsList || []);
       setActiveBetsCount(data.activeBetsCount || 0);
 
-      if (data.status === 'waiting') {
+      // Only reset active bet states when transitioning from another state (e.g. crashed) to 'waiting'
+      if (data.status === 'waiting' && prevStatusRef.current !== 'waiting') {
         setMyBet(null);
         setCashoutSuccess(null);
         setBetError('');
       }
+      
+      prevStatusRef.current = data.status;
     });
 
     newSocket.on('game_tick', (data) => {

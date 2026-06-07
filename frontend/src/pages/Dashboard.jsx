@@ -515,41 +515,41 @@ export default function Dashboard() {
         <div className="flex bg-slate-900/60 p-1.5 rounded-2xl border border-slate-800">
           <button
             onClick={() => setActiveTab('play')}
-            className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center space-x-2 ${
+            className={`flex-1 py-2 px-1 sm:py-3 sm:px-4 rounded-xl text-[10px] sm:text-sm font-bold transition-all flex flex-col sm:flex-row items-center justify-center space-y-1 sm:space-y-0 sm:space-x-2 ${
               activeTab === 'play' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/10' : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <Plane className="h-4 w-4 rotate-45" />
-            <span>Salle de Jeu</span>
+            <Plane className="h-3.5 w-3.5 sm:h-4 sm:w-4 rotate-45" />
+            <span>Jeu</span>
           </button>
           
           <button
             onClick={() => setActiveTab('deposit')}
-            className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center space-x-2 ${
+            className={`flex-1 py-2 px-1 sm:py-3 sm:px-4 rounded-xl text-[10px] sm:text-sm font-bold transition-all flex flex-col sm:flex-row items-center justify-center space-y-1 sm:space-y-0 sm:space-x-2 ${
               activeTab === 'deposit' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/10' : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <Wallet className="h-4 w-4" />
-            <span>Faire un Dépôt</span>
+            <Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span>Dépôt</span>
           </button>
 
           <button
             onClick={() => setActiveTab('withdraw')}
-            className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center space-x-2 ${
+            className={`flex-1 py-2 px-1 sm:py-3 sm:px-4 rounded-xl text-[10px] sm:text-sm font-bold transition-all flex flex-col sm:flex-row items-center justify-center space-y-1 sm:space-y-0 sm:space-x-2 ${
               activeTab === 'withdraw' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/10' : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <Landmark className="h-4 w-4" />
+            <Landmark className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             <span>Retrait</span>
           </button>
 
           <button
             onClick={() => setActiveTab('history')}
-            className={`flex-1 py-3 px-4 rounded-xl text-sm font-bold transition-all flex items-center justify-center space-x-2 ${
+            className={`flex-1 py-2 px-1 sm:py-3 sm:px-4 rounded-xl text-[10px] sm:text-sm font-bold transition-all flex flex-col sm:flex-row items-center justify-center space-y-1 sm:space-y-0 sm:space-x-2 ${
               activeTab === 'history' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/10' : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <History className="h-4 w-4" />
+            <History className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             <span>Historique</span>
           </button>
         </div>

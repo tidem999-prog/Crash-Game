@@ -9,6 +9,9 @@
     color: #f8fafc;
     font-family: 'Inter', sans-serif;
   }
+  a, button, input, select, textarea {
+    touch-action: manipulation;
+  }
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Outfit', sans-serif;
   }

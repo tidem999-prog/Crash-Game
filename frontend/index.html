@@ -25,6 +25,16 @@
       document.addEventListener('gesturechange', function (event) {
         event.preventDefault();
       });
+
+      // Disable double-tap to zoom
+      let lastTouchEnd = 0;
+      document.addEventListener('touchend', function (event) {
+        const now = (new Date()).getTime();
+        if (now - lastTouchEnd <= 300) {
+          event.preventDefault();
+        }
+        lastTouchEnd = now;
+      }, false);
     </script>
     <title>Crash Plane HTG - Envolez-vous et encaissez avant le crash !</title>
     <meta name="description" content="Jouez à Crash Plane en HTG. Misez sur MonCash ou NatCash, observez l'avion décoller, et encaissez vos gains avant qu'il ne s'écrase. Le jeu de crash ultime en Haïti." />

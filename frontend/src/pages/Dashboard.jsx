@@ -334,9 +334,9 @@ export default function Dashboard() {
       // Draw Axes Labels
       ctx.fillStyle = '#64748b';
       ctx.font = '10px monospace';
-      ctx.fillText('0s', 45, h - 15);
-      ctx.fillText('Time', w / 2 - 15, h - 5);
-      ctx.fillText('1.00x', 5, h - 35);
+      ctx.fillText('0s', 45, h - 85);
+      ctx.fillText('Time', w / 2 - 15, h - 80);
+      ctx.fillText('1.00x', 5, h - 100);
 
       if (gameStatus === 'waiting') {
         // Draw waiting circle countdown
@@ -372,7 +372,7 @@ export default function Dashboard() {
         // Calculate dynamic plane coordinates along a curve
         // Curve equation: y = x^1.8
         const paddingLeft = 50;
-        const paddingBottom = 40;
+        const paddingBottom = 95;
         
         const startX = paddingLeft;
         const startY = h - paddingBottom;
@@ -458,8 +458,8 @@ export default function Dashboard() {
       } 
       else if (gameStatus === 'crashed') {
         // Redraw the path static
-        const paddingLeft = 50;
-        const paddingBottom = 40;
+         const paddingLeft = 50;
+         const paddingBottom = 95;
         const startX = paddingLeft;
         const startY = h - paddingBottom;
         const endX = w - 60;
@@ -767,62 +767,64 @@ export default function Dashboard() {
                   <p className="text-emerald-300 text-xs mt-1">Encaissé à {cashoutSuccess.multiplier}x</p>
                 </div>
               )}
+
+              {/* Horizontal Inputs Bar (Overlay at the bottom of the visual screen container) */}
+              <div className="absolute bottom-3 left-3 right-3 grid grid-cols-2 gap-3 z-30 bg-slate-950/85 backdrop-blur-md p-3 rounded-2xl border border-slate-800/80 shadow-lg">
+                {/* Bet Amount Control */}
+                <div className="flex flex-col justify-center">
+                  <label className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Montant (Min: 10 HTG)</label>
+                  <div className="relative rounded-xl overflow-hidden flex border border-slate-800 bg-slate-900/40">
+                    <span className="bg-slate-900 px-2 sm:px-3 py-1 sm:py-2 text-slate-500 text-xs sm:text-sm font-bold flex items-center">HTG</span>
+                    <input
+                      type="number"
+                      value={betAmount}
+                      onChange={(e) => setBetAmount(Math.max(10, parseInt(e.target.value) || 0))}
+                      disabled={myBet && myBet.status === 'placed'}
+                      className="block w-full px-2 py-1 sm:px-3 sm:py-2 bg-transparent text-slate-200 focus:outline-none text-xs sm:text-sm font-bold"
+                    />
+                    <button 
+                      onClick={() => setBetAmount(prev => Math.max(10, Math.round(prev / 2)))}
+                      disabled={myBet && myBet.status === 'placed'}
+                      className="bg-slate-900 hover:bg-slate-800 border-l border-slate-800 px-2 text-[10px] sm:text-xs font-bold text-slate-400"
+                    >
+                      /2
+                    </button>
+                    <button 
+                      onClick={() => setBetAmount(prev => prev * 2)}
+                      disabled={myBet && myBet.status === 'placed'}
+                      className="bg-slate-900 hover:bg-slate-800 border-l border-slate-800 px-2 text-[10px] sm:text-xs font-bold text-slate-400"
+                    >
+                      x2
+                    </button>
+                  </div>
+                </div>
+
+                {/* Auto Cashout Control */}
+                <div className="flex flex-col justify-center">
+                  <label className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1 flex items-center space-x-1">
+                    <span>Auto Cash Out</span>
+                    <span className="text-[9px] text-slate-500 font-normal lowercase hidden sm:inline">(optionnel)</span>
+                  </label>
+                  <div className="relative rounded-xl overflow-hidden flex border border-slate-800 bg-slate-900/40">
+                    <input
+                      type="number"
+                      step="0.1"
+                      placeholder="Ex: 2.0"
+                      value={autoCashout}
+                      onChange={(e) => setAutoCashout(e.target.value)}
+                      disabled={myBet && myBet.status === 'placed'}
+                      className="block w-full px-3 py-1 sm:px-4 sm:py-2 bg-transparent text-slate-200 focus:outline-none text-xs sm:text-sm font-bold"
+                    />
+                    <span className="bg-slate-900 px-2 sm:px-3 py-1 sm:py-2 text-slate-500 text-xs sm:text-sm font-bold flex items-center">x</span>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Wagering Control Panel */}
-            <div className="glass-panel p-6 rounded-3xl grid grid-cols-1 md:grid-cols-3 gap-6">
-              
-              {/* Bet Amount Control */}
-              <div className="flex flex-col justify-center">
-                <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Montant de la mise (Min: 10 HTG)</label>
-                <div className="relative rounded-xl overflow-hidden flex border border-slate-800">
-                  <span className="bg-slate-900 px-3.5 py-3 text-slate-500 text-sm font-bold flex items-center">HTG</span>
-                  <input
-                    type="number"
-                    value={betAmount}
-                    onChange={(e) => setBetAmount(Math.max(10, parseInt(e.target.value) || 0))}
-                    disabled={myBet && myBet.status === 'placed'}
-                    className="block w-full px-3 py-3 bg-slate-950/70 text-slate-200 focus:outline-none text-sm font-bold"
-                  />
-                  <button 
-                    onClick={() => setBetAmount(prev => Math.max(10, Math.round(prev / 2)))}
-                    disabled={myBet && myBet.status === 'placed'}
-                    className="bg-slate-900 hover:bg-slate-800 border-l border-slate-800 px-3 text-xs font-bold text-slate-400"
-                  >
-                    /2
-                  </button>
-                  <button 
-                    onClick={() => setBetAmount(prev => prev * 2)}
-                    disabled={myBet && myBet.status === 'placed'}
-                    className="bg-slate-900 hover:bg-slate-800 border-l border-slate-800 px-3 text-xs font-bold text-slate-400"
-                  >
-                    x2
-                  </button>
-                </div>
-              </div>
-
-              {/* Auto Cashout Control */}
-              <div className="flex flex-col justify-center">
-                <label className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2 flex items-center space-x-1">
-                  <span>Auto Cash Out</span>
-                  <span className="text-[10px] text-slate-500 font-normal lowercase">(optionnel)</span>
-                </label>
-                <div className="relative rounded-xl overflow-hidden flex border border-slate-800">
-                  <input
-                    type="number"
-                    step="0.1"
-                    placeholder="Ex: 2.0"
-                    value={autoCashout}
-                    onChange={(e) => setAutoCashout(e.target.value)}
-                    disabled={myBet && myBet.status === 'placed'}
-                    className="block w-full px-4 py-3 bg-slate-950/70 text-slate-200 focus:outline-none text-sm font-bold"
-                  />
-                  <span className="bg-slate-900 px-3.5 py-3 text-slate-500 text-sm font-bold flex items-center">x</span>
-                </div>
-              </div>
-
+            <div className="glass-panel p-5 rounded-3xl mt-4 max-w-xl mx-auto w-full">
               {/* Bet Action Button */}
-              <div className="flex flex-col justify-end">
+              <div className="w-full flex flex-col justify-center">
                 {myBet && myBet.status === 'placed' && gameStatus === 'flying' ? (
                   // Live cashout button
                   <button
@@ -862,7 +864,6 @@ export default function Dashboard() {
                   <p className="text-red-500 text-xs mt-2 text-center font-bold">{betError}</p>
                 )}
               </div>
-
             </div>
 
           </div>

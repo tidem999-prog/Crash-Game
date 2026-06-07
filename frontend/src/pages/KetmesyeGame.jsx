@@ -841,7 +841,13 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification })
                       <input
                         type="number"
                         value={wager}
-                        onChange={(e) => setWager(Math.max(10, parseInt(e.target.value) || 0))}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setWager(val === '' ? '' : parseInt(val) || 0);
+                        }}
+                        onBlur={() => {
+                          if (!wager || wager < 10) setWager(10);
+                        }}
                         className="block w-full px-3 py-2 bg-transparent text-slate-200 text-sm font-bold font-mono focus:outline-none"
                       />
                     </div>

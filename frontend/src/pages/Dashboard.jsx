@@ -867,19 +867,25 @@ export default function Dashboard() {
                     <input
                       type="number"
                       value={betAmount}
-                      onChange={(e) => setBetAmount(Math.max(10, parseInt(e.target.value) || 0))}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setBetAmount(val === '' ? '' : parseInt(val) || 0);
+                      }}
+                      onBlur={() => {
+                        if (!betAmount || betAmount < 10) setBetAmount(10);
+                      }}
                       disabled={myBet && myBet.status === 'placed'}
                       className="block w-full px-2 py-1 sm:px-3 sm:py-2 bg-transparent text-slate-200 focus:outline-none text-xs sm:text-sm font-bold"
                     />
                     <button 
-                      onClick={() => setBetAmount(prev => Math.max(10, Math.round(prev / 2)))}
+                      onClick={() => setBetAmount(prev => Math.max(10, Math.round((parseInt(prev) || 0) / 2)))}
                       disabled={myBet && myBet.status === 'placed'}
                       className="bg-slate-900 hover:bg-slate-800 border-l border-slate-800 px-2 text-[10px] sm:text-xs font-bold text-slate-400"
                     >
                       /2
                     </button>
                     <button 
-                      onClick={() => setBetAmount(prev => prev * 2)}
+                      onClick={() => setBetAmount(prev => (parseInt(prev) || 0) * 2)}
                       disabled={myBet && myBet.status === 'placed'}
                       className="bg-slate-900 hover:bg-slate-800 border-l border-slate-800 px-2 text-[10px] sm:text-xs font-bold text-slate-400"
                     >

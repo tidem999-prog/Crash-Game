@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { apiRequest } from '../context/AuthContext';
 import { 
   ShieldAlert, Landmark, CheckCircle, XCircle, Users, 
-  TrendingUp, ArrowDownRight, ArrowUpRight, Ban, Check, AlertTriangle, Eye
+  TrendingUp, ArrowDownRight, ArrowUpRight, Ban, Check, AlertTriangle, Eye, Coins
 } from 'lucide-react';
 
 export default function Admin() {
@@ -91,6 +91,21 @@ export default function Admin() {
     }
   };
 
+  const handleReset = async (type) => {
+    if (!window.confirm("Êtes-vous sûr de vouloir réinitialiser ces données à 0 ? Cette action supprimera définitivement les enregistrements correspondants et est irréversible.")) {
+      return;
+    }
+    setAdminError('');
+    setAdminSuccess('');
+    try {
+      const data = await apiRequest(`/api/admin/reset/${type}`, { method: 'POST' });
+      setAdminSuccess(data.message);
+      await fetchAdminData();
+    } catch (err) {
+      setAdminError(err.message || 'Erreur lors de la réinitialisation.');
+    }
+  };
+
   const backendUrl = window.location.hostname === 'localhost' ? 'http://localhost:5000' : window.location.origin; // Target port for development uploads
 
   if (loading) return (
@@ -128,56 +143,106 @@ export default function Admin() {
       )}
 
       {/* Statistics Cards Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5">
         
-        {/* Card 1: Profits */}
-        <div className="glass-panel p-6 rounded-3xl relative overflow-hidden bg-gradient-to-br from-indigo-950/30 to-purple-950/20 border border-indigo-900/30">
-          <div className="absolute top-4 right-4 h-10 w-10 bg-indigo-500/10 rounded-xl flex items-center justify-center text-indigo-400">
-            <TrendingUp className="h-5 w-5" />
+        {/* Card 1: Profits Jeux */}
+        <div className="glass-panel p-5 rounded-2xl relative overflow-hidden bg-gradient-to-br from-indigo-950/30 to-purple-950/20 border border-indigo-900/30 flex flex-col justify-between">
+          <div>
+            <div className="absolute top-4 right-4 h-9 w-9 bg-indigo-500/10 rounded-lg flex items-center justify-center text-indigo-400">
+              <TrendingUp className="h-4.5 w-4.5" />
+            </div>
+            <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider block">Profits Jeux</span>
+            <h3 className="text-xl font-display font-black text-indigo-400 mt-1.5 font-mono">
+              {stats.houseGameProfit.toLocaleString('en-US', { minimumFractionDigits: 2 })} HTG
+            </h3>
+            <p className="text-[9px] text-slate-500 mt-1">Mises moins les retours de gains.</p>
           </div>
-          <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Profits Plateforme</span>
-          <h3 className="text-2xl font-display font-black text-indigo-400 mt-2 font-mono">
-            {stats.totalPlatformProfit.toLocaleString('en-US', { minimumFractionDigits: 2 })} HTG
-          </h3>
-          <p className="text-[10px] text-slate-500 mt-1">
-            Mises ({stats.houseGameProfit.toFixed(0)} HTG) + Retraits ({stats.totalWithdrawalFees.toFixed(0)} HTG)
-          </p>
+          <button
+            onClick={() => handleReset('profits')}
+            className="mt-4 text-[9px] bg-red-950/40 hover:bg-red-900/40 text-red-400 border border-red-500/20 px-2 py-0.5 rounded transition-all font-bold uppercase tracking-wider w-fit"
+          >
+            Reset
+          </button>
         </div>
 
-        {/* Card 2: User Balances */}
-        <div className="glass-panel p-6 rounded-3xl relative overflow-hidden">
-          <div className="absolute top-4 right-4 h-10 w-10 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-400">
-            <Landmark className="h-5 w-5" />
+        {/* Card 2: Profits sur Retraits */}
+        <div className="glass-panel p-5 rounded-2xl relative overflow-hidden bg-gradient-to-br from-indigo-950/30 to-purple-950/20 border border-indigo-900/30 flex flex-col justify-between">
+          <div>
+            <div className="absolute top-4 right-4 h-9 w-9 bg-emerald-500/10 rounded-lg flex items-center justify-center text-emerald-400">
+              <Coins className="h-4.5 w-4.5" />
+            </div>
+            <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider block">Profits Retraits (10%)</span>
+            <h3 className="text-xl font-display font-black text-emerald-400 mt-1.5 font-mono">
+              {stats.totalWithdrawalFees.toLocaleString('en-US', { minimumFractionDigits: 2 })} HTG
+            </h3>
+            <p className="text-[9px] text-slate-500 mt-1">Frais de 10% appliqués aux retraits.</p>
           </div>
-          <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Caisse Joueurs</span>
-          <h3 className="text-2xl font-display font-black text-emerald-400 mt-2 font-mono">
-            {stats.totalUserBalances.toLocaleString('en-US', { minimumFractionDigits: 2 })} HTG
-          </h3>
-          <p className="text-[10px] text-slate-500 mt-1">Dettes en cours envers les {stats.usersCount} joueurs actifs.</p>
+          <button
+            onClick={() => handleReset('withdrawals')}
+            className="mt-4 text-[9px] bg-red-950/40 hover:bg-red-900/40 text-red-400 border border-red-500/20 px-2 py-0.5 rounded transition-all font-bold uppercase tracking-wider w-fit"
+          >
+            Reset
+          </button>
         </div>
 
-        {/* Card 3: Total Deposits */}
-        <div className="glass-panel p-6 rounded-3xl relative overflow-hidden">
-          <div className="absolute top-4 right-4 h-10 w-10 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-400">
-            <ArrowUpRight className="h-5 w-5" />
+        {/* Card 3: User Balances */}
+        <div className="glass-panel p-5 rounded-2xl relative overflow-hidden flex flex-col justify-between">
+          <div>
+            <div className="absolute top-4 right-4 h-9 w-9 bg-purple-500/10 rounded-lg flex items-center justify-center text-purple-400">
+              <Landmark className="h-4.5 w-4.5" />
+            </div>
+            <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider block">Caisse Joueurs</span>
+            <h3 className="text-xl font-display font-black text-slate-200 mt-1.5 font-mono">
+              {stats.totalUserBalances.toLocaleString('en-US', { minimumFractionDigits: 2 })} HTG
+            </h3>
+            <p className="text-[9px] text-slate-500 mt-1">Soldes des {stats.usersCount} utilisateurs actifs.</p>
           </div>
-          <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Dépôts Approuvés</span>
-          <h3 className="text-2xl font-display font-black text-slate-200 mt-2 font-mono">
-            {stats.totalDeposits.toLocaleString('en-US', { minimumFractionDigits: 2 })} HTG
-          </h3>
-          <p className="text-[10px] text-slate-500 mt-1">Volume total des entrées validées par le staff.</p>
+          <button
+            onClick={() => handleReset('balances')}
+            className="mt-4 text-[9px] bg-red-950/40 hover:bg-red-900/40 text-red-400 border border-red-500/20 px-2 py-0.5 rounded transition-all font-bold uppercase tracking-wider w-fit"
+          >
+            Reset
+          </button>
         </div>
 
-        {/* Card 4: Total Withdrawals */}
-        <div className="glass-panel p-6 rounded-3xl relative overflow-hidden">
-          <div className="absolute top-4 right-4 h-10 w-10 bg-red-500/10 rounded-xl flex items-center justify-center text-red-400">
-            <ArrowDownRight className="h-5 w-5" />
+        {/* Card 4: Total Deposits */}
+        <div className="glass-panel p-5 rounded-2xl relative overflow-hidden flex flex-col justify-between">
+          <div>
+            <div className="absolute top-4 right-4 h-9 w-9 bg-emerald-500/10 rounded-lg flex items-center justify-center text-emerald-400">
+              <ArrowUpRight className="h-4.5 w-4.5" />
+            </div>
+            <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider block">Dépôts Approuvés</span>
+            <h3 className="text-xl font-display font-black text-slate-200 mt-1.5 font-mono">
+              {stats.totalDeposits.toLocaleString('en-US', { minimumFractionDigits: 2 })} HTG
+            </h3>
+            <p className="text-[9px] text-slate-500 mt-1">Dépôts cumulés validés.</p>
           </div>
-          <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Retraits Approuvés</span>
-          <h3 className="text-2xl font-display font-black text-slate-200 mt-2 font-mono">
-            {stats.totalWithdrawals.toLocaleString('en-US', { minimumFractionDigits: 2 })} HTG
-          </h3>
-          <p className="text-[10px] text-slate-500 mt-1">Sommes décaissées vers les joueurs.</p>
+          <button
+            onClick={() => handleReset('deposits')}
+            className="mt-4 text-[9px] bg-red-950/40 hover:bg-red-900/40 text-red-400 border border-red-500/20 px-2 py-0.5 rounded transition-all font-bold uppercase tracking-wider w-fit"
+          >
+            Reset
+          </button>
+        </div>
+
+        {/* Card 5: Total Withdrawals */}
+        <div className="glass-panel p-5 rounded-2xl relative overflow-hidden flex flex-col justify-between">
+          <div>
+            <div className="absolute top-4 right-4 h-9 w-9 bg-red-500/10 rounded-lg flex items-center justify-center text-red-400">
+              <ArrowDownRight className="h-4.5 w-4.5" />
+            </div>
+            <span className="text-[11px] text-slate-400 font-bold uppercase tracking-wider block">Retraits Approuvés</span>
+            <h3 className="text-xl font-display font-black text-slate-200 mt-1.5 font-mono">
+              {stats.totalWithdrawals.toLocaleString('en-US', { minimumFractionDigits: 2 })} HTG
+            </h3>
+            <p className="text-[9px] text-slate-500 mt-1">Retraits cumulés validés.</p>
+          </div>
+          <button
+            onClick={() => handleReset('withdrawals')}
+            className="mt-4 text-[9px] bg-red-950/40 hover:bg-red-900/40 text-red-400 border border-red-500/20 px-2 py-0.5 rounded transition-all font-bold uppercase tracking-wider w-fit"
+          >
+            Reset
+          </button>
         </div>
 
       </div>

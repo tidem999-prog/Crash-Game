@@ -216,4 +216,48 @@ router.post('/users/:id/toggle-suspend', async (req, res) => {
   }
 });
 
+// 7. Reset Platform Profits (deletes all bets)
+router.post('/reset/profits', async (req, res) => {
+  try {
+    await query("DELETE FROM bets");
+    res.json({ message: 'Les profits de jeu ont été réinitialisés à 0.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur lors de la réinitialisation des profits.' });
+  }
+});
+
+// 8. Reset Caisse Joueurs (sets all users' balances to 0)
+router.post('/reset/balances', async (req, res) => {
+  try {
+    await query("UPDATE users SET balance = 0.00 WHERE role = 'user'");
+    res.json({ message: 'Les soldes de tous les joueurs ont été réinitialisés à 0.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur lors de la réinitialisation des soldes.' });
+  }
+});
+
+// 9. Reset Deposits (deletes all deposit transactions)
+router.post('/reset/deposits', async (req, res) => {
+  try {
+    await query("DELETE FROM transactions WHERE type = 'deposit'");
+    res.json({ message: 'L\'historique des dépôts a été réinitialisé.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur lors de la réinitialisation des dépôts.' });
+  }
+});
+
+// 10. Reset Withdrawals (deletes all withdrawal transactions)
+router.post('/reset/withdrawals', async (req, res) => {
+  try {
+    await query("DELETE FROM transactions WHERE type = 'withdrawal'");
+    res.json({ message: 'L\'historique des retraits a été réinitialisé.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur lors de la réinitialisation des retraits.' });
+  }
+});
+
 module.exports = router;

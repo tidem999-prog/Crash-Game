@@ -875,7 +875,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification })
                   className="w-full flex items-center justify-center space-x-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-600/25 transition-all transform hover:-translate-y-0.5 active:translate-y-0"
                 >
                   <Sparkles className="h-4 w-4" />
-                  <span>SPAWN (ENTRER DANS L'ARÈNE)</span>
+                  <span>SPAWN</span>
                 </button>
               </div>
             </div>

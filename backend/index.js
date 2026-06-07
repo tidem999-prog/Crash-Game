@@ -50,6 +50,22 @@ app.use('/api/auth', ensureDb, authRoutes);
 app.use('/api/transactions', ensureDb, transactionRoutes);
 app.use('/api/admin', ensureDb, adminRoutes);
 
+// Serve frontend static files if they exist (production build)
+const distPath = path.join(__dirname, '../frontend/dist');
+app.use(express.static(distPath));
+
+// Fallback all other GET requests to index.html for SPA routing
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api')) {
+    return next();
+  }
+  res.sendFile(path.join(distPath, 'index.html'), (err) => {
+    if (err) {
+      res.status(404).send('Frontend not built. Please run npm run build in the frontend directory.');
+    }
+  });
+});
+
 // Global error handler
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);

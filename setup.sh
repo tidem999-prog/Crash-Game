@@ -13,7 +13,12 @@ apt-get install -y nodejs
 # 2. Install PM2
 npm install -g pm2
 
-# 3. Setup backend dependencies and environment
+# 3. Setup frontend dependencies and build
+cd /root/Crash-Game/frontend
+npm install
+npm run build
+
+# 4. Setup backend dependencies and environment
 cd /root/Crash-Game/backend
 npm install
 

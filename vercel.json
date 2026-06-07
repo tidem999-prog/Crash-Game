@@ -6,8 +6,8 @@
       "framework": "vite"
     },
     "backend": {
-      "root": "backend",
-      "entrypoint": "index.js",
+      "entrypoint": "backend/index.js",
+      "runtime": "nodejs20.x",
       "routePrefix": "/_/backend"
     }
   }

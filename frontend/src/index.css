@@ -54,21 +54,12 @@
   box-shadow: 0 0 15px -3px rgba(16, 185, 129, 0.4);
 }
 
-/* Custom scrollbar for modern looks */
+/* Hide scrollbars globally but keep scroll functionality */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  display: none;
 }
 
-::-webkit-scrollbar-track {
-  background: #030712;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #1e293b;
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+html, body {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
 }

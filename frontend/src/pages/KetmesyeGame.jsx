@@ -741,28 +741,29 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification })
     <div className="flex flex-col bg-slate-950 w-full min-h-[500px] border border-slate-900 rounded-3xl overflow-hidden relative">
       
       {/* Header bar */}
-      <div className="bg-slate-900/90 border-b border-slate-800 px-6 py-4 flex items-center justify-between z-10">
-        <div className="flex items-center space-x-3">
+      <div className="bg-slate-900/90 border-b border-slate-800 px-3 py-2 sm:px-6 sm:py-4 flex items-center justify-between z-10">
+        <div className="flex items-center space-x-1.5 sm:space-x-3">
           <button 
             onClick={onBackToLobby}
-            className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all"
+            className="p-1.5 sm:p-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all"
             title="Retour au lobby"
           >
-            <ArrowLeft className="h-5 w-5" />
+            <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
           </button>
           <div>
-            <h2 className="font-display font-black text-lg text-white tracking-wide">
-              KET<span className="text-yellow-500">MESYE</span> <span className="text-xs uppercase bg-yellow-500/20 text-yellow-400 font-bold px-2 py-0.5 rounded ml-2">Snake Arena</span>
+            <h2 className="font-display font-black text-sm sm:text-lg text-white tracking-wide flex flex-wrap items-center gap-1 sm:gap-2">
+              <span>KET<span className="text-yellow-500">MESYE</span></span>
+              <span className="text-[8px] sm:text-xs uppercase bg-yellow-500/20 text-yellow-400 font-bold px-1.5 py-0.5 rounded">Snake Arena</span>
             </h2>
-            <p className="text-[10px] text-slate-500 font-medium">Battez vos adversaires et encaissez les HTG en temps réel</p>
+            <p className="text-[8px] sm:text-[10px] text-slate-500 font-medium line-clamp-1">Battez vos adversaires et encaissez les HTG en temps réel</p>
           </div>
         </div>
 
         {/* Display connection status */}
-        <div className="flex items-center space-x-2 bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-full">
-          <div className={`h-2.5 w-2.5 rounded-full ${isLocalSim ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`} />
-          <span className="text-xs font-semibold text-slate-400 font-mono">
-            {isLocalSim ? 'Mode Démo (Simulation)' : 'Multiplayer Connecté'}
+        <div className="flex items-center space-x-1.5 sm:space-x-2 bg-slate-950 border border-slate-800 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full shrink-0">
+          <div className={`h-1.5 w-1.5 sm:h-2.5 sm:w-2.5 rounded-full ${isLocalSim ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`} />
+          <span className="text-[9px] sm:text-xs font-semibold text-slate-400 font-mono">
+            {isLocalSim ? 'Mode Démo' : 'Multiplayer Connecté'}
           </span>
         </div>
       </div>

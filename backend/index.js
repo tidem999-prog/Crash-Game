@@ -67,6 +67,7 @@ if (isVercel) {
   const http = require('http');
   const socketIo = require('socket.io');
   const { initGameEngine } = require('./gameEngine');
+  const { initKetmesyeEngine } = require('./ketmesyeEngine');
   const { initializeDatabase } = require('./db');
 
   const server = http.createServer(app);
@@ -79,6 +80,7 @@ if (isVercel) {
   (async () => {
     await initializeDatabase();
     initGameEngine(io);
+    initKetmesyeEngine(io);
     server.listen(PORT, () => {
       console.log(`===================================================`);
       console.log(`SERVEUR CRASH GAME DÉMARRÉ SUR LE PORT : ${PORT}`);

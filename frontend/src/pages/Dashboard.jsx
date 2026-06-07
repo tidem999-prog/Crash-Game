@@ -4,12 +4,14 @@ import io from 'socket.io-client';
 import { useAuth, apiRequest } from '../context/AuthContext';
 import { 
   Plane, Landmark, ArrowUpRight, ArrowDownRight, History, 
-  Wallet, ShieldAlert, Award, Clock, Coins, Upload, Send, HelpCircle
+  Wallet, ShieldAlert, Award, Clock, Coins, Upload, Send, HelpCircle, Gamepad2, ArrowLeft
 } from 'lucide-react';
+import KetmesyeGame from './KetmesyeGame';
 
 export default function Dashboard() {
   const { user, refreshBalance, updateBalance } = useAuth();
   const [activeTab, setActiveTab] = useState('play'); // 'play', 'deposit', 'withdraw', 'history'
+  const [selectedGame, setSelectedGame] = useState(null); // null, 'crash', 'ketmesye'
   
   // Game state
   const [socket, setSocket] = useState(null);
@@ -668,7 +670,7 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto w-full px-4 py-6 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-4 gap-6 relative">
+    <div className={`max-w-7xl mx-auto w-full px-4 py-6 sm:px-6 lg:px-8 grid grid-cols-1 ${selectedGame === 'ketmesye' && activeTab === 'play' ? '' : 'lg:grid-cols-4'} gap-6 relative`}>
       
       {/* Toast Notifications */}
       <div className="fixed top-20 right-4 z-50 flex flex-col space-y-2 max-w-sm w-full">
@@ -687,7 +689,7 @@ export default function Dashboard() {
       </div>
 
       {/* Main Tabs (Play / Deposit / Withdraw / History) */}
-      <div className="lg:col-span-3 flex flex-col space-y-6">
+      <div className={`${selectedGame === 'ketmesye' && activeTab === 'play' ? 'lg:col-span-4' : 'lg:col-span-3'} flex flex-col space-y-6`}>
         
         {/* Navigation Tabs Header */}
         <div className="flex bg-slate-900/60 p-1.5 rounded-2xl border border-slate-800">
@@ -732,9 +734,92 @@ export default function Dashboard() {
           </button>
         </div>
 
-        {/* Tab content 1: PLAY GAME */}
-        {activeTab === 'play' && (
+        {/* Tab content 1: PLAY GAME (GAME LOBBY) */}
+        {activeTab === 'play' && selectedGame === null && (
+          <div className="flex flex-col space-y-8 animate-fade-in py-4">
+            <div className="text-center max-w-lg mx-auto">
+              <h2 className="font-display font-black text-3xl text-white tracking-wide uppercase">
+                Lobby de Jeux <span className="text-indigo-500 font-extrabold">HTG</span>
+              </h2>
+              <p className="text-slate-400 text-xs mt-2 uppercase tracking-wider font-semibold">
+                Sélectionnez un jeu et multipliez vos HTG en direct !
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto w-full px-2">
+              {/* Card 1: Crash Plane */}
+              <div className="glass-panel group relative rounded-3xl p-6 bg-slate-900/40 border border-slate-800 hover:border-indigo-500/30 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-xl transform hover:-translate-y-1">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-indigo-500/10 transition-all duration-300"></div>
+                
+                <div>
+                  <div className="flex justify-between items-start mb-6">
+                    <div className="bg-indigo-600/10 p-4 rounded-2xl text-indigo-400 border border-indigo-500/15">
+                      <Plane className="h-8 w-8 rotate-45" />
+                    </div>
+                    <span className="text-[10px] font-bold tracking-wider uppercase bg-indigo-500/10 text-indigo-400 px-3 py-1 rounded-full border border-indigo-500/20">
+                      Multiplicateur
+                    </span>
+                  </div>
+
+                  <h3 className="font-display font-black text-xl text-white mb-2 tracking-wide">
+                    CRASH PLANE
+                  </h3>
+                  <p className="text-slate-400 text-xs leading-relaxed mb-6">
+                    Suivez la courbe de vol en temps réel ! La mise augmente de seconde en seconde. Récupérez vos gains avant le crash inattendu pour empocher jusqu'à 100x votre mise.
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setSelectedGame('crash')}
+                  className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition-all tracking-wide shadow-md shadow-indigo-600/15"
+                >
+                  JOUER (CRASH PLANE)
+                </button>
+              </div>
+
+              {/* Card 2: Ketmesye (Snake) */}
+              <div className="glass-panel group relative rounded-3xl p-6 bg-slate-900/40 border border-slate-800 hover:border-yellow-500/30 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-xl transform hover:-translate-y-1">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-yellow-500/10 transition-all duration-300"></div>
+
+                <div>
+                  <div className="flex justify-between items-start mb-6">
+                    <div className="bg-yellow-500/10 p-4 rounded-2xl text-yellow-500 border border-yellow-500/15 animate-pulse">
+                      <Gamepad2 className="h-8 w-8" />
+                    </div>
+                    <span className="text-[10px] font-bold tracking-wider uppercase bg-yellow-500/10 text-yellow-400 px-3 py-1 rounded-full border border-yellow-500/20">
+                      Multijoueur Action
+                    </span>
+                  </div>
+
+                  <h3 className="font-display font-black text-xl text-white mb-2 tracking-wide">
+                    KETMESYE
+                  </h3>
+                  <p className="text-slate-400 text-xs leading-relaxed mb-6">
+                    L'arène de serpent multijoueur en temps réel avec wagers ! Contrôlez votre serpent avec la souris, mangez des pièces, détruisez les autres jwè yo et encaissez votre butin quand vous le voulez.
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setSelectedGame('ketmesye')}
+                  className="w-full py-3.5 bg-yellow-600 hover:bg-yellow-500 text-slate-950 font-black rounded-xl text-xs transition-all tracking-wide shadow-md shadow-yellow-600/15"
+                >
+                  SPAWN (KETMESYE ARENA)
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Tab content 1: PLAY GAME (CRASH GAME ACTIVE) */}
+        {activeTab === 'play' && selectedGame === 'crash' && (
           <div className="space-y-6">
+            <button 
+              onClick={() => setSelectedGame(null)} 
+              className="flex items-center space-x-2 text-slate-400 hover:text-slate-200 text-xs font-bold bg-slate-900 border border-slate-800 px-4 py-2 rounded-xl w-fit transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span>Retour au Lobby</span>
+            </button>
             
             {/* Visual Screen Container */}
             <div className="relative glass-panel rounded-3xl overflow-hidden bg-slate-950/80 border border-slate-900">
@@ -867,6 +952,15 @@ export default function Dashboard() {
             </div>
 
           </div>
+        )}
+
+        {/* Tab content 1: PLAY GAME (KETMESYE ACTIVE) */}
+        {activeTab === 'play' && selectedGame === 'ketmesye' && (
+          <KetmesyeGame 
+            socket={socket} 
+            onBackToLobby={() => setSelectedGame(null)} 
+            addNotification={addNotification} 
+          />
         )}
 
         {/* Tab content 2: DEPOSITS */}
@@ -1196,7 +1290,8 @@ export default function Dashboard() {
       </div>
 
       {/* Right Sidebar: Active Bets list & Statistics */}
-      <div className="space-y-6">
+      {!(selectedGame === 'ketmesye' && activeTab === 'play') && (
+        <div className="space-y-6">
         
         {/* Admin Control Widget */}
         {user && user.role === 'admin' && (
@@ -1268,8 +1363,8 @@ export default function Dashboard() {
             <li>Si l'avion s'écrase avant, le pari est perdu.</li>
           </ol>
         </div>
-
       </div>
+      )}
 
     </div>
   );

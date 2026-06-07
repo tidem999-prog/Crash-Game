@@ -165,7 +165,7 @@ router.get('/my-history', authenticateToken, async (req, res) => {
     const betsResult = await query(
       `SELECT b.id, b.bet_amount, b.cashout_multiplier, b.payout_amount, b.is_won, b.created_at, g.crash_multiplier
        FROM bets b
-       JOIN games g ON b.game_id = g.id
+       LEFT JOIN games g ON b.game_id = g.id
        WHERE b.user_id = $1
        ORDER BY b.created_at DESC LIMIT 50`,
       [req.user.id]
@@ -183,7 +183,7 @@ router.get('/my-history', authenticateToken, async (req, res) => {
         bet_amount: parseFloat(r.bet_amount),
         cashout_multiplier: r.cashout_multiplier ? parseFloat(r.cashout_multiplier) : null,
         payout_amount: parseFloat(r.payout_amount),
-        crash_multiplier: parseFloat(r.crash_multiplier)
+        crash_multiplier: r.crash_multiplier ? parseFloat(r.crash_multiplier) : null
       }))
     });
 

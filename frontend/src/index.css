@@ -3,13 +3,21 @@
 @tailwind utilities;
 
 @layer base {
-  body {
+  html, body {
+    touch-action: pan-x pan-y;
     background-color: #030712;
     color: #f8fafc;
     font-family: 'Inter', sans-serif;
   }
   h1, h2, h3, h4, h5, h6 {
     font-family: 'Outfit', sans-serif;
+  }
+}
+
+/* Prevent auto-zoom on form inputs/select/textarea on mobile screens in iOS Safari */
+@media (max-width: 768px) {
+  input, select, textarea {
+    font-size: 16px !important;
   }
 }
 

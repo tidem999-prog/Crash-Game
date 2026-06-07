@@ -5,25 +5,24 @@
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✈️</text></svg>" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <script>
-      // Disable pinch-to-zoom
+      // Disable pinch-to-zoom on touchstart and touchmove
       document.addEventListener('touchstart', function (event) {
         if (event.touches.length > 1) {
           event.preventDefault();
         }
       }, { passive: false });
 
-      // Disable double-tap zoom
-      let lastTouchEnd = 0;
-      document.addEventListener('touchend', function (event) {
-        const now = (new Date()).getTime();
-        if (now - lastTouchEnd <= 300) {
+      document.addEventListener('touchmove', function (event) {
+        if (event.touches.length > 1) {
           event.preventDefault();
         }
-        lastTouchEnd = now;
-      }, false);
+      }, { passive: false });
 
-      // Disable pinch gesture in Safari
+      // Disable pinch gesture in iOS Safari
       document.addEventListener('gesturestart', function (event) {
+        event.preventDefault();
+      });
+      document.addEventListener('gesturechange', function (event) {
         event.preventDefault();
       });
     </script>

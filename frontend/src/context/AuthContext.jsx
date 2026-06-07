@@ -19,7 +19,7 @@ export const apiRequest = async (endpoint, options = {}) => {
     options.body = JSON.stringify(options.body);
   }
 
-  const baseUrl = window.location.hostname === 'localhost' ? 'http://localhost:5000' : '';
+  const baseUrl = window.location.hostname === 'localhost' ? 'http://localhost:5000' : 'http://103.101.202.46:5000';
   
   try {
     const response = await fetch(`${baseUrl}${endpoint}`, {

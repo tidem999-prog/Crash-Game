@@ -91,7 +91,7 @@ export default function Admin() {
     }
   };
 
-  const backendUrl = window.location.hostname === 'localhost' ? 'http://localhost:5000' : '/_/backend'; // Target port for development uploads
+  const backendUrl = window.location.hostname === 'localhost' ? 'http://localhost:5000' : 'http://103.101.202.46:5000'; // Target port for development uploads
 
   if (loading) return (
     <div className="flex h-[80vh] items-center justify-center bg-slate-950">

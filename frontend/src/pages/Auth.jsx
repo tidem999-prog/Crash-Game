@@ -24,6 +24,11 @@ export default function Auth() {
       return setFormError('Veuillez remplir tous les champs.');
     }
 
+    // Validate email format manually (avoids browser native validation quirks on mobile)
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      return setFormError('Veuillez entrer une adresse e-mail valide.');
+    }
     if (password.length < 6) {
       return setFormError('Le mot de passe doit faire au moins 6 caractères.');
     }
@@ -99,7 +104,7 @@ export default function Auth() {
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} noValidate className="space-y-5">
             
             {/* Errors */}
             {formError && (
@@ -130,7 +135,6 @@ export default function Auth() {
                   onChange={(e) => setEmail(e.target.value)}
                   className="block w-full pl-10 pr-4 py-3 bg-slate-950/70 border border-slate-800 rounded-xl text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all duration-200"
                   placeholder="nom@exemple.com"
-                  required
                 />
               </div>
             </div>
@@ -155,7 +159,6 @@ export default function Auth() {
                   onChange={(e) => setPassword(e.target.value)}
                   className="block w-full pl-10 pr-10 py-3 bg-slate-950/70 border border-slate-800 rounded-xl text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all duration-200"
                   placeholder="••••••••"
-                  required
                 />
                 <button
                   type="button"

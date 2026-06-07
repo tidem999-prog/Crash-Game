@@ -49,6 +49,125 @@ export default function Dashboard() {
   // Notifications / Toasts
   const [notifications, setNotifications] = useState([]);
 
+  // Local Simulation state & refs
+  const [isLocalSim, setIsLocalSim] = useState(false);
+  const localLoopRef = useRef(null);
+  const localBetRef = useRef(null);
+  const userBalanceRef = useRef(0);
+
+  useEffect(() => {
+    if (user) {
+      userBalanceRef.current = user.balance;
+    }
+  }, [user]);
+
+  const generateLocalTarget = () => {
+    const random = Math.random();
+    const mult = 0.95 / (1 - random);
+    return Math.min(parseFloat(mult.toFixed(2)), 100.00);
+  };
+
+  const startLocalSimulation = () => {
+    if (isLocalSim) return;
+    setIsLocalSim(true);
+    addNotification("Mode Démo Activé (Simulation locale car le serveur est hors-ligne)", "info");
+    const firstTarget = generateLocalTarget();
+    runLocalWaitingPhase(firstTarget);
+  };
+
+  const runLocalWaitingPhase = (target) => {
+    setGameStatus('waiting');
+    setMultiplier(1.00);
+    setCountdown(10);
+    setMyBet(null);
+    localBetRef.current = null;
+    setCashoutSuccess(null);
+    setBetError('');
+
+    let count = 10;
+    if (localLoopRef.current) clearInterval(localLoopRef.current);
+    
+    const interval = setInterval(() => {
+      count--;
+      setCountdown(count);
+      if (count <= 0) {
+        clearInterval(interval);
+        runLocalFlyingPhase(target);
+      }
+    }, 1000);
+    localLoopRef.current = interval;
+  };
+
+  const runLocalFlyingPhase = (target) => {
+    setGameStatus('flying');
+    setCountdown(0);
+    setMultiplier(1.00);
+    setCashoutSuccess(null);
+    
+    const startTime = Date.now();
+    if (localLoopRef.current) clearInterval(localLoopRef.current);
+
+    const interval = setInterval(() => {
+      const elapsed = (Date.now() - startTime) / 1000;
+      const currentMultiplier = parseFloat(Math.pow(1.07, elapsed).toFixed(2));
+      setMultiplier(currentMultiplier);
+
+      // Check auto cashout
+      const bet = localBetRef.current;
+      if (bet && bet.status === 'placed' && bet.autoCashout && currentMultiplier >= bet.autoCashout) {
+        const autoMult = bet.autoCashout;
+        const payout = parseFloat((bet.amount * autoMult).toFixed(2));
+        const newBal = userBalanceRef.current + payout;
+        updateBalance(newBal);
+
+        const cashedOutBet = {
+          ...bet,
+          status: 'cashed_out',
+          cashoutMultiplier: autoMult,
+          payout
+        };
+        setMyBet(cashedOutBet);
+        localBetRef.current = cashedOutBet;
+        setCashoutSuccess({ payout, multiplier: autoMult });
+        addNotification(`Gagné (Auto) ! +${payout} HTG (${autoMult.toFixed(2)}x)`, 'success');
+      }
+
+      // Check crash
+      if (currentMultiplier >= target) {
+        clearInterval(interval);
+        setGameStatus('crashed');
+        setMultiplier(target);
+        addNotification(`L'avion s'est écrasé à ${target.toFixed(2)}x`, 'danger');
+        
+        // Save history
+        setGameHistory(prev => [target, ...prev.slice(0, 9)]);
+
+        // Check if lost
+        const finalBet = localBetRef.current;
+        if (finalBet && finalBet.status === 'placed') {
+          const lostBet = { ...finalBet, status: 'lost' };
+          setMyBet(lostBet);
+          localBetRef.current = lostBet;
+          addNotification('Vous avez perdu la mise.', 'danger');
+        }
+
+        setTimeout(() => {
+          const nextTarget = generateLocalTarget();
+          runLocalWaitingPhase(nextTarget);
+        }, 3000);
+      }
+    }, 100);
+    localLoopRef.current = interval;
+  };
+
+  useEffect(() => {
+    return () => {
+      if (localLoopRef.current) {
+        clearInterval(localLoopRef.current);
+      }
+    };
+  }, []);
+
   // Canvas Refs
   const canvasRef = useRef(null);
   const requestRef = useRef(null);
@@ -66,8 +185,30 @@ export default function Dashboard() {
   // 1. WebSocket Setup
   useEffect(() => {
     const socketUrl = window.location.hostname === 'localhost' ? 'http://localhost:5000' : window.location.origin + '/_/backend';
-    const newSocket = io(socketUrl);
+    const newSocket = io(socketUrl, {
+      reconnectionAttempts: 2,
+      timeout: 3000
+    });
     setSocket(newSocket);
+
+    // Timeout fallback to local simulation
+    const connTimeout = setTimeout(() => {
+      if (!newSocket.connected) {
+        console.warn('Socket connection timeout. Falling back to local simulation.');
+        newSocket.close();
+        startLocalSimulation();
+      }
+    }, 3000);
+
+    newSocket.on('connect', () => {
+      clearTimeout(connTimeout);
+    });
+
+    newSocket.on('connect_error', () => {
+      clearTimeout(connTimeout);
+      newSocket.close();
+      startLocalSimulation();
+    });
 
     newSocket.on('game_state', (data) => {
       setGameStatus(data.status);
@@ -126,6 +267,7 @@ export default function Dashboard() {
     });
 
     return () => {
+      clearTimeout(connTimeout);
       newSocket.close();
     };
   }, []);
@@ -392,28 +534,64 @@ export default function Dashboard() {
   // 4. Place Bet Handler
   const handlePlaceBet = () => {
     setBetError('');
-    if (!socket) return;
     
     if (betAmount < 10) {
+      addNotification('La mise minimale est de 10 HTG.', 'danger');
       return setBetError('La mise minimale est de 10 HTG.');
     }
 
     if (betAmount > user.balance) {
-      return setBetError('Solde insuffisant.');
+      addNotification('Solde insuffisant sur votre compte.', 'danger');
+      return setBetError('Solde insuffisant sur votre compte.');
     }
 
-    socket.emit('place_bet', {
-      userId: user.id,
-      email: user.email,
-      betAmount: parseFloat(betAmount),
-      autoCashout: autoCashout ? parseFloat(autoCashout) : null
-    });
+    if (isLocalSim) {
+      const newBal = user.balance - betAmount;
+      updateBalance(newBal);
+      const placedBet = {
+        amount: parseFloat(betAmount),
+        autoCashout: autoCashout ? parseFloat(autoCashout) : null,
+        status: 'placed'
+      };
+      setMyBet(placedBet);
+      localBetRef.current = placedBet;
+      addNotification(`Pari de ${betAmount} HTG enregistré !`, 'success');
+    } else {
+      if (!socket) return;
+      socket.emit('place_bet', {
+        userId: user.id,
+        email: user.email,
+        betAmount: parseFloat(betAmount),
+        autoCashout: autoCashout ? parseFloat(autoCashout) : null
+      });
+    }
   };
 
   // 5. Cashout Handler
   const handleCashout = () => {
-    if (!socket || !myBet || myBet.status !== 'placed') return;
-    socket.emit('cash_out', { userId: user.id });
+    if (isLocalSim) {
+      const bet = localBetRef.current;
+      if (!bet || bet.status !== 'placed' || gameStatus !== 'flying') return;
+      
+      const currentMultiplier = multiplier;
+      const payout = parseFloat((bet.amount * currentMultiplier).toFixed(2));
+      const newBal = userBalanceRef.current + payout;
+      updateBalance(newBal);
+      
+      const cashedOutBet = {
+        ...bet,
+        status: 'cashed_out',
+        cashoutMultiplier: currentMultiplier,
+        payout
+      };
+      setMyBet(cashedOutBet);
+      localBetRef.current = cashedOutBet;
+      setCashoutSuccess({ payout, multiplier: currentMultiplier });
+      addNotification(`Gagné ! +${payout} HTG (${currentMultiplier.toFixed(2)}x)`, 'success');
+    } else {
+      if (!socket || !myBet || myBet.status !== 'placed') return;
+      socket.emit('cash_out', { userId: user.id });
+    }
   };
 
   // 6. Deposit Form Handler
@@ -679,6 +857,9 @@ export default function Dashboard() {
                       Mise: {betAmount} HTG {autoCashout ? `@ ${autoCashout}x` : ''}
                     </span>
                   </button>
+                )}
+                {betError && (
+                  <p className="text-red-500 text-xs mt-2 text-center font-bold">{betError}</p>
                 )}
               </div>
 

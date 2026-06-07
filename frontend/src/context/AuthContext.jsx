@@ -19,7 +19,7 @@ export const apiRequest = async (endpoint, options = {}) => {
     options.body = JSON.stringify(options.body);
   }
 
-  const baseUrl = 'http://localhost:5000'; // Target port for development
+  const baseUrl = window.location.hostname === 'localhost' ? 'http://localhost:5000' : '/_/backend';
   
   try {
     const response = await fetch(`${baseUrl}${endpoint}`, {

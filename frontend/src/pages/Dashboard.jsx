@@ -64,7 +64,8 @@ export default function Dashboard() {
 
   // 1. WebSocket Setup
   useEffect(() => {
-    const newSocket = io('http://localhost:5000');
+    const socketUrl = window.location.hostname === 'localhost' ? 'http://localhost:5000' : window.location.origin + '/_/backend';
+    const newSocket = io(socketUrl);
     setSocket(newSocket);
 
     newSocket.on('game_state', (data) => {

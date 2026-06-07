@@ -40,7 +40,7 @@ router.post('/signup', async (req, res) => {
       { expiresIn: '1d' }
     );
 
-    const origin = req.get('origin') || 'http://localhost:3000';
+    const origin = process.env.FRONTEND_URL || req.get('origin') || 'http://localhost:5173';
     const verifyUrl = `${origin}/verify-email?token=${verifyToken}`;
 
     // Send confirmation email
@@ -178,7 +178,7 @@ router.post('/forgot-password', async (req, res) => {
       { expiresIn: '1h' }
     );
 
-    const origin = req.get('origin') || 'http://localhost:3000';
+    const origin = process.env.FRONTEND_URL || req.get('origin') || 'http://localhost:5173';
     const resetUrl = `${origin}/reset-password?token=${resetToken}&id=${user.id}`;
 
     // Send reset email

@@ -90,9 +90,8 @@ export const AuthProvider = ({ children }) => {
         method: 'POST',
         body: { email, password }
       });
-      localStorage.setItem('token', data.token);
-      setUser(data.user);
-      return data.user;
+      // Backend returns only a message (no token) - user must verify email first
+      return data;
     } catch (err) {
       setError(err.message);
       throw err;

@@ -17,8 +17,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Static uploads
-const uploadDir = process.env.UPLOAD_DIR || 'uploads';
-app.use('/uploads', express.static(path.join(__dirname, uploadDir)));
+const uploadDir = process.env.UPLOAD_DIR || path.join(__dirname, 'uploads');
+app.use('/uploads', express.static(uploadDir));
 
 // Healthcheck — no DB required, always responds immediately
 app.get('/api/health', (req, res) => {

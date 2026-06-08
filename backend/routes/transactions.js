@@ -7,7 +7,7 @@ const { query } = require('../db');
 const { authenticateToken } = require('../middleware/auth');
 
 // Make sure upload directory exists (skipped silently on read-only filesystems like Vercel)
-const uploadDir = process.env.UPLOAD_DIR || 'uploads';
+const uploadDir = process.env.UPLOAD_DIR || path.join(__dirname, '../uploads');
 try {
   if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });

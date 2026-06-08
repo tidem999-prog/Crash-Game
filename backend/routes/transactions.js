@@ -60,7 +60,7 @@ router.post('/deposit', authenticateToken, upload.single('screenshot'), async (r
     return res.status(400).json({ error: 'Veuillez télécharger la capture d\'écran comme preuve de paiement.' });
   }
 
-  const screenshotUrl = `/uploads/${req.file.filename}`;
+  const screenshotUrl = `/api/uploads/${req.file.filename}`;
 
   try {
     // Check if user is suspended

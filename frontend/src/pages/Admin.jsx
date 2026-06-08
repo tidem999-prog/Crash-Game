@@ -299,7 +299,10 @@ export default function Admin() {
                       <td className="py-4">
                         {tx.screenshot_url ? (
                           <button
-                            onClick={() => setSelectedScreenshot(`${backendUrl}${tx.screenshot_url}`)}
+                            onClick={() => {
+                              const finalUrl = tx.screenshot_url.startsWith('/api/') ? tx.screenshot_url : `/api${tx.screenshot_url}`;
+                              setSelectedScreenshot(`${backendUrl}${finalUrl}`);
+                            }}
                             className="flex items-center space-x-1 text-indigo-400 hover:text-indigo-300 font-semibold"
                             title="Visualiser le reçu"
                           >

@@ -117,7 +117,7 @@ router.post('/transactions/:id/approve', async (req, res) => {
       if (userRes.rows.length > 0 && userRes.rows[0].referred_by) {
         const referredBy = userRes.rows[0].referred_by;
         const depositerEmail = userRes.rows[0].email;
-        const commission = parseFloat((tx.amount * 0.10).toFixed(2));
+        const commission = parseFloat((tx.amount * 0.05).toFixed(2));
 
         if (commission > 0) {
           // Credit referrer's balance

@@ -1385,7 +1385,7 @@ export default function Dashboard() {
             {/* Invite Link Card */}
             <div className="glass-panel p-6 rounded-3xl space-y-4">
               <h3 className="font-display font-black text-lg text-white">Lien d'Invitation Personnel</h3>
-              <p className="text-xs text-slate-400">Partagez ce lien avec vos amis. Lorsqu'ils effectuent un dépôt, vous gagnez 10% de commission sur leur dépôt approuvé !</p>
+              <p className="text-xs text-slate-400">Partagez ce lien avec vos amis. Lorsqu'ils effectuent un dépôt, vous gagnez 5% de commission sur leur dépôt approuvé !</p>
               
               <div className="flex flex-col sm:flex-row gap-3">
                 <input

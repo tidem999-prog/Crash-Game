@@ -8,7 +8,7 @@ const { sendEmail } = require('../utils/email');
 
 // Signup
 router.post('/signup', async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, ref } = req.body;
 
   if (!email || !password) {
     return res.status(400).json({ error: 'Veuillez fournir un email et un mot de passe.' });
@@ -25,10 +25,32 @@ router.post('/signup', async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
+    // Verify referrer code if present
+    let referredBy = null;
+    if (ref) {
+      const referrerCheck = await query('SELECT id FROM users WHERE referral_code = $1', [ref.trim().toUpperCase()]);
+      if (referrerCheck.rows.length > 0) {
+        referredBy = referrerCheck.rows[0].id;
+      }
+    }
+
+    // Generate random 8 character code
+    let referralCode = '';
+    let isUnique = false;
+    while (!isUnique) {
+      referralCode = Math.random().toString(36).substring(2, 10).toUpperCase();
+      if (referralCode.length === 8) {
+        const check = await query("SELECT id FROM users WHERE referral_code = $1", [referralCode]);
+        if (check.rows.length === 0) {
+          isUnique = true;
+        }
+      }
+    }
+
     // Create user (starting balance 0.00 HTG, is_verified false)
     const result = await query(
-      "INSERT INTO users (email, password_hash, role, balance, is_verified) VALUES ($1, $2, 'user', 0.00, false) RETURNING id, email, role, balance, created_at",
-      [email.toLowerCase(), passwordHash]
+      "INSERT INTO users (email, password_hash, role, balance, is_verified, referred_by, referral_code) VALUES ($1, $2, 'user', 0.00, false, $3, $4) RETURNING id, email, role, balance, created_at",
+      [email.toLowerCase(), passwordHash, referredBy, referralCode]
     );
 
     const user = result.rows[0];
@@ -113,7 +135,8 @@ router.post('/login', async (req, res) => {
         id: user.id,
         email: user.email,
         role: user.role,
-        balance: parseFloat(user.balance)
+        balance: parseFloat(user.balance),
+        referral_code: user.referral_code
       }
     });
 
@@ -252,7 +275,7 @@ router.post('/reset-password', async (req, res) => {
 // Get Current User Profile
 router.get('/me', authenticateToken, async (req, res) => {
   try {
-    const result = await query('SELECT id, email, role, balance, is_suspended FROM users WHERE id = $1', [req.user.id]);
+    const result = await query('SELECT id, email, role, balance, is_suspended, referral_code FROM users WHERE id = $1', [req.user.id]);
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Utilisateur introuvable.' });
     }
@@ -268,13 +291,66 @@ router.get('/me', authenticateToken, async (req, res) => {
         id: user.id,
         email: user.email,
         role: user.role,
-        balance: parseFloat(user.balance)
+        balance: parseFloat(user.balance),
+        referral_code: user.referral_code
       }
     });
 
   } catch (err) {
     console.error('Get profile error:', err);
     res.status(500).json({ error: 'Erreur lors de la récupération du profil.' });
+  }
+});
+
+// Get Referral stats and list
+router.get('/referrals', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // 1. Get referral count
+    const countRes = await query("SELECT COUNT(*) as count FROM users WHERE referred_by = $1", [userId]);
+    const totalReferrals = parseInt(countRes.rows[0].count || 0);
+
+    // 2. Get total referral earnings
+    // Referral earnings are deposit transactions of provider = 'referral' credited to this user
+    const earningsRes = await query(
+      "SELECT SUM(amount) as total FROM transactions WHERE user_id = $1 AND type = 'deposit' AND status = 'approved' AND provider = 'referral'",
+      [userId]
+    );
+    const totalEarnings = parseFloat(earningsRes.rows[0].total || 0);
+
+    // 3. Get last 10 referred users
+    const referralsList = await query(
+      `SELECT email, created_at 
+       FROM users 
+       WHERE referred_by = $1 
+       ORDER BY created_at DESC 
+       LIMIT 10`,
+      [userId]
+    );
+
+    // Mask emails: u***r@domain.com
+    const formattedReferrals = referralsList.rows.map(row => {
+      const email = row.email;
+      const parts = email.split('@');
+      const name = parts[0];
+      const domain = parts[1];
+      const maskedName = name.length > 2 ? `${name[0]}${'*'.repeat(name.length - 2)}${name[name.length - 1]}` : `${name[0]}*`;
+      return {
+        email: `${maskedName}@${domain}`,
+        created_at: row.created_at
+      };
+    });
+
+    res.json({
+      totalReferrals,
+      totalEarnings,
+      referrals: formattedReferrals
+    });
+
+  } catch (err) {
+    console.error('Get referrals error:', err);
+    res.status(500).json({ error: 'Erreur lors de la récupération des statistiques de parrainage.' });
   }
 });
 

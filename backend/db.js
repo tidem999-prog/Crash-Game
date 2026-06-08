@@ -25,6 +25,8 @@ const initializeDatabase = async () => {
         role VARCHAR(20) DEFAULT 'user',
         is_suspended BOOLEAN DEFAULT false,
         is_verified BOOLEAN DEFAULT false,
+        referred_by UUID REFERENCES users(id) ON DELETE SET NULL,
+        referral_code VARCHAR(100) UNIQUE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
@@ -32,7 +34,32 @@ const initializeDatabase = async () => {
     await query(`
       ALTER TABLE users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT false;
     `);
-    console.log('Database: Table "users" checked/created.');
+    // Ensure referred_by column exists
+    await query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by UUID REFERENCES users(id) ON DELETE SET NULL;
+    `);
+    // Ensure referral_code column exists
+    await query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code VARCHAR(100) UNIQUE;
+    `);
+    
+    // Backfill referral codes for existing users
+    const usersWithoutCode = await query("SELECT id FROM users WHERE referral_code IS NULL");
+    for (const row of usersWithoutCode.rows) {
+      let code = '';
+      let isUnique = false;
+      while (!isUnique) {
+        code = Math.random().toString(36).substring(2, 10).toUpperCase();
+        if (code.length === 8) {
+          const check = await query("SELECT id FROM users WHERE referral_code = $1", [code]);
+          if (check.rows.length === 0) {
+            isUnique = true;
+          }
+        }
+      }
+      await query("UPDATE users SET referral_code = $1 WHERE id = $2", [code, row.id]);
+    }
+    console.log('Database: Table "users" checked/created and referral codes backfilled.');
 
     // 2. Create Transactions Table
     await query(`

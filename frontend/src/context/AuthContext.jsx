@@ -83,12 +83,12 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const signup = async (email, password) => {
+  const signup = async (email, password, ref) => {
     setError(null);
     try {
       const data = await apiRequest('/api/auth/signup', {
         method: 'POST',
-        body: { email, password }
+        body: { email, password, ref }
       });
       // Backend returns only a message (no token) - user must verify email first
       return data;

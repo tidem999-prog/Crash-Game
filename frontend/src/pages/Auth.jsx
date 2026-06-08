@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Mail, Lock, ArrowRight, Eye, EyeOff, Gamepad2, Info } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Eye, EyeOff, Gamepad2, Info, Users } from 'lucide-react';
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -14,6 +14,18 @@ export default function Auth() {
 
   const { login, signup } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const [referralCode, setReferralCode] = useState('');
+  const [isReferralReadOnly, setIsReferralReadOnly] = useState(false);
+
+  useEffect(() => {
+    const ref = searchParams.get('ref');
+    if (ref) {
+      setReferralCode(ref.toUpperCase());
+      setIsReferralReadOnly(true);
+      setIsLogin(false);
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -39,10 +51,11 @@ export default function Auth() {
         await login(email, password);
         navigate('/dashboard');
       } else {
-        await signup(email, password);
+        await signup(email, password, referralCode);
         setSignupSuccessMessage("Votre compte a été créé ! Un e-mail de confirmation vous a été envoyé. Veuillez vérifier votre boîte de réception pour valider votre compte.");
         setEmail('');
         setPassword('');
+        setReferralCode('');
       }
     } catch (err) {
       setFormError(err.message || 'Une erreur est survenue.');
@@ -169,6 +182,28 @@ export default function Auth() {
                 </button>
               </div>
             </div>
+
+            {/* Referral Code Input (Signup Only) */}
+            {!isLogin && (
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Code de Parrainage (Optionnel)</label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                    <Users className="h-4 w-4" />
+                  </div>
+                  <input
+                    type="text"
+                    value={referralCode}
+                    onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                    readOnly={isReferralReadOnly}
+                    className={`block w-full pl-10 pr-4 py-3 bg-slate-950/70 border border-slate-800 rounded-xl text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all duration-200 ${
+                      isReferralReadOnly ? 'opacity-60 cursor-not-allowed bg-slate-900/50' : ''
+                    }`}
+                    placeholder="CODE123"
+                  />
+                </div>
+              </div>
+            )}
 
             {/* Submit Button */}
             <button

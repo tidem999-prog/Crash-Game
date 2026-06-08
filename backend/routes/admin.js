@@ -111,6 +111,37 @@ router.post('/transactions/:id/approve', async (req, res) => {
         [tx.amount, tx.user_id]
       );
       console.log(`Admin: Approved deposit of ${tx.amount} HTG for user ID ${tx.user_id}`);
+
+      // Check if user has a referrer
+      const userRes = await query('SELECT email, referred_by FROM users WHERE id = $1', [tx.user_id]);
+      if (userRes.rows.length > 0 && userRes.rows[0].referred_by) {
+        const referredBy = userRes.rows[0].referred_by;
+        const depositerEmail = userRes.rows[0].email;
+        const commission = parseFloat((tx.amount * 0.10).toFixed(2));
+
+        if (commission > 0) {
+          // Credit referrer's balance
+          await query(
+            "UPDATE users SET balance = balance + $1 WHERE id = $2",
+            [commission, referredBy]
+          );
+
+          // Format email for description (masking)
+          const parts = depositerEmail.split('@');
+          const name = parts[0];
+          const domain = parts[1];
+          const maskedName = name.length > 2 ? `${name[0]}${'*'.repeat(name.length - 2)}${name[name.length - 1]}` : `${name[0]}*`;
+          const maskedEmail = `${maskedName}@${domain}`;
+
+          // Create a transaction row for the referrer
+          await query(
+            `INSERT INTO transactions (user_id, type, status, amount, fee, net_amount, provider, phone_number, screenshot_url, processed_at) 
+             VALUES ($1, 'deposit', 'approved', $2, 0.00, $2, 'referral', 'Commission', $3, CURRENT_TIMESTAMP)`,
+            [referredBy, commission, `Commission pour le dépôt du filleul ${maskedEmail}`]
+          );
+          console.log(`Admin: Credited referral commission of ${commission} HTG to user ID ${referredBy}`);
+        }
+      }
     } else {
       console.log(`Admin: Approved withdrawal of ${tx.amount} HTG for user ID ${tx.user_id}`);
     }

@@ -225,11 +225,11 @@ const handleGameTick = async () => {
         // Eat pellet
         snake.value = parseFloat((snake.value + pellet.value).toFixed(2));
         
-        // Consumption logic: grow 1 segment per 2.0 HTG value gained (normal pellet worth 0.10 HTG adds 0.05 segment)
+        // Consumption logic: grow 1 segment per 10.0 HTG value gained (normal pellet worth 0.10 HTG adds 0.01 segment)
         snake.growthPoints = (snake.growthPoints || 0) + pellet.value;
-        const segmentsToAdd = Math.floor(snake.growthPoints / 2.0);
+        const segmentsToAdd = Math.floor(snake.growthPoints / 10.0);
         if (segmentsToAdd > 0) {
-          snake.growthPoints -= segmentsToAdd * 2.0;
+          snake.growthPoints -= segmentsToAdd * 10.0;
           for (let g = 0; g < segmentsToAdd; g++) {
             const lastSegment = snake.segments[snake.segments.length - 1];
             snake.segments.push({ ...lastSegment });

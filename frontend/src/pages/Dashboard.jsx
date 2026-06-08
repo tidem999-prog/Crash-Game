@@ -1277,10 +1277,10 @@ export default function Dashboard() {
                           <td className="py-3 font-mono font-bold text-slate-300">{bet.bet_amount ? bet.bet_amount.toFixed(2) : '0.00'} HTG</td>
                           <td className="py-3 text-center font-mono font-bold text-slate-400">{bet.crash_multiplier ? bet.crash_multiplier.toFixed(2) + 'x' : '-'}</td>
                           <td className={`py-3 text-center font-mono font-bold ${bet.is_won ? 'text-emerald-400' : 'text-red-400'}`}>
-                            {bet.is_won ? `${bet.cashout_multiplier.toFixed(2)}x` : 'Crash'}
+                            {bet.is_won ? `${bet.cashout_multiplier ? bet.cashout_multiplier.toFixed(2) : '-'}x` : 'Crash'}
                           </td>
                           <td className={`py-3 text-right font-mono font-black ${bet.is_won ? 'text-emerald-400' : 'text-slate-500'}`}>
-                            {bet.is_won ? `+${bet.payout_amount.toFixed(2)} HTG` : '0.00 HTG'}
+                            {bet.is_won ? `+${bet.payout_amount ? bet.payout_amount.toFixed(2) : '0.00'} HTG` : '0.00 HTG'}
                           </td>
                         </tr>
                       ))}
@@ -1329,11 +1329,11 @@ export default function Dashboard() {
                             </span>
                           </td>
                           <td className="py-3 text-slate-300 font-medium">
-                            {tx.type === 'deposit' ? tx.provider.toUpperCase() : `Vers ${tx.phone_number}`}
+                            {tx.type === 'deposit' ? (tx.provider ? tx.provider.toUpperCase() : 'N/A') : `Vers ${tx.phone_number || 'N/A'}`}
                           </td>
-                          <td className="py-3 font-mono font-bold text-slate-400">{tx.amount.toFixed(2)} HTG</td>
+                          <td className="py-3 font-mono font-bold text-slate-400">{tx.amount ? tx.amount.toFixed(2) : '0.00'} HTG</td>
                           <td className="py-3 font-mono text-red-400/80">{tx.fee > 0 ? `-${tx.fee.toFixed(2)} HTG` : '-'}</td>
-                          <td className="py-3 font-mono font-bold text-slate-200">{tx.net_amount.toFixed(2)} HTG</td>
+                          <td className="py-3 font-mono font-bold text-slate-200">{tx.net_amount ? tx.net_amount.toFixed(2) : '0.00'} HTG</td>
                           <td className="py-3 text-right">
                             <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                               tx.status === 'approved' ? 'bg-emerald-500/10 text-emerald-400' :

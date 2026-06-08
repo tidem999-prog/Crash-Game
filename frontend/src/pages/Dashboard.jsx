@@ -1274,8 +1274,8 @@ export default function Dashboard() {
                       {myHistory.bets.map((bet, idx) => (
                         <tr key={idx} className="hover:bg-slate-900/25 transition-colors">
                           <td className="py-3 text-slate-400">{new Date(bet.created_at).toLocaleDateString('fr-FR')} {new Date(bet.created_at).toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'})}</td>
-                          <td className="py-3 font-mono font-bold text-slate-300">{bet.bet_amount.toFixed(2)} HTG</td>
-                          <td className="py-3 text-center font-mono font-bold text-slate-400">{bet.crash_multiplier.toFixed(2)}x</td>
+                          <td className="py-3 font-mono font-bold text-slate-300">{bet.bet_amount ? bet.bet_amount.toFixed(2) : '0.00'} HTG</td>
+                          <td className="py-3 text-center font-mono font-bold text-slate-400">{bet.crash_multiplier ? bet.crash_multiplier.toFixed(2) + 'x' : '-'}</td>
                           <td className={`py-3 text-center font-mono font-bold ${bet.is_won ? 'text-emerald-400' : 'text-red-400'}`}>
                             {bet.is_won ? `${bet.cashout_multiplier.toFixed(2)}x` : 'Crash'}
                           </td>

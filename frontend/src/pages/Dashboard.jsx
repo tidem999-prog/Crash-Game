@@ -195,8 +195,10 @@ export default function Dashboard() {
   useEffect(() => {
     const socketUrl = window.location.hostname === 'localhost' ? 'http://localhost:5000' : window.location.origin;
     const newSocket = io(socketUrl, {
-      reconnectionAttempts: 2,
-      timeout: 3000
+      transports: ['websocket'],
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+      timeout: 5000
     });
     setSocket(newSocket);
 

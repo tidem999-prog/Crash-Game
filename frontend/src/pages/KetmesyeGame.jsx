@@ -17,6 +17,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification })
   const [mySnake, setMySnake] = useState(null); // Local copy of player snake stats
   const [leaderboard, setLeaderboard] = useState([]);
   const [isLocalSim, setIsLocalSim] = useState(false);
+  const [onlinePlayers, setOnlinePlayers] = useState(0);
 
   // Modals / Stats state
   const [cashoutStats, setCashoutStats] = useState(null); // { payout, multiplier, timeSurvived, eliminations }
@@ -60,6 +61,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification })
       snakesRef.current = data.snakes;
       pelletsRef.current = data.pellets;
       setLeaderboard(data.leaderboard || []);
+      setOnlinePlayers(Object.keys(data.snakes).length);
 
       // Update local player snake stats
       if (mySnakeIdRef.current && data.snakes[mySnakeIdRef.current]) {
@@ -330,6 +332,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification })
         .sort((a, b) => b.value - a.value)
         .slice(0, 5);
       setLeaderboard(lb);
+      setOnlinePlayers(Object.keys(sks).length);
 
     }, TICK_RATE);
     
@@ -763,7 +766,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification })
         <div className="flex items-center space-x-1.5 sm:space-x-2 bg-slate-950 border border-slate-800 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full shrink-0">
           <div className={`h-1.5 w-1.5 sm:h-2.5 sm:w-2.5 rounded-full ${isLocalSim ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`} />
           <span className="text-[9px] sm:text-xs font-semibold text-slate-400 font-mono">
-            {isLocalSim ? 'Mode Démo' : 'Multiplayer Connecté'}
+            {isLocalSim ? `Mode Démo (${onlinePlayers})` : `${onlinePlayers} Joueur${onlinePlayers > 1 ? 's' : ''} en ligne`}
           </span>
         </div>
       </div>

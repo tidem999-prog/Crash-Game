@@ -23,7 +23,8 @@ const sendEmail = async ({ to, subject, html, text }) => {
   try {
     const transporter = nodemailer.createTransport({
       host,
-      port,
+      port: parseInt(port),
+      secure: parseInt(port) === 465, // true for 465, false for other ports (like 587)
       auth: {
         user,
         pass

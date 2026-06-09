@@ -21,6 +21,7 @@ export default function Dashboard() {
   const [gameHistory, setGameHistory] = useState([]);
   const [activeBets, setActiveBets] = useState([]);
   const [activeBetsCount, setActiveBetsCount] = useState(0);
+  const [onlineUsersCount, setOnlineUsersCount] = useState(0);
   
   // My betting state
   const [betAmount, setBetAmount] = useState(10);
@@ -228,6 +229,7 @@ export default function Dashboard() {
       setGameHistory(data.history || []);
       setActiveBets(data.activeBetsList || []);
       setActiveBetsCount(data.activeBetsCount || 0);
+      setOnlineUsersCount(data.onlineUsersCount || 0);
 
       // Only reset active bet states when transitioning from another state (e.g. crashed) to 'waiting'
       if (data.status === 'waiting' && prevStatusRef.current !== 'waiting') {
@@ -1481,7 +1483,7 @@ export default function Dashboard() {
               <span>Joueurs connectés</span>
             </h3>
             <span className="bg-indigo-950 text-indigo-400 px-2 py-0.5 rounded-full text-[10px] font-bold border border-indigo-500/20">
-              {activeBetsCount} en cours
+              {onlineUsersCount} en ligne
             </span>
           </div>
 

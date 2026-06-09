@@ -42,6 +42,7 @@ const broadcastState = () => {
   if (io) {
     io.emit('game_state', {
       ...gameState,
+      onlineUsersCount: io.engine.clientsCount,
       activeBetsCount: Object.keys(activeBets).length,
       activeBetsList: Object.values(activeBets).map(b => ({
         email: b.email.split('@')[0], // mask email for privacy
@@ -256,6 +257,7 @@ const initGameEngine = (socketIoInstance) => {
     // Send initial state on connection
     socket.emit('game_state', {
       ...gameState,
+      onlineUsersCount: io.engine.clientsCount,
       activeBetsCount: Object.keys(activeBets).length,
       activeBetsList: Object.values(activeBets).map(b => ({
         email: b.email.split('@')[0],

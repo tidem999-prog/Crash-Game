@@ -301,8 +301,8 @@ const initKetmesyeEngine = (socketIoInstance) => {
       }
 
       const entryWager = parseFloat(wager);
-      if (isNaN(entryWager) || entryWager < 10) {
-        return socket.emit('ketmesye_error', { message: 'La mise minimale pour spawn est de 10 HTG.' });
+      if (isNaN(entryWager) || entryWager < 125) {
+        return socket.emit('ketmesye_error', { message: 'La mise minimale pour spawn est de 125 HTG.' });
       }
 
       try {

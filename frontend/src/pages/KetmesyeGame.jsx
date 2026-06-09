@@ -12,7 +12,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification })
   const PATH_SPACING = 2;
 
   // Game UI state
-  const [wager, setWager] = useState(10);
+  const [wager, setWager] = useState(125);
   const [isPlaying, setIsPlaying] = useState(false);
   const [mySnake, setMySnake] = useState(null); // Local copy of player snake stats
   const [leaderboard, setLeaderboard] = useState([]);
@@ -839,7 +839,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification })
 
                 <div className="flex flex-col space-y-4 text-left mb-6">
                   <div>
-                    <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Mise d'entrée (Min: 10 HTG)</label>
+                    <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Mise d'entrée (Min: 125 HTG)</label>
                     <div className="flex border border-slate-800 bg-slate-950 rounded-xl overflow-hidden mt-1.5">
                       <span className="bg-slate-900 px-3 py-2 text-xs font-bold text-slate-500 flex items-center border-r border-slate-800">HTG</span>
                       <input
@@ -850,7 +850,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification })
                           setWager(val === '' ? '' : parseInt(val) || 0);
                         }}
                         onBlur={() => {
-                          if (!wager || wager < 10) setWager(10);
+                          if (!wager || wager < 125) setWager(125);
                         }}
                         className="block w-full px-3 py-2 bg-transparent text-slate-200 text-sm font-bold font-mono focus:outline-none"
                       />
@@ -859,7 +859,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification })
 
                   {/* Quick wager buttons */}
                   <div className="grid grid-cols-4 gap-2">
-                    {[10, 20, 50, 100].map(val => (
+                    {[125, 250, 625, 1259].map(val => (
                       <button
                         key={val}
                         onClick={() => setWager(val)}

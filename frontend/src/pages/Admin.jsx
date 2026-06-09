@@ -248,6 +248,11 @@ export default function Admin() {
 
       </div>
 
+      {/* Admin Chat Section (Moved up for visibility) */}
+      <div className="grid grid-cols-1 gap-8 mb-8">
+        <AdminChat />
+      </div>
+
       {/* Grid: Left - Pending Transactions / Right - User Account Suspend moderation */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
@@ -382,11 +387,6 @@ export default function Admin() {
           </div>
         </div>
 
-      </div>
-
-      {/* Admin Chat Section */}
-      <div className="grid grid-cols-1 gap-8 mt-8">
-        <AdminChat />
       </div>
 
       {/* Screenshot Viewer Overlay Modal */}

@@ -6,7 +6,7 @@ const sendEmail = async ({ to, subject, html, text }) => {
   const port = process.env.SMTP_PORT || 2525;
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
-  const from = process.env.SMTP_FROM || 'noreply@crashplane.com';
+  const from = process.env.SMTP_FROM || '"Ketarena Support" <support@ketarena.com>';
 
   console.log(`\n===================================================`);
   console.log(`EMAIL UTILITY - SENDING EMAIL`);

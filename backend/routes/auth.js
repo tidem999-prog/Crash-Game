@@ -68,10 +68,10 @@ router.post('/signup', async (req, res) => {
     // Send confirmation email
     await sendEmail({
       to: user.email,
-      subject: 'Confirmez votre compte - Crash Plane',
+      subject: 'Confirmez votre compte - Ketarena',
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
-          <h2 style="color: #6366f1; text-align: center;">Bienvenue sur Crash Plane !</h2>
+          <h2 style="color: #6366f1; text-align: center;">Bienvenue sur Ketarena !</h2>
           <p>Bonjour,</p>
           <p>Merci de vous être inscrit sur notre plateforme. Veuillez confirmer votre adresse e-mail en cliquant sur le bouton ci-dessous :</p>
           <div style="margin: 30px 0; text-align: center;">
@@ -81,7 +81,7 @@ router.post('/signup', async (req, res) => {
           <p>Si vous n'avez pas créé de compte, vous pouvez ignorer cet e-mail.</p>
         </div>
       `,
-      text: `Bonjour,\n\nMerci de vous être inscrit sur Crash Plane. Veuillez confirmer votre adresse e-mail en cliquant sur le lien suivant :\n${verifyUrl}`
+      text: `Bonjour,\n\nMerci de vous être inscrit sur Ketarena. Veuillez confirmer votre adresse e-mail en cliquant sur le lien suivant :\n${verifyUrl}`
     });
 
     res.status(201).json({
@@ -207,12 +207,12 @@ router.post('/forgot-password', async (req, res) => {
     // Send reset email
     await sendEmail({
       to: user.email,
-      subject: 'Réinitialisation de votre mot de passe - Crash Plane',
+      subject: 'Réinitialisation de votre mot de passe - Ketarena',
       html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
           <h2 style="color: #6366f1; text-align: center;">Réinitialisation de mot de passe</h2>
           <p>Bonjour,</p>
-          <p>Vous avez demandé la réinitialisation de votre mot de passe pour votre compte Crash Plane.</p>
+          <p>Vous avez demandé la réinitialisation de votre mot de passe pour votre compte Ketarena.</p>
           <p>Veuillez cliquer sur le bouton ci-dessous pour modifier votre mot de passe (ce lien est valide pendant 1 heure) :</p>
           <div style="margin: 30px 0; text-align: center;">
             <a href="${resetUrl}" style="background-color: #6366f1; color: white; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 8px; display: inline-block;">Réinitialiser mon mot de passe</a>
@@ -221,7 +221,7 @@ router.post('/forgot-password', async (req, res) => {
           <p>Si vous n'avez pas demandé ce changement, vous pouvez ignorer cet e-mail en toute sécurité.</p>
         </div>
       `,
-      text: `Bonjour,\n\nVous avez demandé la réinitialisation de votre mot de passe sur Crash Plane.\n\nVeuillez cliquer sur le lien suivant (valide 1h) pour modifier votre mot de passe :\n${resetUrl}`
+      text: `Bonjour,\n\nVous avez demandé la réinitialisation de votre mot de passe sur Ketarena.\n\nVeuillez cliquer sur le lien suivant (valide 1h) pour modifier votre mot de passe :\n${resetUrl}`
     });
 
     res.json({ message: 'Un e-mail de réinitialisation de mot de passe a été envoyé.' });

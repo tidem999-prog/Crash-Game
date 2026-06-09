@@ -18,10 +18,10 @@ let countdownInterval = null;
 let roundStartTime = null;
 
 const generateGameResult = () => {
-  const houseEdge = 0.05; // 5% house edge
+  const houseEdge = 0.20; // 20% house edge
   const random = Math.random();
-  // Formula: multiplier = 0.95 / (1 - random)
-  const multiplier = 0.95 / (1 - random);
+  // Formula: multiplier = 0.80 / (1 - random)
+  const multiplier = 0.80 / (1 - random);
   // Cap at 100.00x as per security limits in user guide
   return Math.min(parseFloat(multiplier.toFixed(2)), 100.00);
 };

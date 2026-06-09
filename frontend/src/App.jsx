@@ -10,7 +10,7 @@ import VerifyEmail from './pages/VerifyEmail';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import ChatWidget from './components/ChatWidget';
-import { LogOut, User, RefreshCw, Landmark, ShieldAlert, Gamepad2 } from 'lucide-react';
+import { LogOut, User, RefreshCw, Landmark, ShieldAlert, Gamepad2, MessageCircle } from 'lucide-react';
 
 // Protected Route for normal users
 const ProtectedRoute = ({ children }) => {

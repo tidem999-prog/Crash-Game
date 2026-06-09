@@ -23,7 +23,7 @@ const ChatWidget = () => {
     setSessionId(storedSession);
 
     // Initialize socket connection for chat
-    socketRef.current = io(SOCKET_URL + '/chat');
+    socketRef.current = io(SOCKET_URL);
 
     socketRef.current.on('connect', () => {
       socketRef.current.emit('join_chat', { sessionId: storedSession });

@@ -1,10 +1,7 @@
 const chatSessions = new Map(); // Store chat sessions in memory: sessionId -> { messages: [] }
 
 function initChatEngine(io) {
-  // We can create a dedicated namespace for chat if we want, or just use the main io
-  const chatIo = io.of('/chat');
-
-  chatIo.on('connection', (socket) => {
+  io.on('connection', (socket) => {
     console.log('[Chat] New connection:', socket.id);
 
     // When a user opens the widget, they join their own room
@@ -21,7 +18,7 @@ function initChatEngine(io) {
       socket.emit('chat_history', chatSessions.get(sessionId).messages);
 
       // Notify admin that a session is active
-      chatIo.to('admin_room').emit('active_sessions', Array.from(chatSessions.entries()));
+      io.to('admin_room').emit('active_sessions', Array.from(chatSessions.entries()));
     });
 
     // Admin joins the admin room to receive all messages
@@ -44,8 +41,8 @@ function initChatEngine(io) {
       }
 
       // Send to the user's room (so they see it) and to the admin room
-      chatIo.to(sessionId).emit('new_message', { sessionId, message });
-      chatIo.to('admin_room').emit('new_message', { sessionId, message });
+      io.to(sessionId).emit('new_message', { sessionId, message });
+      io.to('admin_room').emit('new_message', { sessionId, message });
     });
 
     // Handle reply from admin
@@ -57,8 +54,8 @@ function initChatEngine(io) {
       }
 
       // Send to the user's room and admin room
-      chatIo.to(sessionId).emit('new_message', { sessionId, message });
-      chatIo.to('admin_room').emit('new_message', { sessionId, message });
+      io.to(sessionId).emit('new_message', { sessionId, message });
+      io.to('admin_room').emit('new_message', { sessionId, message });
     });
 
     socket.on('disconnect', () => {

@@ -5,6 +5,7 @@ import Home from './pages/Home';
 import Auth from './pages/Auth';
 import Dashboard from './pages/Dashboard';
 import Admin from './pages/Admin';
+import SupportClient from './pages/SupportClient';
 import VerifyEmail from './pages/VerifyEmail';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
@@ -74,15 +75,24 @@ const Navbar = () => {
             </button>
           </div>
 
-          {/* Quick Admin Link */}
+          {/* Quick Admin Links */}
           {user.role === 'admin' && (
-            <Link 
-              to="/admin" 
-              className="flex items-center space-x-1.5 bg-purple-900/30 hover:bg-purple-900/50 text-purple-300 border border-purple-800/50 px-3 py-1.5 rounded-lg text-xs font-semibold tracking-wide transition-all"
-            >
-              <ShieldAlert className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Portail Admin</span>
-            </Link>
+            <div className="flex items-center space-x-2">
+              <Link 
+                to="/admin" 
+                className="flex items-center space-x-1.5 bg-purple-900/30 hover:bg-purple-900/50 text-purple-300 border border-purple-800/50 px-2 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-semibold tracking-wide transition-all"
+              >
+                <ShieldAlert className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Portail Admin</span>
+              </Link>
+              <Link 
+                to="/admin/support" 
+                className="flex items-center space-x-1.5 bg-indigo-900/30 hover:bg-indigo-900/50 text-indigo-300 border border-indigo-800/50 px-2 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-semibold tracking-wide transition-all"
+              >
+                <MessageCircle className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Support</span>
+              </Link>
+            </div>
           )}
 
           {/* User Profile / Logout */}
@@ -134,6 +144,14 @@ const AppContent = () => {
             element={
               <AdminRoute>
                 <Admin />
+              </AdminRoute>
+            } 
+          />
+          <Route 
+            path="/admin/support" 
+            element={
+              <AdminRoute>
+                <SupportClient />
               </AdminRoute>
             } 
           />

@@ -4,7 +4,6 @@ import {
   ShieldAlert, Landmark, CheckCircle, XCircle, Users, 
   TrendingUp, ArrowDownRight, ArrowUpRight, Ban, Check, AlertTriangle, Eye, Coins
 } from 'lucide-react';
-import AdminChat from '../components/AdminChat';
 
 export default function Admin() {
   const [stats, setStats] = useState({
@@ -246,11 +245,6 @@ export default function Admin() {
           </button>
         </div>
 
-      </div>
-
-      {/* Admin Chat Section (Moved up for visibility) */}
-      <div className="grid grid-cols-1 gap-8 mb-8">
-        <AdminChat />
       </div>
 
       {/* Grid: Left - Pending Transactions / Right - User Account Suspend moderation */}

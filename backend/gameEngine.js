@@ -16,14 +16,29 @@ let targetCrashMultiplier = 1.00;
 let flyingInterval = null;
 let countdownInterval = null;
 let roundStartTime = null;
+let consecutiveCrashes = 0;
 
 const generateGameResult = () => {
   const houseEdge = 0.70; // 70% house edge
-  const random = Math.random();
+  let random = Math.random();
+
+  // Anpeche l pète nan 1.00x twòp fwa afile pou l pa parèt sispèk
+  if (consecutiveCrashes >= 2) {
+    // Fòse yon chif ki pi gwo pase 0.70 (sa ki garanti li p ap 1.00x)
+    random = 0.70 + (Math.random() * 0.29);
+  }
+
   // Formula: multiplier = 0.30 / (1 - random)
   const multiplier = 0.30 / (1 - random);
-  // Cap at 100.00x as per security limits in user guide
-  return Math.min(parseFloat(multiplier.toFixed(2)), 100.00);
+  const finalMultiplier = Math.min(parseFloat(multiplier.toFixed(2)), 100.00);
+
+  if (finalMultiplier <= 1.00) {
+    consecutiveCrashes++;
+  } else {
+    consecutiveCrashes = 0;
+  }
+
+  return finalMultiplier;
 };
 
 const getRecentHistory = async () => {

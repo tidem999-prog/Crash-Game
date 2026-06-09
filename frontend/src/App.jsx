@@ -45,29 +45,41 @@ const Navbar = () => {
   const [hasUnreadSupport, setHasUnreadSupport] = useState(false);
   const socketRef = useRef(null);
 
-  // Admin socket for unread support messages notification
+  // Global socket for unread support messages notification AND auto-reload on update
   useEffect(() => {
-    if (user && user.role === 'admin') {
-      const SOCKET_URL = window.location.hostname === 'localhost' ? 'http://localhost:5000' : window.location.origin;
-      socketRef.current = io(SOCKET_URL);
+    const SOCKET_URL = window.location.hostname === 'localhost' ? 'http://localhost:5000' : window.location.origin;
+    socketRef.current = io(SOCKET_URL);
 
-      socketRef.current.on('connect', () => {
+    socketRef.current.on('connect', () => {
+      if (user && user.role === 'admin') {
         socketRef.current.emit('join_admin');
-      });
+      }
+    });
 
-      socketRef.current.on('new_message', ({ message }) => {
-        if (message.sender === 'user') {
-          // If a new message from a user arrives, check if we are on the support page
-          if (location.pathname !== '/admin/support') {
-            setHasUnreadSupport(true);
-          }
+    // Auto-refresh logic: if server restarts (new version timestamp), force reload to get new code
+    socketRef.current.on('server_version', (serverTime) => {
+      const currentVersion = localStorage.getItem('app_version');
+      if (!currentVersion) {
+        localStorage.setItem('app_version', serverTime);
+      } else if (currentVersion !== serverTime.toString()) {
+        console.log('New update detected. Reloading page...');
+        localStorage.setItem('app_version', serverTime);
+        window.location.reload(true);
+      }
+    });
+
+    socketRef.current.on('new_message', ({ message }) => {
+      if (user && user.role === 'admin' && message.sender === 'user') {
+        // If a new message from a user arrives, check if we are on the support page
+        if (location.pathname !== '/admin/support') {
+          setHasUnreadSupport(true);
         }
-      });
+      }
+    });
 
-      return () => {
-        if (socketRef.current) socketRef.current.disconnect();
-      };
-    }
+    return () => {
+      if (socketRef.current) socketRef.current.disconnect();
+    };
   }, [user, location.pathname]);
 
   // Clear unread dot when visiting support page

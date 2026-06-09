@@ -93,6 +93,11 @@ if (isVercel) {
     cors: { origin: '*', methods: ['GET', 'POST'] }
   });
 
+  const SERVER_START_TIME = Date.now();
+  io.on('connection', (socket) => {
+    socket.emit('server_version', SERVER_START_TIME);
+  });
+
   const PORT = process.env.PORT || 5000;
 
   (async () => {

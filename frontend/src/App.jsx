@@ -1,5 +1,6 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, Navigate, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { BrowserRouter as Router, Routes, Route, Link, Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { io } from 'socket.io-client';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Home from './pages/Home';
 import Auth from './pages/Auth';
@@ -40,6 +41,41 @@ const AdminRoute = ({ children }) => {
 const Navbar = () => {
   const { user, logout, refreshBalance } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [hasUnreadSupport, setHasUnreadSupport] = useState(false);
+  const socketRef = useRef(null);
+
+  // Admin socket for unread support messages notification
+  useEffect(() => {
+    if (user && user.role === 'admin') {
+      const SOCKET_URL = window.location.hostname === 'localhost' ? 'http://localhost:5000' : window.location.origin;
+      socketRef.current = io(SOCKET_URL);
+
+      socketRef.current.on('connect', () => {
+        socketRef.current.emit('join_admin');
+      });
+
+      socketRef.current.on('new_message', ({ message }) => {
+        if (message.sender === 'user') {
+          // If a new message from a user arrives, check if we are on the support page
+          if (location.pathname !== '/admin/support') {
+            setHasUnreadSupport(true);
+          }
+        }
+      });
+
+      return () => {
+        if (socketRef.current) socketRef.current.disconnect();
+      };
+    }
+  }, [user, location.pathname]);
+
+  // Clear unread dot when visiting support page
+  useEffect(() => {
+    if (location.pathname === '/admin/support') {
+      setHasUnreadSupport(false);
+    }
+  }, [location.pathname]);
 
   if (!user) return null;
 
@@ -87,10 +123,13 @@ const Navbar = () => {
               </Link>
               <Link 
                 to="/admin/support" 
-                className="flex items-center space-x-1.5 bg-indigo-900/30 hover:bg-indigo-900/50 text-indigo-300 border border-indigo-800/50 px-2 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-semibold tracking-wide transition-all"
+                className="relative flex items-center space-x-1.5 bg-indigo-900/30 hover:bg-indigo-900/50 text-indigo-300 border border-indigo-800/50 px-2 sm:px-3 py-1.5 rounded-lg text-[10px] sm:text-xs font-semibold tracking-wide transition-all"
               >
                 <MessageCircle className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Support</span>
+                {hasUnreadSupport && (
+                  <span className="absolute -top-1 -right-1 h-2.5 w-2.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]"></span>
+                )}
               </Link>
             </div>
           )}

@@ -10,6 +10,7 @@ import SupportClient from './pages/SupportClient';
 import VerifyEmail from './pages/VerifyEmail';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import Terms from './pages/Terms';
 import ChatWidget from './components/ChatWidget';
 import { LogOut, User, RefreshCw, Landmark, ShieldAlert, Gamepad2, MessageCircle } from 'lucide-react';
 
@@ -182,6 +183,7 @@ const AppContent = () => {
           <Route path="/verify-email" element={<VerifyEmail />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/terms" element={<Terms />} />
           <Route 
             path="/dashboard" 
             element={

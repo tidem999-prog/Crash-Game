@@ -221,6 +221,16 @@ export default function Auth() {
               )}
             </button>
 
+            {/* Terms and Conditions Note (Signup Only) */}
+            {!isLogin && (
+              <p className="text-[11px] text-center text-slate-500 mt-4 leading-relaxed">
+                En vous inscrivant, vous acceptez nos{' '}
+                <Link to="/terms" className="text-indigo-400 hover:text-indigo-300 underline underline-offset-2">
+                  Conditions Générales d'Utilisation et notre Politique de Confidentialité
+                </Link>.
+              </p>
+            )}
+
           </form>
 
         </div>

@@ -94,6 +94,13 @@ export default function Home() {
         🎮
       </div>
 
+      {/* Footer / Links */}
+      <div className="absolute bottom-4 text-center w-full z-20">
+        <Link to="/terms" className="text-slate-500 hover:text-slate-300 text-sm transition-colors">
+          Conditions Générales et Politique de Confidentialité
+        </Link>
+      </div>
+
     </div>
   );
 }

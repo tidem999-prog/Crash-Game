@@ -11,6 +11,7 @@ echo "[1/3] Mise à jour du Frontend..."
 cd frontend
 npm install
 npm run build
+cp -r dist/* /var/www/html/
 
 echo "[2/3] Mise à jour du Backend..."
 cd ../backend

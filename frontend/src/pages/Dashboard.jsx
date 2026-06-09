@@ -1185,7 +1185,7 @@ export default function Dashboard() {
                 <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Montant du retrait (HTG)</label>
                 <input
                   type="number"
-                  placeholder="Min: 10 HTG"
+                  placeholder="Min: 100 HTG"
                   value={wdAmount}
                   onChange={(e) => setWdAmount(e.target.value)}
                   className="block w-full px-4 py-3 bg-slate-950/70 border border-slate-800 rounded-xl text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
@@ -1207,7 +1207,7 @@ export default function Dashboard() {
               </div>
 
               {/* Automatic Fee Calculation display */}
-              {wdAmount && parseFloat(wdAmount) >= 10 && (
+              {wdAmount && parseFloat(wdAmount) >= 100 && (
                 <div className="p-4 bg-slate-900/60 rounded-xl border border-slate-800 space-y-2 text-xs">
                   <div className="flex justify-between">
                     <span className="text-slate-500">Montant demandé :</span>

@@ -394,11 +394,11 @@ export default function Admin() {
               ✕
             </button>
             <h4 className="font-display font-black text-lg text-slate-200 mb-4">Reçu de Transaction</h4>
-            <div className="rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 flex items-center justify-center max-h-[85vh] overflow-y-auto">
+            <div className="rounded-2xl overflow-hidden border border-slate-800 bg-slate-950 max-h-[80vh] overflow-y-auto">
               <img 
                 src={selectedScreenshot} 
                 alt="Reçu de transaction" 
-                className="max-w-full max-h-[85vh] object-contain"
+                className="w-full h-auto object-contain"
                 onError={(e) => {
                   e.target.src = 'https://placehold.co/600x400/0f172a/94a3b8?text=Image+Non+Disponible';
                   addNotification("Impossible de charger l'image locale.", "danger");

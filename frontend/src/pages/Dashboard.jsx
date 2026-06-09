@@ -670,8 +670,8 @@ export default function Dashboard() {
     setWdSuccess('');
 
     const amt = parseFloat(wdAmount);
-    if (!wdAmount || amt < 10) {
-      return setWdError('Le montant minimal de retrait est de 10 HTG.');
+    if (!wdAmount || amt < 100) {
+      return setWdError('Le montant minimal de retrait est de 100 HTG.');
     }
 
     if (amt > user.balance) {

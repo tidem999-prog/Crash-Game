@@ -96,8 +96,8 @@ router.post('/withdraw', authenticateToken, async (req, res) => {
   }
 
   const withdrawAmount = parseFloat(amount);
-  if (isNaN(withdrawAmount) || withdrawAmount < 10) {
-    return res.status(400).json({ error: 'Le montant minimal de retrait est de 10 HTG.' });
+  if (isNaN(withdrawAmount) || withdrawAmount < 100) {
+    return res.status(400).json({ error: 'Le montant minimal de retrait est de 100 HTG.' });
   }
 
   const selectedProvider = provider.toLowerCase();

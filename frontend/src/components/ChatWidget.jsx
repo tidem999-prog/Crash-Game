@@ -71,8 +71,8 @@ const ChatWidget = () => {
           <div className="chat-header">
             <div className="flex items-center gap-2">
               <div className="chat-avatar">
-                {/* Fallback to text if image not available */}
-                <span className="font-bold text-lg text-white">K</span>
+                <img src="/logo.png" alt="Ketarena Logo" className="w-full h-full object-cover rounded-full" onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='block'; }} />
+                <span style={{display: 'none'}} className="font-bold text-lg text-white">K</span>
               </div>
               <div>
                 <h3 className="font-bold m-0 text-white leading-tight">Ketarena</h3>
@@ -127,10 +127,10 @@ const ChatWidget = () => {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="chat-toggle-btn shadow-lg hover:scale-105 transition-transform"
+          className="chat-toggle-btn shadow-lg hover:scale-105 transition-transform overflow-hidden"
         >
-          {/* Logo placeholder if no logo available */}
-          <div className="flex items-center justify-center w-full h-full bg-gradient-to-tr from-yellow-400 to-purple-600 rounded-full">
+          <img src="/logo.png" alt="Chat" className="w-full h-full object-cover rounded-full bg-slate-900" onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }} />
+          <div style={{display: 'none'}} className="flex items-center justify-center w-full h-full bg-gradient-to-tr from-yellow-400 to-purple-600 rounded-full">
             <MessageCircle size={28} color="white" />
           </div>
         </button>

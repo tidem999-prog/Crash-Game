@@ -17,13 +17,15 @@ let flyingInterval = null;
 let countdownInterval = null;
 let roundStartTime = null;
 let consecutiveCrashes = 0;
+// Yon limit ki chanje chak fwa pou jwè yo pa ka konnen egzakteman ki lè l ap fòse vole a
+let currentStreakLimit = Math.floor(Math.random() * 4) + 1; // Chwazi yon chif aza ant 1 ak 4
 
 const generateGameResult = () => {
   const houseEdge = 0.70; // 70% house edge
   let random = Math.random();
 
-  // Anpeche l pète nan 1.00x twòp fwa afile pou l pa parèt sispèk
-  if (consecutiveCrashes >= 2) {
+  // Anpeche l pète nan 1.00x twòp fwa afile baze sou limit aza n al chwazi a
+  if (consecutiveCrashes >= currentStreakLimit) {
     // Fòse yon chif ki pi gwo pase 0.70 (sa ki garanti li p ap 1.00x)
     random = 0.70 + (Math.random() * 0.29);
   }
@@ -36,6 +38,8 @@ const generateGameResult = () => {
     consecutiveCrashes++;
   } else {
     consecutiveCrashes = 0;
+    // Lè l kraze chèn nan, nou chwazi yon nouvo limit sekrè ant 1 ak 4
+    currentStreakLimit = Math.floor(Math.random() * 4) + 1;
   }
 
   return finalMultiplier;

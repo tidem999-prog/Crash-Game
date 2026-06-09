@@ -4,6 +4,7 @@ import {
   ShieldAlert, Landmark, CheckCircle, XCircle, Users, 
   TrendingUp, ArrowDownRight, ArrowUpRight, Ban, Check, AlertTriangle, Eye, Coins
 } from 'lucide-react';
+import AdminChat from '../components/AdminChat';
 
 export default function Admin() {
   const [stats, setStats] = useState({
@@ -381,6 +382,11 @@ export default function Admin() {
           </div>
         </div>
 
+      </div>
+
+      {/* Admin Chat Section */}
+      <div className="grid grid-cols-1 gap-8 mt-8">
+        <AdminChat />
       </div>
 
       {/* Screenshot Viewer Overlay Modal */}

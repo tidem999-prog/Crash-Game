@@ -8,6 +8,7 @@ import Admin from './pages/Admin';
 import VerifyEmail from './pages/VerifyEmail';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import ChatWidget from './components/ChatWidget';
 import { LogOut, User, RefreshCw, Landmark, ShieldAlert, Gamepad2 } from 'lucide-react';
 
 // Protected Route for normal users
@@ -138,6 +139,8 @@ const AppContent = () => {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
+
+      <ChatWidget />
       
       {/* Premium Footer */}
       <footer className="border-t border-slate-900 py-4 sm:py-6 bg-slate-950 text-slate-500 text-center text-[10px] sm:text-xs">

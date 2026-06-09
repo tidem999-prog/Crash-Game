@@ -159,7 +159,10 @@ const checkAutoCashouts = async (currentMultiplier) => {
 
 const processCashout = async (userId, multiplier) => {
   const bet = activeBets[userId];
-  if (!bet || bet.cashedOut || gameState.status !== 'flying') return null;
+  if (!bet || bet.cashedOut || bet.processingCashout || gameState.status !== 'flying') return null;
+
+  // Lock the bet immediately to prevent concurrent ticks or clicks from processing it again
+  bet.processingCashout = true;
 
   try {
     const payout = parseFloat((bet.betAmount * multiplier).toFixed(2));
@@ -211,6 +214,7 @@ const processCashout = async (userId, multiplier) => {
     return { payout, multiplier };
   } catch (err) {
     await query('ROLLBACK');
+    if (bet) bet.processingCashout = false; // Unlock if it fails so it can be retried
     console.error(`Game: Failed cashout transaction for user ${userId}:`, err);
     return null;
   }
@@ -331,6 +335,7 @@ const initGameEngine = (socketIoInstance) => {
           betAmount: parseFloat(betAmount),
           autoCashout: autoCashout ? parseFloat(autoCashout) : null,
           cashedOut: false,
+          processingCashout: false,
           cashoutMultiplier: null,
           payoutAmount: null,
           socketId: socket.id

@@ -3,8 +3,7 @@ import { io } from 'socket.io-client';
 import { MessageCircle, X, Send } from 'lucide-react';
 import './ChatWidget.css'; // We will create this
 
-// Use the same server URL as the rest of the app, or default to localhost:5000
-const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const SOCKET_URL = window.location.hostname === 'localhost' ? 'http://localhost:5000' : window.location.origin;
 
 const ChatWidget = () => {
   const [isOpen, setIsOpen] = useState(false);

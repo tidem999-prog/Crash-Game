@@ -21,17 +21,17 @@ let consecutiveCrashes = 0;
 let currentStreakLimit = Math.floor(Math.random() * 4) + 1; // Chwazi yon chif aza ant 1 ak 4
 
 const generateGameResult = () => {
-  const houseEdge = 0.70; // 70% house edge
+  const houseEdge = 0.50; // 50% house edge
   let random = Math.random();
 
   // Anpeche l pète nan 1.00x twòp fwa afile baze sou limit aza n al chwazi a
   if (consecutiveCrashes >= currentStreakLimit) {
-    // Fòse yon chif ki pi gwo pase 0.70 (sa ki garanti li p ap 1.00x)
-    random = 0.70 + (Math.random() * 0.29);
+    // Fòse yon chif ki pi gwo pase 0.50 (sa ki garanti li p ap 1.00x)
+    random = 0.50 + (Math.random() * 0.49);
   }
 
-  // Formula: multiplier = 0.30 / (1 - random)
-  const multiplier = 0.30 / (1 - random);
+  // Formula: multiplier = 0.50 / (1 - random)
+  const multiplier = 0.50 / (1 - random);
   const finalMultiplier = Math.min(parseFloat(multiplier.toFixed(2)), 100.00);
 
   if (finalMultiplier <= 1.00) {

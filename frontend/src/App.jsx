@@ -141,7 +141,7 @@ const Navbar = () => {
                 <MessageCircle className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Support</span>
                 {hasUnreadSupport && (
-                  <span className="absolute -top-1 -right-1 h-2.5 w-2.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)]"></span>
+                  <span className="absolute top-0 right-0 h-2.5 w-2.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.8)] z-10"></span>
                 )}
               </Link>
             </div>

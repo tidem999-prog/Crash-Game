@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { apiRequest } from '../context/AuthContext';
 import { 
   ShieldAlert, Landmark, CheckCircle, XCircle, Users, 
-  TrendingUp, ArrowDownRight, ArrowUpRight, Ban, Check, AlertTriangle, Eye, Coins
+  TrendingUp, ArrowDownRight, ArrowUpRight, Ban, Check, AlertTriangle, Eye, Coins, ArrowLeft
 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 export default function Admin() {
   const [stats, setStats] = useState({
@@ -118,9 +119,14 @@ export default function Admin() {
     <div className="max-w-7xl mx-auto w-full px-4 py-8 sm:px-6 lg:px-8 space-y-8">
       
       {/* Page Header */}
-      <div className="flex items-center space-x-3">
-        <div className="bg-purple-900/40 p-3 rounded-2xl text-purple-400 border border-purple-800/50 shadow-md">
-          <ShieldAlert className="h-6 w-6" />
+      <div className="flex flex-col sm:flex-row sm:items-center space-y-4 sm:space-y-0 sm:space-x-4">
+        <div className="flex items-center space-x-3">
+          <Link to="/dashboard" className="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-colors">
+            <ArrowLeft size={20} />
+          </Link>
+          <div className="bg-purple-900/40 p-3 rounded-2xl text-purple-400 border border-purple-800/50 shadow-md">
+            <ShieldAlert className="h-6 w-6" />
+          </div>
         </div>
         <div>
           <h2 className="font-display font-black text-3xl text-white">Panneau d'Administration</h2>

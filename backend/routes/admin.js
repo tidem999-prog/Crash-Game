@@ -294,4 +294,66 @@ router.post('/reset/withdrawals', async (req, res) => {
   }
 });
 
+// 11. Search user bets by ID or Email
+router.get('/user-bets', async (req, res) => {
+  const { query: searchQuery } = req.query;
+  
+  if (!searchQuery) {
+    return res.status(400).json({ error: 'Veuillez fournir un ID ou un Email.' });
+  }
+
+  try {
+    let userId = searchQuery.trim();
+    let userEmail = '';
+
+    // If query is an email, resolve it to an ID
+    if (userId.includes('@')) {
+      const userRes = await query('SELECT id, email FROM users WHERE email = $1', [userId]);
+      if (userRes.rows.length === 0) {
+        return res.status(404).json({ error: 'Aucun utilisateur trouvé avec cet e-mail.' });
+      }
+      userId = userRes.rows[0].id;
+      userEmail = userRes.rows[0].email;
+    } else {
+      // Validate if it's a UUID
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (!uuidRegex.test(userId)) {
+        return res.status(400).json({ error: 'ID Utilisateur invalide.' });
+      }
+      
+      const userRes = await query('SELECT email FROM users WHERE id = $1', [userId]);
+      if (userRes.rows.length === 0) {
+        return res.status(404).json({ error: 'Aucun utilisateur trouvé avec cet ID.' });
+      }
+      userEmail = userRes.rows[0].email;
+    }
+
+    // Fetch bets
+    const result = await query(
+      `SELECT id, game_id, bet_amount, cashout_multiplier, payout_amount, is_won, created_at 
+       FROM bets 
+       WHERE user_id = $1 
+       ORDER BY created_at DESC 
+       LIMIT 50`,
+       [userId]
+    );
+
+    res.json({
+      user: {
+        id: userId,
+        email: userEmail
+      },
+      bets: result.rows.map(r => ({
+        ...r,
+        bet_amount: parseFloat(r.bet_amount),
+        cashout_multiplier: r.cashout_multiplier ? parseFloat(r.cashout_multiplier) : null,
+        payout_amount: parseFloat(r.payout_amount)
+      }))
+    });
+  } catch (err) {
+    console.error('Admin user bets search error:', err);
+    res.status(500).json({ error: 'Erreur lors de la recherche des paris.' });
+  }
+});
+
 module.exports = router;

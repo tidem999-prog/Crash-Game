@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { apiRequest } from '../context/AuthContext';
 import { 
   ShieldAlert, Landmark, CheckCircle, XCircle, Users, 
-  TrendingUp, ArrowDownRight, ArrowUpRight, Ban, Check, AlertTriangle, Eye, Coins, ArrowLeft
+  TrendingUp, ArrowDownRight, ArrowUpRight, Ban, Check, AlertTriangle, Eye, Coins, ArrowLeft, Search
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -26,6 +26,28 @@ export default function Admin() {
   const [adminError, setAdminError] = useState('');
   const [adminSuccess, setAdminSuccess] = useState('');
   const [selectedScreenshot, setSelectedScreenshot] = useState(null); // stores image url to view in modal
+
+  // Search User Bets
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState('');
+  const [searchResult, setSearchResult] = useState(null);
+
+  const handleSearchUserBets = async (e) => {
+    if (e) e.preventDefault();
+    if (!searchQuery.trim()) return;
+    setSearchLoading(true);
+    setSearchError('');
+    setSearchResult(null);
+    try {
+      const data = await apiRequest(`/api/admin/user-bets?query=${encodeURIComponent(searchQuery)}`);
+      setSearchResult(data);
+    } catch (err) {
+      setSearchError(err.message || 'Erreur lors de la recherche.');
+    } finally {
+      setSearchLoading(false);
+    }
+  };
 
   const fetchAdminData = async () => {
     setLoading(true);
@@ -387,6 +409,87 @@ export default function Admin() {
           </div>
         </div>
 
+      </div>
+
+      {/* User Activity Search Section */}
+      <div className="glass-panel p-6 rounded-3xl space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-900 pb-3 gap-4">
+          <h3 className="font-display font-black text-lg text-slate-200 flex items-center space-x-2">
+            <Search className="h-5 w-5 text-indigo-400" />
+            <span>Recherche d'Activité Utilisateur</span>
+          </h3>
+          <form onSubmit={handleSearchUserBets} className="flex space-x-2 w-full sm:w-auto">
+            <input
+              type="text"
+              placeholder="ID Utilisateur ou Email..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="bg-slate-950/50 border border-slate-800 text-white text-sm rounded-xl px-4 py-2 w-full sm:w-64 focus:outline-none focus:border-indigo-500 transition-colors"
+            />
+            <button
+              type="submit"
+              disabled={searchLoading || !searchQuery.trim()}
+              className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all"
+            >
+              {searchLoading ? '...' : 'Chercher'}
+            </button>
+          </form>
+        </div>
+
+        {searchError && (
+          <div className="text-red-400 text-xs">{searchError}</div>
+        )}
+
+        {searchResult && (
+          <div className="space-y-4">
+            <div className="flex items-center space-x-2 text-sm text-slate-400">
+              <span>Résultats pour :</span>
+              <span className="font-bold text-slate-200">{searchResult.user.email}</span>
+              <span className="text-xs font-mono bg-slate-900 px-2 py-0.5 rounded text-slate-500">{searchResult.user.id}</span>
+            </div>
+            
+            {searchResult.bets.length === 0 ? (
+              <p className="text-xs text-slate-500 text-center py-6">Aucun pari trouvé pour cet utilisateur.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="border-b border-slate-900 text-slate-500 font-bold uppercase tracking-wider">
+                      <th className="pb-3">Jeu</th>
+                      <th className="pb-3">Date</th>
+                      <th className="pb-3">Mise</th>
+                      <th className="pb-3">Mult.</th>
+                      <th className="pb-3 text-right">Résultat</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-900">
+                    {searchResult.bets.map((bet, idx) => (
+                      <tr key={idx} className="hover:bg-slate-900/15">
+                        <td className="py-3 font-bold text-slate-300">
+                          {bet.game_id ? 'Crash Plane' : 'Snake (Ketmesye)'}
+                        </td>
+                        <td className="py-3 text-[10px] text-slate-500 font-mono">
+                          {new Date(bet.created_at).toLocaleString('fr-FR')}
+                        </td>
+                        <td className="py-3 font-mono font-bold text-slate-400">{bet.bet_amount.toFixed(2)}</td>
+                        <td className="py-3 font-mono text-slate-400">
+                          {bet.cashout_multiplier ? `${bet.cashout_multiplier.toFixed(2)}x` : '-'}
+                        </td>
+                        <td className="py-3 text-right">
+                          {bet.is_won ? (
+                            <span className="text-emerald-400 font-bold font-mono">+{bet.payout_amount.toFixed(2)} HTG</span>
+                          ) : (
+                            <span className="text-red-400 font-bold font-mono">Perdu</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Screenshot Viewer Overlay Modal */}

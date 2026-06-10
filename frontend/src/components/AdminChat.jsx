@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
-import { MessageCircle, Send } from 'lucide-react';
+import { MessageCircle, Send, Trash2 } from 'lucide-react';
 
 const SOCKET_URL = window.location.hostname === 'localhost' ? 'http://localhost:5000' : window.location.origin;
 
@@ -65,6 +65,13 @@ const AdminChat = () => {
     setInputText('');
   };
 
+  const closeSession = (sessionIdToClose) => {
+    socketRef.current.emit('close_session', { sessionId: sessionIdToClose });
+    if (selectedSessionId === sessionIdToClose) {
+      setSelectedSessionId(null);
+    }
+  };
+
   return (
     <div className="glass-panel p-6 rounded-3xl space-y-4 lg:col-span-3">
       <h3 className="font-display font-black text-lg text-slate-200 border-b border-slate-900 pb-3 flex items-center space-x-2">
@@ -90,7 +97,11 @@ const AdminChat = () => {
                       : 'bg-slate-900/50 border-slate-800 hover:bg-slate-800'
                   }`}
                 >
-                  <div className="font-bold text-xs text-slate-200 truncate">User: {session.id.slice(0, 12)}...</div>
+                  <div className="flex justify-between items-start">
+                    <div className="font-bold text-xs text-slate-200 truncate pr-2">
+                      {session.email ? session.email : `User: ${session.id.slice(0, 8)}`}
+                    </div>
+                  </div>
                   {lastMsg && (
                     <div className="text-[10px] text-slate-400 truncate mt-1">
                       {lastMsg.sender === 'admin' ? 'Vous: ' : ''}{lastMsg.text}
@@ -112,7 +123,15 @@ const AdminChat = () => {
             <>
               {/* Header */}
               <div className="bg-slate-900 p-3 border-b border-slate-800 text-slate-200 font-bold text-sm flex items-center justify-between">
-                <span>Discussion: {selectedSessionId.slice(0, 12)}...</span>
+                <span className="truncate pr-4">Discussion: {selectedSession?.email || selectedSessionId.slice(0, 12)}</span>
+                <button
+                  onClick={() => closeSession(selectedSessionId)}
+                  className="p-1.5 bg-red-900/40 text-red-400 hover:bg-red-800/60 rounded-lg transition-colors flex items-center gap-1 text-xs"
+                  title="Fermer la session"
+                >
+                  <Trash2 size={14} />
+                  <span className="hidden sm:inline">Fermer</span>
+                </button>
               </div>
 
               {/* Messages */}

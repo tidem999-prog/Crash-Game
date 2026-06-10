@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import { MessageCircle, X, Send } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import './ChatWidget.css'; // We will create this
 
 const SOCKET_URL = window.location.hostname === 'localhost' ? 'http://localhost:5000' : window.location.origin;
@@ -10,6 +11,7 @@ const ChatWidget = () => {
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState('');
   const [sessionId, setSessionId] = useState('');
+  const { user } = useAuth();
   const socketRef = useRef(null);
   const messagesEndRef = useRef(null);
 
@@ -58,6 +60,7 @@ const ChatWidget = () => {
     socketRef.current.emit('send_message', {
       sessionId,
       text: inputText,
+      email: user?.email || null
     });
     setInputText('');
   };

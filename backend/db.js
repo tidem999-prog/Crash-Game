@@ -141,7 +141,35 @@ const initializeDatabase = async () => {
     `);
     console.log('Database: Table "duels" checked/created.');
 
-    // 7. Seed Admin User
+    // 7. Create KOTH Rooms Table
+    await query(`
+      CREATE TABLE IF NOT EXISTS koth_rooms (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'active', 'finished', 'cancelled')),
+        entry_fee DECIMAL(12, 2) NOT NULL DEFAULT 150.00,
+        pot_total DECIMAL(12, 2) DEFAULT 0.00,
+        round_number INT DEFAULT 0,
+        winner_id UUID REFERENCES users(id) ON DELETE SET NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('Database: Table "koth_rooms" checked/created.');
+
+    // 8. Create Audit Logs Table for Escrow Transactions
+    await query(`
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+        game_id UUID,
+        game_type VARCHAR(50),
+        amount DECIMAL(12, 2),
+        action VARCHAR(100) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('Database: Table "audit_logs" checked/created.');
+
+    // 9. Seed Admin User
     const adminCheck = await query("SELECT * FROM users WHERE role = 'admin' LIMIT 1");
     if (adminCheck.rows.length === 0) {
       const adminEmail = 'admin@crashplane.com';

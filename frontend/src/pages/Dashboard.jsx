@@ -10,6 +10,7 @@ import KetmesyeGame from './KetmesyeGame';
 import DominoGame from './DominoGame';
 import MinesGame from './MinesGame';
 import SnakeDuelGame from './SnakeDuelGame';
+import KothGame from './KothGame';
 
 export default function Dashboard() {
   const { user, refreshBalance, updateBalance } = useAuth();
@@ -924,6 +925,36 @@ export default function Dashboard() {
                 </button>
               </div>
 
+              {/* Card 5: KOTH (King of the Hill) */}
+              <div className="glass-panel group relative rounded-2xl md:rounded-3xl p-3 md:p-6 bg-slate-900/40 border border-slate-800 hover:border-purple-500/30 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-xl transform hover:-translate-y-1 col-span-2 md:col-span-1 max-w-sm mx-auto md:max-w-none w-full">
+                <div className="absolute top-0 right-0 w-20 h-20 md:w-32 md:h-32 bg-purple-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-purple-500/10 transition-all duration-300"></div>
+
+                <div>
+                  <div className="flex justify-between items-start mb-3 md:mb-6">
+                    <div className="bg-purple-500/10 p-2 md:p-4 rounded-xl md:rounded-2xl text-purple-500 border border-purple-500/15 animate-pulse">
+                      <ShieldAlert className="h-5 w-5 md:h-8 md:w-8" />
+                    </div>
+                    <span className="text-[8px] md:text-[10px] font-bold tracking-wider uppercase bg-purple-500/10 text-purple-400 px-2 md:px-3 py-0.5 md:py-1 rounded-full border border-purple-500/20">
+                      BATTLE ROYALE
+                    </span>
+                  </div>
+
+                  <h3 className="font-display font-black text-sm md:text-xl text-white mb-1 md:mb-2 tracking-wide">
+                    KING OF THE HILL
+                  </h3>
+                  <p className="text-slate-400 text-[9px] md:text-xs leading-tight md:leading-relaxed mb-4 md:mb-6">
+                    Tournoi éliminatoire massif. Le dernier survivant rafle l'intégralité de la cagnotte !
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setSelectedGame('koth')}
+                  className="w-full py-2 md:py-3.5 bg-purple-600 hover:bg-purple-500 text-white font-black rounded-lg md:rounded-xl text-[9px] md:text-xs transition-all tracking-wide shadow-md shadow-purple-600/15"
+                >
+                  REJOINDRE
+                </button>
+              </div>
+
             </div>
           </div>
         )}
@@ -1111,6 +1142,11 @@ export default function Dashboard() {
         {/* Tab content: PLAY GAME (SNAKE DUEL ACTIVE) */}
         {activeTab === 'play' && selectedGame === 'snake_duel' && (
           <SnakeDuelGame socket={socket} user={user} balance={userBalanceRef.current} setSelectedGame={setSelectedGame} />
+        )}
+
+        {/* Tab content: PLAY GAME (KOTH ACTIVE) */}
+        {activeTab === 'play' && selectedGame === 'koth' && (
+          <KothGame socket={socket} user={user} balance={userBalanceRef.current} setSelectedGame={setSelectedGame} />
         )}
 
         {/* Tab content 2: DEPOSITS */}

@@ -4,7 +4,7 @@ const crypto = require('crypto');
 let io;
 
 const RAKE_PERCENT = 10;
-const HOUSE_EDGE = 0.90; // 10% edge to make it harder for 1-click farming
+const HOUSE_EDGE = 0.75; // 25% edge to make the progression much slower and harder
 
 // We can keep a minimal cache of active games in memory for fast access,
 // or just query the database. For simplicity and robustness, we query the DB.

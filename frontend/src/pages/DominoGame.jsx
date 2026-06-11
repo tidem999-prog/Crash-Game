@@ -121,10 +121,15 @@ export default function DominoGame({ socket, onBackToLobby, addNotification, onP
     } else if (canRight && !canLeft) {
       playTile(idx, 'right');
     } else if (canLeft && canRight) {
-      if (selectedTileIndex === idx) {
-        setSelectedTileIndex(null);
+      if (gameState.leftEnd === gameState.rightEnd) {
+        // Automatically play left if both ends are identical (e.g. after a double)
+        playTile(idx, 'left');
       } else {
-        setSelectedTileIndex(idx);
+        if (selectedTileIndex === idx) {
+          setSelectedTileIndex(null);
+        } else {
+          setSelectedTileIndex(idx);
+        }
       }
     } else {
       addNotification('Ce domino ne peut pas être joué', 'danger');

@@ -469,8 +469,9 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
 
     // Make canvas fill screen container
     const handleResize = () => {
+      if (!canvas || !canvas.parentElement) return;
       canvas.width = canvas.parentElement.clientWidth;
-      canvas.height = 450;
+      canvas.height = canvas.parentElement.clientHeight || 450;
     };
     handleResize();
     window.addEventListener('resize', handleResize);

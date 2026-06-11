@@ -57,6 +57,19 @@ export default function DominoGame({ socket, onBackToLobby, addNotification, onP
       }
     });
 
+    socket.on('connect', () => {
+      // Re-join if we reconnect to restore socket.dominoRoom on the backend
+      if (user && localStorage.getItem('token')) {
+        const wager = customWager !== '' ? parseFloat(customWager) : selectedWager;
+        socket.emit('domino_join', { 
+          token: localStorage.getItem('token'),
+          userId: user.id, 
+          email: user.email, 
+          wager: isNaN(wager) ? 150 : wager 
+        });
+      }
+    });
+
     socket.on('domino_error', (msg) => {
       setError(msg);
       addNotification(msg, 'danger');

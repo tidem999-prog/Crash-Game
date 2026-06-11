@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Gem, Bomb, ShieldCheck, Play, Banknote, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Gem, Bomb, Play, Banknote, AlertTriangle } from 'lucide-react';
 
 const MinesGame = ({ socket, user, balance, setSelectedGame }) => {
   const [gameState, setGameState] = useState('idle'); // idle, playing, won, lost, cashed_out
@@ -15,8 +15,6 @@ const MinesGame = ({ socket, user, balance, setSelectedGame }) => {
   
   const [error, setError] = useState(null);
   
-  // Provably fair modal
-  const [showProvablyFair, setShowProvablyFair] = useState(false);
 
   // Recovery on mount
   useEffect(() => {
@@ -242,44 +240,6 @@ const MinesGame = ({ socket, user, balance, setSelectedGame }) => {
             
           </div>
 
-          {/* Provably Fair Section */}
-          <div className="glass-panel p-4 rounded-2xl bg-slate-900/30 border border-slate-800">
-            <button 
-              onClick={() => setShowProvablyFair(!showProvablyFair)}
-              className="flex justify-between items-center w-full text-slate-400 hover:text-white transition-colors"
-            >
-              <div className="flex items-center space-x-2">
-                <ShieldCheck className="w-4 h-4 text-cyan-500" />
-                <span className="text-xs font-bold uppercase tracking-wider">Provably Fair</span>
-              </div>
-              <span className="text-xs">{showProvablyFair ? 'Cacher' : 'Afficher'}</span>
-            </button>
-            
-            {showProvablyFair && gameData && (
-              <div className="mt-4 space-y-3 pt-3 border-t border-slate-800/50 animate-fade-in">
-                <div>
-                  <span className="text-[10px] text-slate-500 uppercase font-bold block mb-1">Hash Serveur (SHA-256)</span>
-                  <div className="bg-slate-950 p-2 rounded text-[10px] text-slate-300 break-all font-mono">
-                    {gameData.serverSeedHash}
-                  </div>
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-500 uppercase font-bold block mb-1">Graine Client (Générée)</span>
-                  <div className="bg-slate-950 p-2 rounded text-[10px] text-slate-300 break-all font-mono">
-                    {gameData.clientSeed}
-                  </div>
-                </div>
-                {gameData.serverSeed && (
-                  <div>
-                    <span className="text-[10px] text-emerald-500 uppercase font-bold block mb-1">Graine Serveur (Révélée)</span>
-                    <div className="bg-emerald-500/10 border border-emerald-500/20 p-2 rounded text-[10px] text-emerald-400 break-all font-mono">
-                      {gameData.serverSeed}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
         </div>
 
         {/* Game Grid */}

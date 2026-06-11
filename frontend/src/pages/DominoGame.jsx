@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Clock, ShieldAlert, Award, AlertTriangle, User, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ArrowLeft, User, RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
-const DominoFace = ({ value, horizontal = false }) => {
+const DominoFace = ({ value, horizontal = false, mini = false }) => {
   const dots = [];
   if (value === 1) dots.push('col-start-2 row-start-2');
   if (value === 2) dots.push('col-start-1 row-start-1', 'col-start-3 row-start-3');
@@ -11,12 +11,15 @@ const DominoFace = ({ value, horizontal = false }) => {
   if (value === 5) dots.push('col-start-1 row-start-1', 'col-start-3 row-start-1', 'col-start-2 row-start-2', 'col-start-1 row-start-3', 'col-start-3 row-start-3');
   if (value === 6) dots.push('col-start-1 row-start-1', 'col-start-3 row-start-1', 'col-start-1 row-start-2', 'col-start-3 row-start-2', 'col-start-1 row-start-3', 'col-start-3 row-start-3');
 
-  const dotSize = horizontal ? 'w-[5px] h-[5px]' : 'w-[6px] h-[6px]';
+  // Adjust dot sizes based on context
+  let dotSize = 'w-[8px] h-[8px]';
+  if (mini) dotSize = 'w-[4px] h-[4px]';
+  else if (horizontal) dotSize = 'w-[6px] h-[6px]';
 
   return (
-    <div className="grid grid-cols-3 grid-rows-3 gap-[1px] p-[2px] w-full h-full">
+    <div className={`grid grid-cols-3 grid-rows-3 ${mini ? 'gap-[1px] p-[1px]' : 'gap-[2px] p-[2px]'} w-full h-full`}>
       {dots.map((pos, i) => (
-        <div key={i} className={`bg-slate-900 rounded-full place-self-center shadow-inner ${dotSize} ${pos}`}></div>
+        <div key={i} className={`bg-[#111] rounded-full place-self-center shadow-sm ${dotSize} ${pos}`}></div>
       ))}
     </div>
   );
@@ -39,11 +42,8 @@ export default function DominoGame({ socket, onBackToLobby, addNotification, onP
     onBackToLobby();
   };
 
-  // Inform Dashboard when playing to hide tabs
   useEffect(() => {
-    if (onPlayStateChange) {
-      onPlayStateChange(isJoined);
-    }
+    if (onPlayStateChange) onPlayStateChange(isJoined);
   }, [isJoined, onPlayStateChange]);
 
   useEffect(() => {
@@ -57,12 +57,6 @@ export default function DominoGame({ socket, onBackToLobby, addNotification, onP
       }
     });
 
-    socket.on('domino_event', (data) => {
-      if (data.type === 'play') {
-        // Add sound or animation here if needed
-      }
-    });
-
     socket.on('domino_error', (msg) => {
       setError(msg);
       addNotification(msg, 'danger');
@@ -71,6 +65,7 @@ export default function DominoGame({ socket, onBackToLobby, addNotification, onP
     socket.on('domino_game_over', (data) => {
       setGameOver(data);
       setIsJoined(false);
+      setSelectedTileIndex(null);
       if (data.winnerId === user.id) {
         addNotification(`VICTOIRE ! Vous gagnez ${data.winAmount} HTG`, 'success');
       } else if (data.reason === 'draw') {
@@ -82,7 +77,6 @@ export default function DominoGame({ socket, onBackToLobby, addNotification, onP
 
     return () => {
       socket.off('domino_state');
-      socket.off('domino_event');
       socket.off('domino_error');
       socket.off('domino_game_over');
     };
@@ -103,12 +97,16 @@ export default function DominoGame({ socket, onBackToLobby, addNotification, onP
   const playTile = (tileIndex, side) => {
     if (!socket) return;
     socket.emit('domino_play', { tileIndex, side });
+    setSelectedTileIndex(null);
   };
 
   const handleDominoClick = (idx, tile) => {
     if (!gameState) return;
     const isMyTurn = gameState.players[gameState.turnIndex]?.userId === user.id;
-    if (!isMyTurn) return;
+    if (!isMyTurn) {
+      addNotification("Ce n'est pas votre tour !", "danger");
+      return;
+    }
 
     if (gameState.board.length === 0) {
       playTile(idx, 'left');
@@ -124,20 +122,18 @@ export default function DominoGame({ socket, onBackToLobby, addNotification, onP
       playTile(idx, 'right');
     } else if (canLeft && canRight) {
       if (selectedTileIndex === idx) {
-        setSelectedTileIndex(null); // toggle off
+        setSelectedTileIndex(null);
       } else {
         setSelectedTileIndex(idx);
-        addNotification('Touchez le côté gauche ou droit du plateau pour placer.', 'info');
       }
     } else {
-      addNotification('Mouvement impossible', 'danger');
+      addNotification('Ce domino ne peut pas être joué', 'danger');
     }
   };
 
   const handleBoardClick = (side) => {
     if (selectedTileIndex !== null) {
       playTile(selectedTileIndex, side);
-      setSelectedTileIndex(null);
     }
   };
 
@@ -151,17 +147,23 @@ export default function DominoGame({ socket, onBackToLobby, addNotification, onP
     socket.emit('domino_pass');
   };
 
-  // Render
+  const isTilePlayable = (tile) => {
+    if (!gameState || gameState.board.length === 0) return true;
+    return tile[0] === gameState.leftEnd || tile[1] === gameState.leftEnd || tile[0] === gameState.rightEnd || tile[1] === gameState.rightEnd;
+  };
+
+  const hasPlayableTile = myHand.some(isTilePlayable);
+
+  // Render Waiting/Lobby/Game Over states
   if (!isJoined && !gameOver) {
     const wagerToPlay = customWager !== '' ? parseFloat(customWager) : selectedWager;
     const potentialWin = !isNaN(wagerToPlay) ? (wagerToPlay * 2) * 0.9 : 0;
 
     return (
       <div className="flex flex-col items-center justify-center p-8 bg-slate-900 rounded-3xl border border-slate-800 text-center">
-        <h2 className="text-3xl font-black text-white mb-4">DOMINO ARENA 1v1</h2>
+        <h2 className="text-3xl font-black text-white mb-4">DOMINO ARENA</h2>
         <p className="text-slate-400 mb-6">Sélectionnez votre mise pour affronter un joueur au même montant.</p>
         
-        {/* Wager Selection */}
         <div className="flex flex-col items-center space-y-4 mb-8 w-full max-w-sm">
           <div className="grid grid-cols-4 gap-2 w-full">
             {[150, 250, 500, 1250].map(amount => (
@@ -242,132 +244,159 @@ export default function DominoGame({ socket, onBackToLobby, addNotification, onP
 
   const isMyTurn = gameState && gameState.players[gameState.turnIndex]?.userId === user.id;
   const opponent = gameState?.players.find(p => p.userId !== user.id);
-  const me = gameState?.players.find(p => p.userId === user.id);
 
+  // Main Game View
   return (
-    <div className={`flex flex-col bg-slate-950 overflow-hidden transition-all duration-300 ${
-      isJoined ? 'fixed inset-0 z-[100] rounded-none' : 'relative w-full min-h-[500px] border border-slate-900 rounded-3xl'
+    <div className={`flex flex-col bg-[#3c8da3] overflow-hidden transition-all duration-300 ${
+      isJoined ? 'fixed inset-0 z-[100] rounded-none' : 'relative w-full min-h-[500px] rounded-3xl'
     }`} style={isJoined ? { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, height: '100dvh', width: '100vw' } : {}}>
       
-      {/* Header */}
-      <div className="bg-slate-900 border-b border-slate-800 p-3 flex justify-between items-center">
-        <button onClick={handleQuit} className="flex items-center space-x-2 text-slate-400 hover:text-white">
-          <ArrowLeft className="h-5 w-5" />
-          <span className="font-bold hidden sm:inline">Quitter</span>
-        </button>
-        <div className="text-center">
-          <h2 className="font-black text-white tracking-wide text-lg">DOMINO ARENA</h2>
-          {isMyTurn ? (
-            <span className="text-emerald-500 font-bold text-sm animate-pulse">C'EST VOTRE TOUR ({Math.ceil(gameState.timeRemaining/1000)}s)</span>
-          ) : (
-            <span className="text-orange-500 font-bold text-sm">Tour de l'adversaire...</span>
-          )}
-        </div>
-        <div className="w-16"></div> {/* Spacer to center title */}
-      </div>
+      {/* Absolute Quit Button */}
+      <button onClick={handleQuit} className="absolute top-4 right-4 z-50 bg-red-700/80 hover:bg-red-600 text-white font-bold p-2 rounded shadow-lg backdrop-blur-sm border border-red-500">
+        Quitter
+      </button>
 
-      {/* Opponent Area */}
+      {/* Opponent (Top Left) */}
       {opponent && (
-        <div className="bg-slate-900/50 p-3 flex flex-col items-center shadow-md z-10 border-b border-slate-800">
-          <div className="flex items-center space-x-2 text-slate-300 font-bold mb-3">
-            <div className="bg-indigo-600/20 p-2 rounded-full border border-indigo-500/30">
-              <User className="h-5 w-5 text-indigo-400" />
+        <div className="absolute top-10 left-4 z-30 flex flex-col items-center">
+          <div className="bg-[#b57a44] border-4 border-[#8b5a2b] rounded-2xl p-2 shadow-[0_10px_20px_rgba(0,0,0,0.5)] relative">
+            <User className="text-[#4a2e15] w-8 h-8" />
+            <div className="absolute -bottom-3 -right-3 bg-red-600 text-white text-xs font-black px-2 py-0.5 rounded-full shadow-md border-2 border-white">
+              {opponent.handCount}
             </div>
-            <span className="text-lg">{opponent.email?.split('@')[0]}</span>
           </div>
-          <div className="flex space-x-1.5 justify-center">
-            {Array.from({ length: opponent.handCount }).map((_, i) => (
-              <div key={i} className="w-5 h-9 bg-slate-800 rounded-sm shadow-inner border border-slate-700 flex flex-col items-center justify-center overflow-hidden">
-                <div className="w-0.5 h-full bg-indigo-500/10 rotate-45 transform scale-150"></div>
-              </div>
-            ))}
-          </div>
+          <span className="text-white font-bold mt-2 shadow-black drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] text-sm">{opponent.email?.split('@')[0]}</span>
         </div>
       )}
 
-      {/* Board Area */}
-      <div className="flex-grow bg-slate-950 flex flex-col items-center justify-center p-4 relative overflow-hidden">
-        {selectedTileIndex !== null && (
-          <div className="absolute inset-0 z-20 flex bg-black/40 backdrop-blur-sm">
-            <div onClick={() => handleBoardClick('left')} className="flex-1 flex flex-col items-center justify-center cursor-pointer hover:bg-white/10 transition-colors border-r-2 border-indigo-500/50">
-              <span className="bg-indigo-600 text-white px-4 py-2 rounded-full font-bold shadow-lg animate-bounce">Placer à GAUCHE</span>
-            </div>
-            <div onClick={() => handleBoardClick('right')} className="flex-1 flex flex-col items-center justify-center cursor-pointer hover:bg-white/10 transition-colors border-l-2 border-indigo-500/50">
-              <span className="bg-indigo-600 text-white px-4 py-2 rounded-full font-bold shadow-lg animate-bounce">Placer à DROITE</span>
-            </div>
+      {/* Player (Bottom Right above hand) */}
+      <div className="absolute bottom-40 right-4 z-30 flex flex-col items-center">
+        <div className="bg-[#b57a44] border-4 border-[#8b5a2b] rounded-2xl p-2 shadow-[0_10px_20px_rgba(0,0,0,0.5)] relative">
+          <User className="text-[#4a2e15] w-8 h-8" />
+        </div>
+        <span className="text-white font-bold mt-2 shadow-black drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] text-sm">{user.email.split('@')[0]}</span>
+      </div>
+
+      {/* Turn Indicator (Center Top) */}
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-30 pointer-events-none">
+        {isMyTurn ? (
+          <div className="bg-emerald-500/90 text-white font-black px-6 py-2 rounded-full shadow-lg border-2 border-emerald-300 animate-pulse backdrop-blur-sm">
+            C'EST VOTRE TOUR ({Math.ceil(gameState.timeRemaining/1000)}s)
+          </div>
+        ) : (
+          <div className="bg-orange-500/90 text-white font-bold px-6 py-2 rounded-full shadow-lg border-2 border-orange-300 backdrop-blur-sm">
+            Tour de l'adversaire...
           </div>
         )}
+      </div>
 
+      {/* Boneyard (Middle Right) */}
+      <div className="absolute right-0 top-1/2 -translate-y-1/2 w-28 max-h-[60vh] bg-[#a87042] border-l-8 border-y-8 border-[#7a4b27] rounded-l-2xl shadow-[-10px_0_30px_rgba(0,0,0,0.4)] p-3 flex flex-wrap justify-center content-start gap-1.5 overflow-y-auto no-scrollbar z-20">
+        <div className="w-full text-center text-[#3e2712] font-black text-[10px] mb-2 uppercase tracking-wider">Pioche ({gameState?.boneyardCount})</div>
+        {Array.from({ length: gameState?.boneyardCount || 0 }).map((_, i) => (
+          <div key={i} className="w-8 h-12 bg-[#fdfaf1] rounded-sm shadow-sm border border-[#ccc] relative overflow-hidden shrink-0">
+             <div className="absolute inset-0 opacity-[0.15] bg-[radial-gradient(circle,_#8b5a2b_2px,_transparent_2px)] bg-[size:8px_8px]"></div>
+          </div>
+        ))}
+        {/* Draw Overlay */}
+        {isMyTurn && gameState?.boneyardCount > 0 && !hasPlayableTile && (
+          <div 
+            onClick={drawTile}
+            className="absolute inset-0 bg-black/50 flex items-center justify-center text-white font-black text-xl cursor-pointer hover:bg-black/40 transition-colors backdrop-blur-[2px]"
+          >
+            <span className="rotate-90 sm:rotate-0">PIOCHER</span>
+          </div>
+        )}
+      </div>
+
+      {/* Pass Turn Overlay (if no draw and no play) */}
+      {isMyTurn && !hasPlayableTile && gameState?.boneyardCount === 0 && (
+        <button onClick={passTurn} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 px-8 py-4 bg-red-600 hover:bg-red-500 text-white rounded-full font-black shadow-[0_0_30px_rgba(220,38,38,0.6)] animate-pulse text-2xl border-4 border-red-300">
+          PASSER LE TOUR
+        </button>
+      )}
+
+      {/* Selection Left/Right Target Overlays */}
+      {selectedTileIndex !== null && (
+        <div className="absolute inset-0 z-40 flex flex-col bg-black/40 backdrop-blur-sm pointer-events-auto">
+          <div onClick={() => handleBoardClick('left')} className="flex-1 flex flex-col items-center justify-end pb-12 cursor-pointer hover:bg-white/10 transition-colors border-b-2 border-indigo-500/50">
+            <span className="bg-indigo-600 text-white px-8 py-4 rounded-full font-black text-2xl shadow-[0_0_20px_rgba(79,70,229,0.8)] animate-bounce border-2 border-indigo-300">
+              PLACER EN HAUT (Gauche)
+            </span>
+          </div>
+          <div onClick={() => handleBoardClick('right')} className="flex-1 flex flex-col items-center justify-start pt-12 cursor-pointer hover:bg-white/10 transition-colors border-t-2 border-indigo-500/50">
+            <span className="bg-emerald-600 text-white px-8 py-4 rounded-full font-black text-2xl shadow-[0_0_20px_rgba(5,150,105,0.8)] animate-bounce border-2 border-emerald-300">
+              PLACER EN BAS (Droite)
+            </span>
+          </div>
+          {/* Cancel selection */}
+          <button onClick={() => setSelectedTileIndex(null)} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-slate-800 text-white px-6 py-2 rounded-full font-bold shadow-lg border border-slate-600">
+            Annuler la sélection
+          </button>
+        </div>
+      )}
+
+      {/* Board Area (Vertical layout like image) */}
+      <div className="flex-grow flex justify-center w-full h-full p-4 overflow-y-auto no-scrollbar relative z-10 pb-40">
         {gameState?.board.length === 0 ? (
-          <div className="text-slate-600 font-bold text-2xl opacity-50 border-4 border-dashed border-slate-800 p-8 rounded-3xl">
+          <div className="m-auto text-white/50 font-bold text-2xl opacity-50 border-4 border-dashed border-white/20 p-8 rounded-3xl">
             La table est vide
           </div>
         ) : (
-          <div className="w-full flex justify-center overflow-x-auto whitespace-nowrap p-4 no-scrollbar">
-            <div className="flex items-center space-x-1 shrink-0 px-8">
-              {gameState?.board.map((item, idx) => {
-                const [val1, val2] = item.isFlipped ? [item.tile[1], item.tile[0]] : [item.tile[0], item.tile[1]];
-                const isDouble = val1 === val2;
-                return (
-                  <div key={idx} className={`flex shrink-0 bg-slate-100 border-2 border-slate-300 rounded-md shadow-md items-center justify-center overflow-hidden ${isDouble ? 'flex-col w-6 h-12' : 'flex-row w-12 h-6'}`}>
-                    <div className="flex-1 w-full h-full p-0.5 relative flex items-center justify-center">
-                      <DominoFace value={val1} horizontal={!isDouble} />
-                    </div>
-                    <div className={`bg-slate-400 ${isDouble ? 'w-full h-[1px]' : 'h-full w-[1px]'}`}></div>
-                    <div className="flex-1 w-full h-full p-0.5 relative flex items-center justify-center">
-                      <DominoFace value={val2} horizontal={!isDouble} />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+          <div className="flex flex-col items-center justify-center space-y-[2px] m-auto py-12 shrink-0 min-h-full">
+            {gameState?.board.map((item, idx) => {
+              const [val1, val2] = item.isFlipped ? [item.tile[1], item.tile[0]] : [item.tile[0], item.tile[1]];
+              const isDouble = val1 === val2;
+              
+              return (
+                <div key={idx} className={`flex bg-[#fdfaf1] border border-[#d4c9b3] rounded-[4px] shadow-md items-center justify-center overflow-hidden shrink-0 ${isDouble ? 'flex-row w-16 h-8' : 'flex-col w-8 h-16'}`}>
+                  {isDouble ? (
+                    <>
+                      <div className="flex-1 w-full h-full p-1 relative flex items-center justify-center">
+                        <DominoFace value={val1} horizontal={true} />
+                      </div>
+                      <div className="h-full w-[2px] bg-slate-300"></div>
+                      <div className="flex-1 w-full h-full p-1 relative flex items-center justify-center">
+                        <DominoFace value={val2} horizontal={true} />
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex-1 w-full h-full p-1 relative flex items-center justify-center">
+                        <DominoFace value={val1} horizontal={false} />
+                      </div>
+                      <div className="w-full h-[2px] bg-slate-300"></div>
+                      <div className="flex-1 w-full h-full p-1 relative flex items-center justify-center">
+                        <DominoFace value={val2} horizontal={false} />
+                      </div>
+                    </>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
 
-      {/* Action / Boneyard Bar */}
-      <div className="bg-slate-900 border-t border-slate-800 p-4 flex justify-between items-center">
-        <div className="flex items-center space-x-2 text-slate-400 font-bold">
-          <div className="w-6 h-10 bg-slate-800 border border-slate-700 rounded shadow flex items-center justify-center">
-            <div className="w-[2px] h-full bg-slate-700"></div>
-          </div>
-          <span>Pioche : {gameState?.boneyardCount} restants</span>
-        </div>
-        <div className="space-x-4">
-          {isMyTurn && gameState?.boneyardCount > 0 && (
-            <button onClick={drawTile} className="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-bold shadow-lg shadow-indigo-600/20 transition-all">Piocher</button>
-          )}
-          {isMyTurn && gameState?.boneyardCount === 0 && (
-            <button onClick={passTurn} className="px-5 py-2.5 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold shadow-lg shadow-red-600/20 transition-all">Passer</button>
-          )}
-        </div>
-      </div>
-
-      {/* My Hand */}
-      <div className="bg-slate-800 p-4 overflow-x-auto pb-8">
-        <div className="flex items-center justify-center space-x-2 mb-4">
-          <div className="bg-emerald-500/20 p-1.5 rounded-full border border-emerald-500/30">
-            <User className="h-4 w-4 text-emerald-400" />
-          </div>
-          <h3 className="text-white font-bold">Votre Main</h3>
-        </div>
-        
-        <div className="flex space-x-3 justify-center min-w-max px-4">
+      {/* Player Hand Rack (Bottom) */}
+      <div className="absolute bottom-0 left-0 right-0 h-32 bg-[#e3ae73] border-t-[12px] border-[#a06a38] flex justify-center items-end pb-3 px-4 overflow-x-auto shadow-[0_-10px_30px_rgba(0,0,0,0.5)] z-30 no-scrollbar">
+        <div className="flex space-x-2 shrink-0 px-8 h-full items-end">
           {myHand.map((tile, idx) => {
             const isSelected = selectedTileIndex === idx;
+            const playable = isMyTurn && isTilePlayable(tile);
+            
             return (
-              <div key={idx} className="flex flex-col items-center">
-                <div 
-                  onClick={() => handleDominoClick(idx, tile)}
-                  className={`flex flex-col bg-slate-100 border-2 border-slate-300 rounded-xl shadow-xl w-10 h-20 transition-all cursor-pointer overflow-hidden ${
-                    isSelected ? 'ring-4 ring-indigo-500 scale-110 -translate-y-4' : 
-                    isMyTurn ? 'hover:-translate-y-2 ring-2 ring-transparent hover:ring-indigo-300' : 'opacity-80'
-                  }`}
-                >
-                  <div className="flex-1 p-1 relative"><DominoFace value={tile[0]} /></div>
-                  <div className="w-full h-[2px] bg-slate-300"></div>
-                  <div className="flex-1 p-1 relative"><DominoFace value={tile[1]} /></div>
-                </div>
+              <div 
+                key={idx}
+                onClick={() => handleDominoClick(idx, tile)}
+                className={`flex flex-col bg-[#fdfaf1] border-2 border-[#d4c9b3] rounded-lg shadow-[0_5px_15px_rgba(0,0,0,0.4)] w-14 h-[100px] transition-all cursor-pointer overflow-hidden shrink-0 transform origin-bottom ${
+                  isSelected ? 'ring-4 ring-indigo-500 scale-110 -translate-y-4' : 
+                  playable ? 'hover:-translate-y-2 ring-2 ring-transparent' : 'opacity-70'
+                }`}
+              >
+                <div className="flex-1 p-1.5 relative"><DominoFace value={tile[0]} horizontal={false} /></div>
+                <div className="w-full h-[2px] bg-slate-300"></div>
+                <div className="flex-1 p-1.5 relative"><DominoFace value={tile[1]} horizontal={false} /></div>
               </div>
             );
           })}

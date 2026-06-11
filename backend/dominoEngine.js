@@ -350,17 +350,33 @@ const initDominoEngine = (ioInstance) => {
           return socket.emit('domino_error', `Solde insuffisant pour jouer (${requestedWager} HTG requis).`);
         }
 
-        // Prevent same user from joining multiple waiting rooms (testing with same account on 2 devices)
-        let alreadyWaiting = false;
+        // Reconnection logic: Check if user is already in a room (ghost socket or deliberate reconnect)
+        let existingRoomId = null;
         for (const id in rooms) {
-          if (rooms[id].status === 'waiting' && rooms[id].players.find(p => p.userId === userId)) {
-            alreadyWaiting = true;
+          const pIdx = rooms[id].players.findIndex(p => p.userId === userId);
+          if (pIdx !== -1) {
+            existingRoomId = id;
             break;
           }
         }
 
-        if (alreadyWaiting) {
-          return socket.emit('domino_error', 'Ce compte est déjà en attente de partie. Utilisez un autre compte pour jouer contre vous-même.');
+        if (existingRoomId) {
+          const room = rooms[existingRoomId];
+          const p = room.players.find(p => p.userId === userId);
+          
+          if (room.status === 'playing' || room.status === 'waiting') {
+            // Reconnect to the room
+            if (p.disconnectTimer) {
+              clearTimeout(p.disconnectTimer);
+              p.disconnectTimer = null;
+            }
+            p.socketId = socket.id;
+            p.connected = true;
+            socket.join(existingRoomId);
+            socket.dominoRoom = existingRoomId;
+            broadcastRoomState(existingRoomId);
+            return; // Successfully reconnected
+          }
         }
 
         // Find waiting room or create new

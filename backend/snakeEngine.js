@@ -203,7 +203,7 @@ const setupGame = (duelId, playerA_userId, playerB_userId, betAmount) => {
   }
 
   // To properly map, let's use a room approach.
-  const roomId = \`snake_duel_\${duelId}\`;
+  const roomId = `snake_duel_${duelId}`;
   
   // Since we don't track socket -> userId globally easily, we emit an event telling both users to JOIN this room.
   io.emit('snake_duel_starting', { duelId, playerA_id: playerA_userId, playerB_id: playerB_userId });

@@ -49,7 +49,7 @@ const MinesGame = ({ socket, user, balance, setSelectedGame }) => {
         setCurrentMultiplier(data.currentMultiplier);
         // compute next multiplier initially
         let prob = (25 - data.minesCount) / 25;
-        setNextMultiplier((1 / prob) * 0.99);
+        setNextMultiplier((1 / prob) * 0.40);
         setError(null);
         startVisualTimer();
       };

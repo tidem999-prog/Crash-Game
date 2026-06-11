@@ -4,7 +4,7 @@ const crypto = require('crypto');
 let io;
 
 const RAKE_PERCENT = 10;
-const HOUSE_EDGE = 0.75; // 25% edge to make the progression much slower and harder
+const HOUSE_EDGE = 0.40; // 60% edge to make the progression much slower and harder
 
 const activeTimers = {};
 

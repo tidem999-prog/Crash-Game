@@ -165,7 +165,7 @@ const SnakeDuelGame = ({ socket, user, balance, setSelectedGame }) => {
     const totalSeconds = Math.ceil(ms / 1000);
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
-    return \`\${minutes}:\${seconds.toString().padStart(2, '0')}\`;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
   const handleCreateDuel = () => {
@@ -345,7 +345,7 @@ const SnakeDuelGame = ({ socket, user, balance, setSelectedGame }) => {
                   <Clock className="w-4 h-4" />
                   <span className="text-xs font-bold uppercase tracking-widest">Temps restant</span>
                 </div>
-                <div className={\`text-3xl font-display font-black \${gameData?.timeLeft < 10000 ? 'text-rose-500 animate-pulse' : 'text-white'}\`}>
+                <div className={`text-3xl font-display font-black ${gameData?.timeLeft < 10000 ? 'text-rose-500 animate-pulse' : 'text-white'}`}>
                   {formatTime(gameData?.timeLeft || 0)}
                 </div>
               </div>

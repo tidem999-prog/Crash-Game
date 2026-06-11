@@ -6,10 +6,37 @@ let io;
 const RAKE_PERCENT = 10;
 const HOUSE_EDGE = 0.75; // 25% edge to make the progression much slower and harder
 
-// We can keep a minimal cache of active games in memory for fast access,
-// or just query the database. For simplicity and robustness, we query the DB.
+const activeTimers = {};
 
-// Helper: Deterministic shuffle using hashes (Provably Fair)
+const clearMinesTimer = (gameId) => {
+  if (activeTimers[gameId]) {
+    clearTimeout(activeTimers[gameId]);
+    delete activeTimers[gameId];
+  }
+};
+
+const startMinesTimer = (socket, userId, gameId) => {
+  clearMinesTimer(gameId);
+  activeTimers[gameId] = setTimeout(async () => {
+    delete activeTimers[gameId];
+    try {
+      const gameRes = await query(`SELECT * FROM mines_games WHERE id = $1 FOR UPDATE`, [gameId]);
+      if (gameRes.rows.length > 0 && gameRes.rows[0].status === 'active') {
+        const game = gameRes.rows[0];
+        await query(`UPDATE mines_games SET status = 'lost' WHERE id = $1`, [gameId]);
+        socket.emit('mines_game_over', {
+          status: 'lost_timeout',
+          gridMines: game.grid_mines,
+          serverSeed: game.server_seed
+        });
+      }
+    } catch (err) {
+      console.error('Timeout error:', err);
+    }
+  }, 4000); // 4 seconds timeout
+};
+
+// We can keep a minimal cache of active games in memory for fast access,
 const generateMines = (serverSeed, clientSeed, minesCount) => {
   const allTiles = Array.from({ length: 25 }, (_, i) => i);
   let currentHash = crypto.createHash('sha256').update(serverSeed + clientSeed).digest('hex');
@@ -84,8 +111,10 @@ const handleMinesStart = async (socket, payload) => {
       minesCount,
       clientSeed,
       serverSeedHash, // Client can verify later
-      currentMultiplier: 1.0000
+      currentMultiplier: 1.00
     });
+
+    startMinesTimer(socket, userId, gameId);
 
   } catch (err) {
     console.error('Error starting Mines game:', err);
@@ -116,6 +145,8 @@ const handleMinesReveal = async (socket, payload) => {
     if (revealedTiles.includes(tileIndex)) {
       return; // Already revealed
     }
+
+    clearMinesTimer(gameId);
 
     if (gridMines.includes(tileIndex)) {
       // BOOM! Lost.
@@ -183,6 +214,8 @@ const handleMinesReveal = async (socket, payload) => {
       nextMultiplier: calculateNextMultiplier(game.mines_count, k + 1) * HOUSE_EDGE
     });
 
+    startMinesTimer(socket, userId, gameId);
+
   } catch (err) {
     console.error('Error revealing Mines tile:', err);
     socket.emit('mines_error', 'Erreur lors du traitement de la case.');
@@ -200,6 +233,8 @@ const handleMinesCashout = async (socket, payload) => {
     const game = gameRes.rows[0];
     if (game.status !== 'active') return socket.emit('mines_error', 'Partie déjà terminée.');
     if (game.revealed_tiles.length === 0) return socket.emit('mines_error', 'Vous devez révéler au moins une case.');
+
+    clearMinesTimer(gameId);
 
     const payoutAmount = parseFloat(game.net_stake) * parseFloat(game.current_multiplier);
 

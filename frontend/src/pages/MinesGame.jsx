@@ -15,6 +15,26 @@ const MinesGame = ({ socket, user, balance, setSelectedGame }) => {
   
   const [error, setError] = useState(null);
   
+  const [timeLeft, setTimeLeft] = useState(4.0);
+  const timerRef = useRef(null);
+
+  const startVisualTimer = () => {
+    setTimeLeft(4.0);
+    if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 0.1) {
+          clearInterval(timerRef.current);
+          return 0;
+        }
+        return prev - 0.1;
+      });
+    }, 100);
+  };
+
+  const stopVisualTimer = () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+  };
 
   // Recovery on mount
   useEffect(() => {
@@ -31,6 +51,7 @@ const MinesGame = ({ socket, user, balance, setSelectedGame }) => {
         let prob = (25 - data.minesCount) / 25;
         setNextMultiplier((1 / prob) * 0.99);
         setError(null);
+        startVisualTimer();
       };
 
       const onRecovered = (data) => {
@@ -41,12 +62,14 @@ const MinesGame = ({ socket, user, balance, setSelectedGame }) => {
         setCurrentMultiplier(data.currentMultiplier);
         setNextMultiplier(data.nextMultiplier);
         setError(null);
+        startVisualTimer();
       };
 
       const onRevealSafe = (data) => {
         setRevealedTiles(prev => [...prev, data.tileIndex]);
         setCurrentMultiplier(data.currentMultiplier);
         setNextMultiplier(data.nextMultiplier);
+        startVisualTimer();
       };
 
       const onGameOver = (data) => {
@@ -56,6 +79,7 @@ const MinesGame = ({ socket, user, balance, setSelectedGame }) => {
           // Optional: Add some sound effect or local animation
         }
         setGameData(prev => prev ? { ...prev, serverSeed: data.serverSeed } : null);
+        stopVisualTimer();
       };
 
       const onError = (msg) => {
@@ -142,6 +166,23 @@ const MinesGame = ({ socket, user, balance, setSelectedGame }) => {
         <div className="mb-6 bg-red-500/10 border border-red-500/50 text-red-400 p-4 rounded-xl flex items-center justify-center font-bold shadow-lg shadow-red-500/10 animate-shake">
           <AlertTriangle className="mr-2 h-5 w-5" />
           {error}
+        </div>
+      )}
+
+      {gameState === 'playing' && (
+        <div className="mb-6 w-full bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col justify-center items-center">
+          <div className="flex justify-between w-full px-2 mb-2">
+            <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Temps Restant</span>
+            <span className={`text-xs font-black ${timeLeft <= 1 ? 'text-red-500 animate-pulse' : 'text-cyan-400'}`}>
+              {timeLeft.toFixed(1)}s
+            </span>
+          </div>
+          <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+            <div 
+              className={`h-2 rounded-full transition-all duration-100 ease-linear ${timeLeft <= 1 ? 'bg-red-500' : 'bg-cyan-500'}`}
+              style={{ width: `${(timeLeft / 4) * 100}%` }}
+            ></div>
+          </div>
         </div>
       )}
 

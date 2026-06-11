@@ -58,24 +58,31 @@ const startMatch = async (roomId) => {
 
   room.turnIndex = firstIndex;
   
-  // Debit balances & record bets
-  for (let p of room.players) {
-    const userRes = await query('SELECT balance FROM users WHERE id = $1 FOR UPDATE', [p.userId]);
-    const newBalance = parseFloat(userRes.rows[0].balance) - room.buyIn;
-    await query('UPDATE users SET balance = $1 WHERE id = $2', [newBalance, p.userId]);
-    
-    const betRes = await query(
-      `INSERT INTO bets (user_id, game_id, bet_amount, cashout_multiplier, payout_amount, is_won) 
-       VALUES ($1, null, $2, null, 0.00, false) RETURNING id`,
-      [p.userId, room.buyIn]
-    );
-    p.betId = betRes.rows[0].id;
-    p.hasPaid = true;
-  }
-  room.pot = room.buyIn * 2;
+  try {
+    // Debit balances & record bets
+    for (let p of room.players) {
+      const userRes = await query('SELECT balance FROM users WHERE id = $1 FOR UPDATE', [p.userId]);
+      const newBalance = parseFloat(userRes.rows[0].balance) - room.buyIn;
+      await query('UPDATE users SET balance = $1 WHERE id = $2', [newBalance, p.userId]);
+      
+      const betRes = await query(
+        `INSERT INTO bets (user_id, game_id, bet_amount, cashout_multiplier, payout_amount, is_won) 
+         VALUES ($1, null, $2, null, 0.00, false) RETURNING id`,
+        [p.userId, room.buyIn]
+      );
+      p.betId = betRes.rows[0].id;
+      p.hasPaid = true;
+    }
+    room.pot = room.buyIn * 2;
 
-  broadcastRoomState(roomId);
-  startTurnTimer(roomId);
+    broadcastRoomState(roomId);
+    startTurnTimer(roomId);
+  } catch (err) {
+    console.error('Erreur lors du démarrage de la partie Domino:', err);
+    io.to(roomId).emit('domino_error', 'Erreur serveur lors de la création de la partie. Les mises n\'ont pas été prélevées.');
+    room.status = 'finished';
+    delete rooms[roomId];
+  }
 };
 
 // Timer management
@@ -343,15 +350,25 @@ const initDominoEngine = (ioInstance) => {
           return socket.emit('domino_error', `Solde insuffisant pour jouer (${requestedWager} HTG requis).`);
         }
 
+        // Prevent same user from joining multiple waiting rooms (testing with same account on 2 devices)
+        let alreadyWaiting = false;
+        for (const id in rooms) {
+          if (rooms[id].status === 'waiting' && rooms[id].players.find(p => p.userId === userId)) {
+            alreadyWaiting = true;
+            break;
+          }
+        }
+
+        if (alreadyWaiting) {
+          return socket.emit('domino_error', 'Ce compte est déjà en attente de partie. Utilisez un autre compte pour jouer contre vous-même.');
+        }
+
         // Find waiting room or create new
         let roomId = null;
         for (const id in rooms) {
           if (rooms[id].status === 'waiting' && rooms[id].buyIn === requestedWager && rooms[id].players.length < 2) {
-            // Check if already in room
-            if (!rooms[id].players.find(p => p.userId === userId)) {
-              roomId = id;
-              break;
-            }
+            roomId = id;
+            break;
           }
         }
 

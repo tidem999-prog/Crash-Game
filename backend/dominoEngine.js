@@ -3,7 +3,7 @@ const { query } = require('./db');
 let io;
 
 const RAKE_PERCENT = 10;
-const TURN_TIMEOUT_MS = 20000;
+const TURN_TIMEOUT_MS = 60000;
 const DISCONNECT_TIMEOUT_MS = 30000;
 
 // All 28 dominos

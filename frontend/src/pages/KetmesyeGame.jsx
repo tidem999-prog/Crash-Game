@@ -900,10 +900,10 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
   };
 
   return (
-    <div className={`flex flex-col bg-slate-950 overflow-hidden relative transition-all duration-300 ${
+    <div className={`flex flex-col bg-slate-950 overflow-hidden transition-all duration-300 ${
       isPlaying
-        ? 'fixed inset-0 z-50 rounded-none' // Fullscreen mode over Dashboard when playing
-        : 'w-full min-h-[500px] border border-slate-900 rounded-3xl' // Normal embedded mode
+        ? 'fixed inset-0 z-[100] rounded-none' // Fullscreen mode over Dashboard when playing
+        : 'relative w-full min-h-[500px] border border-slate-900 rounded-3xl' // Normal embedded mode
     }`}>
       
       {/* Header bar */}
@@ -953,7 +953,9 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
       <div className="flex-grow flex flex-col md:flex-row relative">
         
         {/* Game Canvas Container */}
-        <div className="flex-grow relative h-[420px] sm:h-[450px] overflow-hidden bg-slate-950/80">
+        <div className={`flex-grow relative overflow-hidden bg-slate-950/80 ${
+          isPlaying ? 'min-h-[420px]' : 'h-[420px] sm:h-[450px]'
+        }`}>
           
           {/* Main game Canvas */}
           <canvas 

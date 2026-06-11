@@ -57,6 +57,15 @@ const handleGameTick = async () => {
       snake.isInvincible = false;
     }
 
+    // Energy and Boost speed logic
+    if (snake.isBoosting && snake.energy > 0) {
+      snake.speed = 16; // Faster speed
+      snake.energy = Math.max(0, snake.energy - 2); // Drain energy
+    } else {
+      snake.speed = 10; // Normal speed
+      snake.energy = Math.min(100, snake.energy + 1.5); // Recover energy
+    }
+
     const head = { ...snake.segments[0] };
     
     // Update head position
@@ -260,7 +269,8 @@ const handleGameTick = async () => {
         angle: s.angle,
         color: s.color,
         eliminations: s.eliminations,
-        isInvincible: s.isInvincible
+        isInvincible: s.isInvincible,
+        energy: s.energy
       };
       return acc;
     }, {}),
@@ -375,7 +385,9 @@ const initKetmesyeEngine = (socketIoInstance) => {
           eliminations: 0,
           isInvincible: true,
           spawnTime: Date.now(),
-          betId
+          betId,
+          isBoosting: false,
+          energy: 100
         };
 
         socket.emit('ketmesye_join_success', {
@@ -399,6 +411,14 @@ const initKetmesyeEngine = (socketIoInstance) => {
       const snake = snakes[socket.id];
       if (snake && typeof angle === 'number') {
         snake.angle = angle;
+      }
+    });
+
+    // 2.5 Input Boost
+    socket.on('ketmesye_boost', (data) => {
+      const snake = snakes[socket.id];
+      if (snake) {
+        snake.isBoosting = !!data.isBoosting;
       }
     });
 

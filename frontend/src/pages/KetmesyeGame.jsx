@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Award, Play, AlertTriangle, ArrowLeft, Trophy, Shield, Coins, Sparkles, HelpCircle } from 'lucide-react';
+import { Award, Play, AlertTriangle, ArrowLeft, Trophy, Shield, Coins, Sparkles, HelpCircle, Zap } from 'lucide-react';
 
 export default function KetmesyeGame({ socket, onBackToLobby, addNotification }) {
   const { user, refreshBalance, updateBalance } = useAuth();
@@ -28,6 +28,8 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification })
   const requestRef = useRef(null);
   const mousePosRef = useRef({ x: 0, y: 0 });
   const lastAngleEmitRef = useRef(0);
+  const lastBoostEmitRef = useRef(false);
+  const lastTouchTimeRef = useRef(0);
   
   // Game states in refs for fast canvas drawing loop (avoids react render lag)
   const snakesRef = useRef({});
@@ -69,7 +71,8 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification })
         setMySnake({
           value: pSnake.value,
           eliminations: pSnake.eliminations,
-          length: pSnake.segments.length
+          length: pSnake.segments.length,
+          energy: pSnake.energy || 0
         });
       }
     });
@@ -82,7 +85,8 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification })
       setMySnake({
         value: data.initialValue,
         eliminations: 0,
-        length: 5
+        length: 5,
+        energy: 100
       });
       updateBalance(data.newBalance);
       addNotification(`Vous avez rejoint l'arène avec ${data.wager} HTG !`, 'success');
@@ -208,6 +212,17 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification })
           }
         }
 
+        // Energy and Boost speed logic (local simulation)
+        if (s.isBoosting && s.energy > 0) {
+          s.speed = 16;
+          s.energy = Math.max(0, s.energy - 2);
+        } else {
+          s.speed = id.startsWith('bot_') ? 7 : 10;
+          if (s.energy !== undefined) {
+            s.energy = Math.min(100, s.energy + 1.5);
+          }
+        }
+
         const head = { ...s.segments[0] };
         head.x += Math.cos(s.angle) * s.speed;
         head.y += Math.sin(s.angle) * s.speed;
@@ -287,7 +302,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification })
             }
           }
         }
-        setMySnake({ value: me.value, eliminations: me.eliminations, length: me.segments.length });
+        setMySnake({ value: me.value, eliminations: me.eliminations, length: me.segments.length, energy: me.energy || 0 });
       }
 
       // Bots eating food
@@ -371,7 +386,9 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification })
       color: '#34d399', // Green
       eliminations: 0,
       isInvincible: false,
-      spawnTime: Date.now()
+      spawnTime: Date.now(),
+      isBoosting: false,
+      energy: 100
     };
 
     setIsPlaying(true);
@@ -380,7 +397,8 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification })
     setMySnake({
       value: initialValue,
       eliminations: 0,
-      length: 5
+      length: 5,
+      energy: 100
     });
     addNotification(`[Mode Démo] Spawn réussi !`, 'success');
   };
@@ -717,7 +735,56 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification })
     }
   };
 
+  const handleBoostChange = (isBoosting) => {
+    if (lastBoostEmitRef.current === isBoosting || !isPlaying) return;
+    lastBoostEmitRef.current = isBoosting;
+
+    const myId = mySnakeIdRef.current;
+    if (myId && snakesRef.current[myId]) {
+      snakesRef.current[myId].isBoosting = isBoosting;
+    }
+
+    if (!isLocalSim && socket && socket.connected) {
+      socket.emit('ketmesye_boost', { isBoosting });
+    }
+  };
+
+  // Keyboard controls for boost
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        handleBoostChange(true);
+      }
+    };
+    const handleKeyUp = (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        handleBoostChange(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [isPlaying]);
+
   // Track touch coordinates on canvas to compute moving direction (mobile support)
+  const handleTouchStart = (e) => {
+    const now = Date.now();
+    if (now - lastTouchTimeRef.current < 300) {
+      handleBoostChange(true);
+    }
+    lastTouchTimeRef.current = now;
+    handleTouchMove(e);
+  };
+
+  const handleTouchEnd = (e) => {
+    handleBoostChange(false);
+  };
+
   const handleTouchMove = (e) => {
     const canvas = canvasRef.current;
     if (!canvas || !isPlaying || e.touches.length === 0) return;
@@ -833,8 +900,13 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification })
           <canvas 
             ref={canvasRef} 
             onMouseMove={handleMouseMove}
-            onTouchStart={handleTouchMove}
+            onMouseDown={() => handleBoostChange(true)}
+            onMouseUp={() => handleBoostChange(false)}
+            onMouseLeave={() => handleBoostChange(false)}
+            onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+            onTouchCancel={handleTouchEnd}
             className="block w-full h-full cursor-crosshair touch-none" 
           />
 
@@ -862,10 +934,19 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification })
 
               {/* Floating Bottom Center Wager / Cashout Box (Highly optimized and responsive for mobile) */}
               <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-slate-950/90 backdrop-blur-md border border-slate-800 p-3 rounded-2xl flex items-center space-x-4 shadow-2xl z-20 w-[92%] sm:w-auto sm:min-w-[280px]">
-                <div className="flex flex-col shrink-0">
+                <div className="flex flex-col shrink-0 w-24">
                   <span className="text-[9px] text-slate-500 uppercase font-bold tracking-wider">Solde Arena</span>
                   <span className="font-mono text-base sm:text-lg font-black text-emerald-400">{mySnake.value.toFixed(2)} G</span>
-                  <span className="text-[8px] text-slate-400">{mySnake.eliminations} kills</span>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-[8px] text-slate-400">{mySnake.eliminations} kills</span>
+                  </div>
+                  {/* Energy Bar */}
+                  <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden" title="Énergie pour Boost">
+                    <div 
+                      className={`h-full transition-all duration-75 ${mySnake.energy > 20 ? 'bg-yellow-400' : 'bg-red-500'}`}
+                      style={{ width: `${Math.max(0, Math.min(100, mySnake.energy || 0))}%` }}
+                    />
+                  </div>
                 </div>
 
                 <button
@@ -873,9 +954,19 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification })
                   className="flex-grow flex items-center justify-center space-x-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black px-4 py-2.5 rounded-xl shadow-lg shadow-emerald-600/25 transition-all text-xs sm:text-sm"
                 >
                   <Coins className="h-3.5 w-3.5" />
-                  <span>CASH OUT (RETRAIT)</span>
+                  <span>CASH OUT</span>
                 </button>
               </div>
+
+              {/* Mobile Boost Button */}
+              <button 
+                className="absolute bottom-24 right-4 sm:hidden bg-yellow-500/80 backdrop-blur-md p-3.5 rounded-full border-2 border-yellow-400 shadow-[0_0_15px_rgba(234,179,8,0.5)] touch-none select-none z-30"
+                onTouchStart={(e) => { e.preventDefault(); handleBoostChange(true); }}
+                onTouchEnd={(e) => { e.preventDefault(); handleBoostChange(false); }}
+                onTouchCancel={(e) => { e.preventDefault(); handleBoostChange(false); }}
+              >
+                <Zap className="h-6 w-6 text-white fill-white" />
+              </button>
             </>
           )}
 

@@ -236,7 +236,7 @@ const MinesGame = ({ socket, user, balance, setSelectedGame }) => {
             {gameState === 'playing' && (
               <div className="mt-6 p-4 bg-slate-950/50 rounded-xl border border-slate-800/50 flex justify-between items-center">
                 <span className="text-slate-400 text-xs font-bold">Prochain gain</span>
-                <span className="text-cyan-400 font-black">{nextMultiplier.toFixed(2)}x</span>
+                <span className="text-cyan-400 font-black">{Number(nextMultiplier).toFixed(2)}x</span>
               </div>
             )}
             
@@ -293,7 +293,7 @@ const MinesGame = ({ socket, user, balance, setSelectedGame }) => {
             {gameState === 'playing' && (
               <div className="animate-fade-in">
                 <p className="text-cyan-400 font-display font-black text-3xl drop-shadow-[0_0_10px_rgba(6,182,212,0.5)]">
-                  {currentMultiplier.toFixed(2)}x
+                  {Number(currentMultiplier).toFixed(2)}x
                 </p>
               </div>
             )}
@@ -302,7 +302,7 @@ const MinesGame = ({ socket, user, balance, setSelectedGame }) => {
                 <p className="text-emerald-400 font-display font-black text-3xl drop-shadow-[0_0_10px_rgba(16,185,129,0.5)] mb-1">
                   +{currentPayout} HTG
                 </p>
-                <p className="text-emerald-500/80 text-sm font-bold uppercase tracking-wider">Encaissé à {currentMultiplier.toFixed(2)}x</p>
+                <p className="text-emerald-500/80 text-sm font-bold uppercase tracking-wider">Encaissé à {Number(currentMultiplier).toFixed(2)}x</p>
               </div>
             )}
              {gameState === 'won' && (
@@ -310,7 +310,7 @@ const MinesGame = ({ socket, user, balance, setSelectedGame }) => {
                 <p className="text-emerald-400 font-display font-black text-3xl drop-shadow-[0_0_10px_rgba(16,185,129,0.5)] mb-1">
                   +{currentPayout} HTG
                 </p>
-                <p className="text-emerald-500/80 text-sm font-bold uppercase tracking-wider">Plateau nettoyé à {currentMultiplier.toFixed(2)}x !</p>
+                <p className="text-emerald-500/80 text-sm font-bold uppercase tracking-wider">Plateau nettoyé à {Number(currentMultiplier).toFixed(2)}x !</p>
               </div>
             )}
             {gameState === 'lost' && (

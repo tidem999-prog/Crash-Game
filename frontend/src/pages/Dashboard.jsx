@@ -854,7 +854,7 @@ export default function Dashboard() {
                 </button>
               </div>
 
-              {/* Card 3: Domino */}
+              {/* Card 3: Domino (HIDDEN FOR NOW)
               <div className="glass-panel group relative rounded-3xl p-6 bg-slate-900/40 border border-slate-800 hover:border-emerald-500/30 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-xl transform hover:-translate-y-1 md:col-span-2 max-w-xl mx-auto w-full">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-emerald-500/10 transition-all duration-300"></div>
 
@@ -883,6 +883,7 @@ export default function Dashboard() {
                   REJOINDRE (DOMINO 1v1)
                 </button>
               </div>
+              */}
             </div>
           </div>
         )}

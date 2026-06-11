@@ -900,11 +900,12 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
   };
 
   return (
-    <div className={`flex flex-col bg-slate-950 overflow-hidden transition-all duration-300 ${
-      isPlaying
-        ? 'fixed inset-0 z-[100] rounded-none' // Fullscreen mode over Dashboard when playing
-        : 'relative w-full min-h-[500px] border border-slate-900 rounded-3xl' // Normal embedded mode
-    }`}>
+    <div 
+      className={`flex flex-col bg-slate-950 overflow-hidden transition-all duration-300 ${
+        isPlaying ? 'z-[9999]' : 'relative w-full min-h-[500px] border border-slate-900 rounded-3xl'
+      }`}
+      style={isPlaying ? { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, height: '100dvh', width: '100vw' } : {}}
+    >
       
       {/* Header bar */}
       <div className="bg-slate-900/90 border-b border-slate-800 px-3 py-2 sm:px-6 sm:py-4 flex items-center justify-between z-10">
@@ -950,12 +951,13 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
         </div>
       </div>
 
-      <div className="flex-grow flex flex-col md:flex-row relative">
+      <div className="flex-grow flex flex-col md:flex-row relative" style={isPlaying ? { height: '100%' } : {}}>
         
         {/* Game Canvas Container */}
-        <div className={`flex-grow relative overflow-hidden bg-slate-950/80 ${
-          isPlaying ? 'min-h-[420px]' : 'h-[420px] sm:h-[450px]'
-        }`}>
+        <div 
+          className="relative overflow-hidden bg-slate-950/80" 
+          style={{ flex: 1, minHeight: isPlaying ? '0' : '420px' }}
+        >
           
           {/* Main game Canvas */}
           <canvas 

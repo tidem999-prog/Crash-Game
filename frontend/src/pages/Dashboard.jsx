@@ -9,7 +9,6 @@ import {
 import KetmesyeGame from './KetmesyeGame';
 import DominoGame from './DominoGame';
 import MinesGame from './MinesGame';
-import SnakeDuelGame from './SnakeDuelGame';
 import KothGame from './KothGame';
 
 export default function Dashboard() {
@@ -1141,7 +1140,13 @@ export default function Dashboard() {
 
         {/* Tab content: PLAY GAME (SNAKE DUEL ACTIVE) */}
         {activeTab === 'play' && selectedGame === 'snake_duel' && (
-          <SnakeDuelGame socket={socket} user={user} balance={userBalanceRef.current} setSelectedGame={setSelectedGame} />
+          <KetmesyeGame 
+            socket={socket} 
+            onBackToLobby={() => setSelectedGame(null)} 
+            addNotification={addNotification} 
+            onPlayStateChange={(playing) => setIsKetmesyePlaying(playing)}
+            initialMode="duel"
+          />
         )}
 
         {/* Tab content: PLAY GAME (KOTH ACTIVE) */}

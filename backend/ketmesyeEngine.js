@@ -8,10 +8,16 @@ const MAP_HEIGHT = 2000;
 const TICK_RATE_MS = 50; // 20 updates per second
 const PATH_SPACING = 2; // Spacing of path history indices for body segments
 const INVINCIBLE_TIME_MS = 2000; // 2 seconds invincibility on spawn
+const GAME_DURATION_MS = 2 * 60 * 1000; // 2 minutes for a duel
 
-// Game State
+// Game State (Public Sandbox)
 let snakes = {}; // { [socketId]: { id, userId, email, wager, value, segments, pathHistory, angle, speed, color, eliminations, isInvincible, spawnTime, betId } }
 let pellets = []; // Array of { id, x, y, value, color, isCashDrop }
+
+// Game State (1v1 Duels)
+const pendingDuels = {}; // maps duelId -> { id, betAmount, creatorEmail, playerAId }
+const activeDuels = {}; // maps duelId -> { id, roomId, betAmount, status, playerA_id, playerB_id, snakes: {}, pellets: [], timeLeft, startedAt, timer }
+const activeDuelPlayers = {}; // maps socketId -> duelId
 
 let gameLoopInterval = null;
 
@@ -41,7 +47,7 @@ const spawnNormalPellets = (count) => {
 // Initialize the pellets pool (150 normal pellets)
 spawnNormalPellets(150);
 
-// Tick loop running on the server
+// Tick loop running on the server for the public arena
 const handleGameTick = async () => {
   const socketIds = Object.keys(snakes);
   if (socketIds.length === 0) return;
@@ -291,6 +297,463 @@ const handleGameTick = async () => {
   io.emit('ketmesye_tick', broadcastPayload);
 };
 
+// Broadcast the list of pending duels to anyone listening
+const broadcastPendingDuels = async () => {
+  try {
+    const list = Object.values(pendingDuels);
+    io.emit('ketmesye_pending_duels', list);
+  } catch (err) {
+    console.error('Error broadcasting pending duels:', err);
+  }
+};
+
+const sendPendingDuelsToSocket = (socket) => {
+  const list = Object.values(pendingDuels);
+  socket.emit('ketmesye_pending_duels', list);
+};
+
+const spawnDuelPellets = (duel, count) => {
+  for (let i = 0; i < count; i++) {
+    duel.pellets.push({
+      id: Math.random().toString(36).substring(2, 9),
+      x: Math.floor(Math.random() * (MAP_WIDTH - 40)) + 20,
+      y: Math.floor(Math.random() * (MAP_HEIGHT - 40)) + 20,
+      value: 0.10,
+      color: getRandomColor(),
+      isCashDrop: false
+    });
+  }
+};
+
+const setupKetmesyeDuel = (duelId, playerA_id, playerB_id, betAmount) => {
+  const roomId = `ketmesye_duel_${duelId}`;
+  activeDuels[duelId] = {
+    id: duelId,
+    roomId,
+    betAmount,
+    status: 'waiting',
+    playerA_id,
+    playerB_id,
+    snakes: {},
+    pellets: [],
+    timeLeft: GAME_DURATION_MS,
+    startedAt: null,
+    timer: null
+  };
+
+  spawnDuelPellets(activeDuels[duelId], 60);
+
+  // Notify players to claim their spots
+  io.emit('ketmesye_duel_starting', { duelId, playerA_id, playerB_id });
+
+  // Start the game loop after 5 seconds
+  setTimeout(() => {
+    startDuelLoop(duelId);
+  }, 5000);
+};
+
+const startDuelLoop = (duelId) => {
+  const duel = activeDuels[duelId];
+  if (!duel) return;
+
+  const playerKeys = Object.keys(duel.snakes);
+  if (playerKeys.length < 2) {
+    cancelDuel(duelId, 'Adversaire non connecté.');
+    return;
+  }
+
+  duel.status = 'playing';
+  duel.startedAt = Date.now();
+
+  duel.timer = setInterval(() => {
+    handleDuelTick(duelId);
+  }, TICK_RATE_MS);
+};
+
+const handleDuelTick = async (duelId) => {
+  const duel = activeDuels[duelId];
+  if (!duel) return;
+
+  const elapsed = Date.now() - duel.startedAt;
+  duel.timeLeft = Math.max(0, GAME_DURATION_MS - elapsed);
+
+  if (duel.timeLeft <= 0) {
+    resolveDuel(duelId);
+    return;
+  }
+
+  const socketIds = Object.keys(duel.snakes);
+  const now = Date.now();
+
+  // 1. Move snakes
+  socketIds.forEach(id => {
+    const snake = duel.snakes[id];
+    if (snake.isInvincible && now - snake.spawnTime > INVINCIBLE_TIME_MS) {
+      snake.isInvincible = false;
+    }
+
+    if (snake.isBoosting && snake.energy > 0) {
+      snake.speed = 16;
+      snake.energy = Math.max(0, snake.energy - 2);
+    } else {
+      snake.speed = 10;
+      snake.energy = Math.min(100, snake.energy + 1.5);
+    }
+
+    const head = { ...snake.segments[0] };
+    head.x += Math.cos(snake.angle) * snake.speed;
+    head.y += Math.sin(snake.angle) * snake.speed;
+
+    snake.pathHistory.unshift(head);
+
+    const segmentCount = snake.segments.length;
+    for (let i = 0; i < segmentCount; i++) {
+      const historyIndex = i * PATH_SPACING;
+      if (snake.pathHistory[historyIndex]) {
+        snake.segments[i] = { ...snake.pathHistory[historyIndex] };
+      } else {
+        snake.segments[i] = { ...snake.pathHistory[snake.pathHistory.length - 1] };
+      }
+    }
+
+    const maxHistoryNeeded = segmentCount * PATH_SPACING;
+    if (snake.pathHistory.length > maxHistoryNeeded + 20) {
+      snake.pathHistory.length = maxHistoryNeeded + 10;
+    }
+  });
+
+  // 2. Collision checking
+  const deadSnakes = new Set();
+  const collisionKills = [];
+
+  socketIds.forEach(idA => {
+    const snakeA = duel.snakes[idA];
+    const headA = snakeA.segments[0];
+
+    // Bounds check
+    if (headA.x < 0 || headA.x > MAP_WIDTH || headA.y < 0 || headA.y > MAP_HEIGHT) {
+      deadSnakes.add(idA);
+      return;
+    }
+
+    // Check against opponent
+    socketIds.forEach(idB => {
+      if (deadSnakes.has(idA)) return;
+      const snakeB = duel.snakes[idB];
+
+      if (idA !== idB) {
+        const headB = snakeB.segments[0];
+        const dist = Math.hypot(headA.x - headB.x, headA.y - headB.y);
+        if (dist < 20) {
+          if (snakeA.isInvincible || snakeB.isInvincible) return;
+          if (snakeA.value > snakeB.value) {
+            deadSnakes.add(idB);
+            collisionKills.push({ killerId: idA, deadId: idB });
+          } else if (snakeB.value > snakeA.value) {
+            deadSnakes.add(idA);
+            collisionKills.push({ killerId: idB, deadId: idA });
+          } else {
+            deadSnakes.add(idA);
+            deadSnakes.add(idB);
+          }
+          return;
+        }
+      }
+
+      // Head to body collision
+      const startSegmentIndex = (idA === idB) ? 3 : 0;
+      for (let i = startSegmentIndex; i < snakeB.segments.length; i++) {
+        if (snakeA.isInvincible || snakeB.isInvincible) continue;
+        const segment = snakeB.segments[i];
+        const dist = Math.hypot(headA.x - segment.x, headA.y - segment.y);
+        if (dist < 18) {
+          deadSnakes.add(idA);
+          if (idA !== idB) {
+            collisionKills.push({ killerId: idB, deadId: idA });
+          }
+          break;
+        }
+      }
+    });
+  });
+
+  // 3. Process dead snakes (Respawn logic in Duel)
+  deadSnakes.forEach(deadId => {
+    const snake = duel.snakes[deadId];
+    if (snake) {
+      snake.deaths += 1;
+      
+      // Increment killer eliminations
+      const killInfo = collisionKills.find(k => k.deadId === deadId);
+      if (killInfo) {
+        const killer = duel.snakes[killInfo.killerId];
+        if (killer) {
+          killer.eliminations += 1;
+          const killerSocket = io.sockets.sockets.get(killInfo.killerId);
+          if (killerSocket) {
+            killerSocket.emit('ketmesye_kill', { killed: snake.email.split('@')[0] });
+          }
+        }
+      }
+
+      // Drop cash pellets in the duel room
+      const segmentCount = snake.segments.length;
+      const totalValueToDrop = snake.value * 0.5;
+      const valuePerDrop = parseFloat((totalValueToDrop / segmentCount).toFixed(4));
+      
+      snake.segments.forEach(seg => {
+        duel.pellets.push({
+          id: Math.random().toString(36).substring(2, 9),
+          x: seg.x + (Math.random() * 10 - 5),
+          y: seg.y + (Math.random() * 10 - 5),
+          value: valuePerDrop,
+          color: '#fbbf24',
+          isCashDrop: true
+        });
+      });
+
+      // Respawn the dead player
+      const isPlayerA = snake.userId === duel.playerA_id;
+      const spawnX = isPlayerA ? 400 : 1600;
+      const spawnY = isPlayerA ? 400 : 1600;
+      
+      snake.segments = [];
+      for (let i = 0; i < 5; i++) {
+        snake.segments.push({ x: spawnX, y: spawnY + i * 15 });
+      }
+      
+      snake.pathHistory = [];
+      for (let i = 0; i < 50; i++) {
+        snake.pathHistory.push({ x: spawnX, y: spawnY + i * (15 / PATH_SPACING) });
+      }
+      
+      // Shrink back to start value
+      snake.value = parseFloat((duel.betAmount * 0.90).toFixed(2));
+      snake.isInvincible = true;
+      snake.spawnTime = Date.now();
+      snake.isBoosting = false;
+      snake.energy = 100;
+      snake.angle = isPlayerA ? -Math.PI / 2 : Math.PI / 2;
+    }
+  });
+
+  // 4. Eating pellets in duel
+  socketIds.forEach(id => {
+    const snake = duel.snakes[id];
+    const head = snake.segments[0];
+
+    for (let i = duel.pellets.length - 1; i >= 0; i--) {
+      const pellet = duel.pellets[i];
+      const dist = Math.hypot(head.x - pellet.x, head.y - pellet.y);
+
+      if (dist < 20) {
+        snake.value = parseFloat((snake.value + pellet.value).toFixed(2));
+        
+        snake.growthPoints = (snake.growthPoints || 0) + pellet.value;
+        const segmentsToAdd = Math.floor(snake.growthPoints / 10.0);
+        if (segmentsToAdd > 0) {
+          snake.growthPoints -= segmentsToAdd * 10.0;
+          for (let g = 0; g < segmentsToAdd; g++) {
+            const lastSegment = snake.segments[snake.segments.length - 1];
+            snake.segments.push({ ...lastSegment });
+          }
+        }
+
+        duel.pellets.splice(i, 1);
+
+        if (!pellet.isCashDrop) {
+          // Respawn normal pellet
+          duel.pellets.push({
+            id: Math.random().toString(36).substring(2, 9),
+            x: Math.floor(Math.random() * (MAP_WIDTH - 40)) + 20,
+            y: Math.floor(Math.random() * (MAP_HEIGHT - 40)) + 20,
+            value: 0.10,
+            color: getRandomColor(),
+            isCashDrop: false
+          });
+        }
+      }
+    }
+  });
+
+  // 5. Broadcast duel state
+  const broadcastPayload = {
+    timeLeft: duel.timeLeft,
+    snakes: Object.keys(duel.snakes).reduce((acc, id) => {
+      const s = duel.snakes[id];
+      acc[id] = {
+        id: s.id,
+        email: s.email.split('@')[0],
+        value: s.value,
+        segments: s.segments.map(seg => ({ x: Math.round(seg.x), y: Math.round(seg.y) })),
+        angle: s.angle,
+        color: s.color,
+        eliminations: s.eliminations,
+        deaths: s.deaths,
+        isInvincible: s.isInvincible,
+        energy: s.energy
+      };
+      return acc;
+    }, {}),
+    pellets: duel.pellets.map(p => ({
+      id: p.id,
+      x: Math.round(p.x),
+      y: Math.round(p.y),
+      value: p.value,
+      color: p.color,
+      isCashDrop: p.isCashDrop
+    }))
+  };
+
+  io.to(duel.roomId).emit('ketmesye_duel_tick', broadcastPayload);
+};
+
+const resolveDuel = async (duelId, disconnectWinnerId = null) => {
+  const duel = activeDuels[duelId];
+  if (!duel) return;
+
+  clearInterval(duel.timer);
+
+  const socketIds = Object.keys(duel.snakes);
+  let pA = null;
+  let pB = null;
+
+  socketIds.forEach(id => {
+    const s = duel.snakes[id];
+    if (s.userId === duel.playerA_id) pA = s;
+    if (s.userId === duel.playerB_id) pB = s;
+  });
+
+  let winnerId = null;
+  let loserId = null;
+  let isTie = false;
+  let reason = disconnectWinnerId ? 'disconnect' : 'time_up';
+
+  if (disconnectWinnerId) {
+    winnerId = disconnectWinnerId;
+    loserId = (winnerId === duel.playerA_id) ? duel.playerB_id : duel.playerA_id;
+  } else {
+    // Compare deaths
+    const deathsA = pA ? pA.deaths : 999;
+    const deathsB = pB ? pB.deaths : 999;
+
+    if (deathsA < deathsB) {
+      winnerId = duel.playerA_id;
+      loserId = duel.playerB_id;
+    } else if (deathsB < deathsA) {
+      winnerId = duel.playerB_id;
+      loserId = duel.playerA_id;
+    } else {
+      // Compare values
+      const valA = pA ? pA.value : 0;
+      const valB = pB ? pB.value : 0;
+      if (valA > valB) {
+        winnerId = duel.playerA_id;
+        loserId = duel.playerB_id;
+      } else if (valB > valA) {
+        winnerId = duel.playerB_id;
+        loserId = duel.playerA_id;
+      } else {
+        isTie = true;
+      }
+    }
+  }
+
+  const pot = duel.betAmount * 2;
+  const payout = pot * 0.90;
+
+  try {
+    await query('BEGIN');
+
+    if (isTie) {
+      // Refund both
+      await query('UPDATE users SET balance = balance + $1 WHERE id IN ($2, $3)', [duel.betAmount, duel.playerA_id, duel.playerB_id]);
+      await query(`UPDATE duels SET status = 'finished' WHERE id = $1`, [duelId]);
+      
+      // Log audit
+      await query(
+        `INSERT INTO audit_logs (user_id, game_id, game_type, amount, action) VALUES ($1, $2, 'snake_duel', $3, 'escrow_refund')`,
+        [duel.playerA_id, duelId, duel.betAmount]
+      );
+      await query(
+        `INSERT INTO audit_logs (user_id, game_id, game_type, amount, action) VALUES ($1, $2, 'snake_duel', $3, 'escrow_refund')`,
+        [duel.playerB_id, duelId, duel.betAmount]
+      );
+
+      io.to(duel.roomId).emit('ketmesye_duel_over', { reason: 'tie', message: 'Égalité parfaite ! Les mises sont remboursées.' });
+    } else {
+      // Pay winner
+      await query('UPDATE users SET balance = balance + $1 WHERE id = $2', [payout, winnerId]);
+      await query(`UPDATE duels SET status = 'finished', winner_id = $1, player_a_score = $2, player_b_score = $3 WHERE id = $4`, [
+        winnerId, pA ? pA.value : 0, pB ? pB.value : 0, duelId
+      ]);
+
+      // Log payout and commission
+      await query(
+        `INSERT INTO audit_logs (user_id, game_id, game_type, amount, action) VALUES ($1, $2, 'snake_duel', $3, 'payout_winner')`,
+        [winnerId, duelId, payout]
+      );
+      await query(
+        `INSERT INTO audit_logs (user_id, game_id, game_type, amount, action) VALUES (null, $1, 'snake_duel', $2, 'commission_collected')`,
+        [duelId, pot * 0.10]
+      );
+
+      // Insert winning bet and losing bet records
+      await query(
+        `INSERT INTO bets (user_id, game_id, bet_amount, cashout_multiplier, payout_amount, is_won) 
+         VALUES ($1, null, $2, $3, $4, true)`,
+        [winnerId, duel.betAmount, 1.80, payout]
+      );
+      await query(
+        `INSERT INTO bets (user_id, game_id, bet_amount, cashout_multiplier, payout_amount, is_won) 
+         VALUES ($1, null, $2, 0.00, 0.00, false)`,
+        [loserId, duel.betAmount]
+      );
+
+      io.to(duel.roomId).emit('ketmesye_duel_over', { reason, winnerId, payoutAmount: payout });
+    }
+
+    await query('COMMIT');
+  } catch (err) {
+    await query('ROLLBACK');
+    console.error('Ketmesye Resolve Duel Error:', err);
+  }
+
+  // Cleanup
+  socketIds.forEach(id => {
+    delete activeDuelPlayers[id];
+  });
+  delete activeDuels[duelId];
+};
+
+const cancelDuel = async (duelId, reason = 'Jeu annulé.') => {
+  const duel = activeDuels[duelId];
+  if (!duel) return;
+
+  if (duel.timer) clearInterval(duel.timer);
+
+  try {
+    await query('BEGIN');
+    await query('UPDATE users SET balance = balance + $1 WHERE id = $2', [duel.betAmount, duel.playerA_id]);
+    if (duel.playerB_id) {
+      await query('UPDATE users SET balance = balance + $1 WHERE id = $2', [duel.betAmount, duel.playerB_id]);
+    }
+    await query(`UPDATE duels SET status = 'cancelled' WHERE id = $1`, [duelId]);
+    await query('COMMIT');
+
+    io.to(duel.roomId).emit('ketmesye_duel_cancelled', { reason });
+  } catch (err) {
+    await query('ROLLBACK');
+    console.error('Ketmesye Cancel Duel Error:', err);
+  }
+
+  const socketIds = Object.keys(duel.snakes);
+  socketIds.forEach(id => {
+    delete activeDuelPlayers[id];
+  });
+  delete activeDuels[duelId];
+};
+
 // Initialize the socket.io handlers
 const initKetmesyeEngine = (socketIoInstance) => {
   io = socketIoInstance;
@@ -408,17 +871,33 @@ const initKetmesyeEngine = (socketIoInstance) => {
     // 2. Input movement direction
     socket.on('ketmesye_input', (data) => {
       const { angle } = data;
-      const snake = snakes[socket.id];
-      if (snake && typeof angle === 'number') {
-        snake.angle = angle;
+      const duelId = activeDuelPlayers[socket.id];
+      if (duelId && activeDuels[duelId]) {
+        const snake = activeDuels[duelId].snakes[socket.id];
+        if (snake && typeof angle === 'number') {
+          snake.angle = angle;
+        }
+      } else {
+        const snake = snakes[socket.id];
+        if (snake && typeof angle === 'number') {
+          snake.angle = angle;
+        }
       }
     });
 
     // 2.5 Input Boost
     socket.on('ketmesye_boost', (data) => {
-      const snake = snakes[socket.id];
-      if (snake) {
-        snake.isBoosting = !!data.isBoosting;
+      const duelId = activeDuelPlayers[socket.id];
+      if (duelId && activeDuels[duelId]) {
+        const snake = activeDuels[duelId].snakes[socket.id];
+        if (snake) {
+          snake.isBoosting = !!data.isBoosting;
+        }
+      } else {
+        const snake = snakes[socket.id];
+        if (snake) {
+          snake.isBoosting = !!data.isBoosting;
+        }
       }
     });
 
@@ -482,8 +961,174 @@ const initKetmesyeEngine = (socketIoInstance) => {
       }
     });
 
-    // 4. Handle client disconnection (automatic death/cleanup)
+    // 4. Matchmaking Events for 1v1 Duels
+    socket.on('ketmesye_create_duel', async (payload) => {
+      const { userId, betAmount } = payload;
+      if (!userId || !betAmount || betAmount <= 0) {
+        return socket.emit('ketmesye_error', { message: 'Mise invalide.' });
+      }
+      try {
+        await query('BEGIN');
+        const userRes = await query('SELECT balance, email FROM users WHERE id = $1 FOR UPDATE', [userId]);
+        if (userRes.rows.length === 0) throw new Error('Utilisateur introuvable.');
+        const user = userRes.rows[0];
+        const balance = parseFloat(user.balance);
+        if (balance < betAmount) throw new Error('Solde insuffisant.');
+
+        // Deduct
+        await query('UPDATE users SET balance = balance - $1 WHERE id = $2', [betAmount, userId]);
+        
+        // Insert duel row
+        const duelRes = await query(
+          `INSERT INTO duels (player_a_id, bet_amount, status) VALUES ($1, $2, 'pending') RETURNING id`,
+          [userId, betAmount]
+        );
+        const duelId = duelRes.rows[0].id;
+
+        // Log escrow
+        await query(
+          `INSERT INTO audit_logs (user_id, game_id, game_type, amount, action) VALUES ($1, $2, 'snake_duel', $3, 'escrow_deposit')`,
+          [userId, duelId, betAmount]
+        );
+
+        await query('COMMIT');
+
+        pendingDuels[duelId] = {
+          id: duelId,
+          betAmount,
+          creatorEmail: user.email,
+          playerAId: userId
+        };
+
+        socket.emit('ketmesye_duel_created', { duelId, betAmount });
+        broadcastPendingDuels();
+      } catch (err) {
+        await query('ROLLBACK');
+        console.error('Ketmesye Create Duel Error:', err);
+        socket.emit('ketmesye_error', { message: err.message });
+      }
+    });
+
+    socket.on('ketmesye_join_duel', async (payload) => {
+      const { userId, duelId } = payload;
+      const pending = pendingDuels[duelId];
+      if (!pending) {
+        return socket.emit('ketmesye_error', { message: 'Ce duel n est plus disponible.' });
+      }
+      if (pending.playerAId === userId) {
+        return socket.emit('ketmesye_error', { message: 'Vous ne pouvez pas rejoindre votre propre duel.' });
+      }
+
+      try {
+        await query('BEGIN');
+        const userRes = await query('SELECT balance FROM users WHERE id = $1 FOR UPDATE', [userId]);
+        if (userRes.rows.length === 0) throw new Error('Utilisateur introuvable.');
+        const balance = parseFloat(userRes.rows[0].balance);
+        if (balance < pending.betAmount) throw new Error('Solde insuffisant.');
+
+        // Deduct
+        await query('UPDATE users SET balance = balance - $1 WHERE id = $2', [pending.betAmount, userId]);
+
+        // Update duel row
+        await query(`UPDATE duels SET player_b_id = $1, status = 'active' WHERE id = $2`, [userId, duelId]);
+
+        // Log escrow
+        await query(
+          `INSERT INTO audit_logs (user_id, game_id, game_type, amount, action) VALUES ($1, $2, 'snake_duel', $3, 'escrow_deposit')`,
+          [userId, duelId, pending.betAmount]
+        );
+
+        await query('COMMIT');
+
+        delete pendingDuels[duelId];
+
+        // Setup activeDuel state
+        setupKetmesyeDuel(duelId, pending.playerAId, userId, pending.betAmount);
+        broadcastPendingDuels();
+      } catch (err) {
+        await query('ROLLBACK');
+        console.error('Ketmesye Join Duel Error:', err);
+        socket.emit('ketmesye_error', { message: err.message });
+      }
+    });
+
+    socket.on('ketmesye_claim_duel_spot', (payload) => {
+      const { userId, duelId } = payload;
+      const duel = activeDuels[duelId];
+      if (!duel) return;
+
+      const isPlayerA = userId === duel.playerA_id;
+      const isPlayerB = userId === duel.playerB_id;
+
+      if (!isPlayerA && !isPlayerB) return;
+
+      const spawnX = isPlayerA ? 400 : 1600;
+      const spawnY = isPlayerA ? 400 : 1600;
+      const startSegments = [];
+      for (let i = 0; i < 5; i++) {
+        startSegments.push({ x: spawnX, y: spawnY + i * 15 });
+      }
+      const initialPath = [];
+      for (let i = 0; i < 50; i++) {
+        initialPath.push({ x: spawnX, y: spawnY + i * (15 / PATH_SPACING) });
+      }
+
+      const initialValue = parseFloat((duel.betAmount * 0.90).toFixed(2));
+
+      duel.snakes[socket.id] = {
+        id: socket.id,
+        userId,
+        email: isPlayerA ? 'Joueur A' : 'Joueur B',
+        wager: duel.betAmount,
+        value: initialValue,
+        segments: startSegments,
+        pathHistory: initialPath,
+        angle: isPlayerA ? -Math.PI / 2 : Math.PI / 2,
+        speed: 10,
+        color: isPlayerA ? '#06b6d4' : '#a855f7',
+        eliminations: 0,
+        deaths: 0,
+        isInvincible: true,
+        spawnTime: Date.now(),
+        isBoosting: false,
+        energy: 100
+      };
+
+      // Set user email
+      query('SELECT email FROM users WHERE id = $1', [userId]).then(res => {
+        if (res.rows.length > 0 && duel.snakes[socket.id]) {
+          duel.snakes[socket.id].email = res.rows[0].email;
+        }
+      }).catch(err => console.error(err));
+
+      activeDuelPlayers[socket.id] = duelId;
+      socket.join(duel.roomId);
+    });
+
+    socket.on('ketmesye_get_pending_duels', () => {
+      sendPendingDuelsToSocket(socket);
+    });
+
+    // 5. Handle client disconnection (automatic death/cleanup)
     socket.on('disconnect', () => {
+      const duelId = activeDuelPlayers[socket.id];
+      if (duelId && activeDuels[duelId]) {
+        // Handle forfeit during duel
+        const duel = activeDuels[duelId];
+        if (duel.status === 'playing') {
+          const remainingPlayerSocket = Object.keys(duel.snakes).find(id => id !== socket.id);
+          const remainingPlayer = duel.snakes[remainingPlayerSocket];
+          if (remainingPlayer) {
+            resolveDuel(duelId, remainingPlayer.userId);
+          } else {
+            cancelDuel(duelId, 'Both players disconnected.');
+          }
+        } else {
+          cancelDuel(duelId, 'Adversaire déconnecté pendant l attente.');
+        }
+        delete activeDuelPlayers[socket.id];
+      }
+
       const snake = snakes[socket.id];
       if (snake) {
         console.log(`Ketmesye: Player ${snake.email} disconnected. Cleaning up.`);

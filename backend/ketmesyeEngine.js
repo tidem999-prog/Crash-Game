@@ -130,7 +130,7 @@ const handleGameTick = async () => {
       }
 
       // Tête-à-corps (Head-to-body) collision
-      // Head of A hits body of B (which means segments from index 1 to end if A === B, or any segment if A !== B)
+      if (idA === idB && socketIds.length > 5) return; // Self collision is ignored if > 5 players
       const startSegmentIndex = (idA === idB) ? 3 : 0; // Prevent colliding with own neck
       for (let i = startSegmentIndex; i < snakeB.segments.length; i++) {
         // Skip check if target is invincible or self is invincible
@@ -173,9 +173,9 @@ const handleGameTick = async () => {
       }
 
       // Spawn cash pellets from the dead body
-      // We distribute 100% of the snake's accumulated value along its segments
+      // We distribute 50% of the snake's accumulated value along its segments (platform keeps 50%)
       const segmentCount = snake.segments.length;
-      const totalValueToDrop = snake.value;
+      const totalValueToDrop = snake.value * 0.5;
       const valuePerDrop = parseFloat((totalValueToDrop / segmentCount).toFixed(4));
 
       // Drop a yellow cash pellet at every segment
@@ -470,7 +470,7 @@ const initKetmesyeEngine = (socketIoInstance) => {
         
         // Spawn pellets along dead body path
         const segmentCount = snake.segments.length;
-        const valuePerDrop = parseFloat((snake.value / segmentCount).toFixed(4));
+        const valuePerDrop = parseFloat(((snake.value * 0.5) / segmentCount).toFixed(4));
 
         snake.segments.forEach(segment => {
           pellets.push({

@@ -390,7 +390,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification })
     
     // Spawn drop pellets
     const pls = [...pelletsRef.current];
-    const valPerDrop = parseFloat((me.value / me.segments.length).toFixed(4));
+    const valPerDrop = parseFloat(((me.value * 0.5) / me.segments.length).toFixed(4));
     me.segments.forEach(seg => {
       pls.push({
         id: Math.random().toString(),

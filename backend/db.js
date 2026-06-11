@@ -106,6 +106,26 @@ const initializeDatabase = async () => {
     `);
     console.log('Database: Table "bets" checked/created.');
 
+    // 5. Create Mines Games Table
+    await query(`
+      CREATE TABLE IF NOT EXISTS mines_games (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        bet_amount DECIMAL(12, 2) NOT NULL,
+        net_stake DECIMAL(12, 2) NOT NULL,
+        mines_count INT NOT NULL,
+        server_seed VARCHAR(255) NOT NULL,
+        client_seed VARCHAR(255) NOT NULL,
+        grid_mines JSON NOT NULL,
+        revealed_tiles JSON DEFAULT '[]',
+        status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'cashed_out', 'lost')),
+        current_multiplier DECIMAL(12, 4) DEFAULT 1.0000,
+        payout_amount DECIMAL(12, 2) DEFAULT 0.00,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('Database: Table "mines_games" checked/created.');
+
     // 5. Seed Admin User
     const adminCheck = await query("SELECT * FROM users WHERE role = 'admin' LIMIT 1");
     if (adminCheck.rows.length === 0) {

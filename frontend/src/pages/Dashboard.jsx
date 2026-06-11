@@ -4,15 +4,16 @@ import io from 'socket.io-client';
 import { useAuth, apiRequest } from '../context/AuthContext';
 import { 
   Plane, Landmark, ArrowUpRight, ArrowDownRight, History, 
-  Wallet, ShieldAlert, Award, Clock, Coins, Upload, Send, HelpCircle, Gamepad2, ArrowLeft, Users
+  Wallet, ShieldAlert, Award, Clock, Coins, Upload, Send, HelpCircle, Gamepad2, ArrowLeft, Users, Gem
 } from 'lucide-react';
 import KetmesyeGame from './KetmesyeGame';
 import DominoGame from './DominoGame';
+import MinesGame from './MinesGame';
 
 export default function Dashboard() {
   const { user, refreshBalance, updateBalance } = useAuth();
   const [activeTab, setActiveTab] = useState('play'); // 'play', 'deposit', 'withdraw', 'history'
-  const [selectedGame, setSelectedGame] = useState(null); // null, 'crash', 'ketmesye', 'domino'
+  const [selectedGame, setSelectedGame] = useState(null); // null, 'crash', 'ketmesye', 'domino', 'mines'
   
   // Game state
   const [socket, setSocket] = useState(null);
@@ -793,7 +794,7 @@ export default function Dashboard() {
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 md:gap-8 max-w-4xl mx-auto w-full px-2">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6 max-w-5xl mx-auto w-full px-2">
               {/* Card 1: Crash Plane */}
               <div className="glass-panel group relative rounded-2xl md:rounded-3xl p-3 md:p-6 bg-slate-900/40 border border-slate-800 hover:border-indigo-500/30 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-xl transform hover:-translate-y-1">
                 <div className="absolute top-0 right-0 w-20 h-20 md:w-32 md:h-32 bg-indigo-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-indigo-500/10 transition-all duration-300"></div>
@@ -854,6 +855,35 @@ export default function Dashboard() {
                 </button>
               </div>
 
+              {/* Card 3: Mines */}
+              <div className="glass-panel group relative rounded-2xl md:rounded-3xl p-3 md:p-6 bg-slate-900/40 border border-slate-800 hover:border-cyan-500/30 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-xl transform hover:-translate-y-1 col-span-2 md:col-span-1 max-w-sm mx-auto md:max-w-none w-full">
+                <div className="absolute top-0 right-0 w-20 h-20 md:w-32 md:h-32 bg-cyan-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-cyan-500/10 transition-all duration-300"></div>
+
+                <div>
+                  <div className="flex justify-between items-start mb-3 md:mb-6">
+                    <div className="bg-cyan-500/10 p-2 md:p-4 rounded-xl md:rounded-2xl text-cyan-500 border border-cyan-500/15 animate-pulse">
+                      <Gem className="h-5 w-5 md:h-8 md:w-8" />
+                    </div>
+                    <span className="text-[8px] md:text-[10px] font-bold tracking-wider uppercase bg-cyan-500/10 text-cyan-400 px-2 md:px-3 py-0.5 md:py-1 rounded-full border border-cyan-500/20">
+                      Solo / RNG
+                    </span>
+                  </div>
+
+                  <h3 className="font-display font-black text-sm md:text-xl text-white mb-1 md:mb-2 tracking-wide">
+                    MINES
+                  </h3>
+                  <p className="text-slate-400 text-[9px] md:text-xs leading-tight md:leading-relaxed mb-4 md:mb-6">
+                    Trouvez les diamants et évitez les mines ! Retirez vos gains à tout moment.
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setSelectedGame('mines')}
+                  className="w-full py-2 md:py-3.5 bg-cyan-600 hover:bg-cyan-500 text-white font-black rounded-lg md:rounded-xl text-[9px] md:text-xs transition-all tracking-wide shadow-md shadow-cyan-600/15"
+                >
+                  JOUER
+                </button>
+              </div>
 
             </div>
           </div>
@@ -1022,6 +1052,11 @@ export default function Dashboard() {
                onPlayStateChange={(isPlaying) => setIsDominoPlaying(isPlaying)}
              />
           </div>
+        )}
+
+        {/* Tab content 4: PLAY GAME (MINES ACTIVE) */}
+        {activeTab === 'play' && selectedGame === 'mines' && (
+          <MinesGame socket={socket} user={user} balance={userBalanceRef.current} setSelectedGame={setSelectedGame} />
         )}
 
         {/* Tab content 1: PLAY GAME (KETMESYE GAME ACTIVE) */}

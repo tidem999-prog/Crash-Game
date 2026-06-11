@@ -99,9 +99,12 @@ const handleTurnTimeout = (roomId) => {
   
   // Try to draw if boneyard has tiles
   if (room.boneyard.length > 0) {
-    drawDomino(roomId, currentPlayer.socketId);
-    // Restart timer for them to play or draw again
-    startTurnTimer(roomId);
+    const success = drawDomino(roomId, currentPlayer.socketId);
+    if (success) {
+      startTurnTimer(roomId);
+    } else {
+      passTurn(roomId, currentPlayer.socketId);
+    }
   } else {
     // Pass turn
     passTurn(roomId, currentPlayer.socketId);
@@ -110,16 +113,30 @@ const handleTurnTimeout = (roomId) => {
 
 const drawDomino = (roomId, socketId) => {
   const room = rooms[roomId];
-  if (!room || room.status !== 'playing') return;
+  if (!room || room.status !== 'playing') return false;
   const player = room.players[room.turnIndex];
-  if (player.socketId !== socketId) return;
+  if (player.socketId !== socketId) return false;
+
+  // Check if player has playable tile
+  const hasPlayable = player.hand.some(tile => 
+    room.board.length === 0 || 
+    tile[0] === room.leftEnd || tile[1] === room.leftEnd ||
+    tile[0] === room.rightEnd || tile[1] === room.rightEnd
+  );
+
+  if (hasPlayable) {
+    io.to(socketId).emit('domino_error', 'Vous avez déjà un domino jouable !');
+    return false;
+  }
 
   if (room.boneyard.length > 0) {
     const tile = room.boneyard.pop();
     player.hand.push(tile);
     io.to(roomId).emit('domino_event', { type: 'draw', playerIndex: room.turnIndex, tilesLeft: room.boneyard.length });
     broadcastRoomState(roomId); // To update hand count
+    return true;
   }
+  return false;
 };
 
 const passTurn = (roomId, socketId) => {
@@ -375,13 +392,32 @@ const initDominoEngine = (ioInstance) => {
 
     socket.on('domino_draw', () => {
       if (socket.dominoRoom) {
-        drawDomino(socket.dominoRoom, socket.id);
-        startTurnTimer(socket.dominoRoom);
+        const success = drawDomino(socket.dominoRoom, socket.id);
+        if (success) startTurnTimer(socket.dominoRoom);
       }
     });
 
     socket.on('domino_pass', () => {
       if (socket.dominoRoom) passTurn(socket.dominoRoom, socket.id);
+    });
+
+    socket.on('domino_leave', () => {
+      const roomId = socket.dominoRoom;
+      const room = rooms[roomId];
+      if (room) {
+        const playerIndex = room.players.findIndex(p => p.socketId === socket.id);
+        if (playerIndex !== -1) {
+          if (room.status === 'playing') {
+            const winnerIndex = playerIndex === 0 ? 1 : 0;
+            handleGameEnd(roomId, 'disconnect', winnerIndex);
+          } else if (room.status === 'waiting') {
+            room.players.splice(playerIndex, 1);
+            if (room.players.length === 0) delete rooms[roomId];
+            else broadcastRoomState(roomId);
+          }
+        }
+      }
+      socket.dominoRoom = null;
     });
 
     socket.on('disconnect', () => {

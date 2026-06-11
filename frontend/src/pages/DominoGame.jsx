@@ -32,6 +32,12 @@ export default function DominoGame({ socket, onBackToLobby, addNotification, onP
   const [gameOver, setGameOver] = useState(null);
   const [selectedWager, setSelectedWager] = useState(150);
   const [customWager, setCustomWager] = useState('');
+  const [selectedTileIndex, setSelectedTileIndex] = useState(null);
+
+  const handleQuit = () => {
+    if (socket) socket.emit('domino_leave');
+    onBackToLobby();
+  };
 
   // Inform Dashboard when playing to hide tabs
   useEffect(() => {
@@ -117,9 +123,21 @@ export default function DominoGame({ socket, onBackToLobby, addNotification, onP
     } else if (canRight && !canLeft) {
       playTile(idx, 'right');
     } else if (canLeft && canRight) {
-      addNotification('Utilisez les boutons G ou D pour choisir le côté', 'info');
+      if (selectedTileIndex === idx) {
+        setSelectedTileIndex(null); // toggle off
+      } else {
+        setSelectedTileIndex(idx);
+        addNotification('Touchez le côté gauche ou droit du plateau pour placer.', 'info');
+      }
     } else {
       addNotification('Mouvement impossible', 'danger');
+    }
+  };
+
+  const handleBoardClick = (side) => {
+    if (selectedTileIndex !== null) {
+      playTile(selectedTileIndex, side);
+      setSelectedTileIndex(null);
     }
   };
 
@@ -179,7 +197,7 @@ export default function DominoGame({ socket, onBackToLobby, addNotification, onP
 
         {error && <p className="text-red-500 mb-4">{error}</p>}
         <div className="flex space-x-4">
-          <button onClick={onBackToLobby} className="px-6 py-3 bg-slate-800 text-white rounded-xl font-bold">Retour</button>
+          <button onClick={handleQuit} className="px-6 py-3 bg-slate-800 text-white rounded-xl font-bold">Retour</button>
           <button onClick={joinGame} className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-500 shadow-xl shadow-indigo-600/20">
             Rejoindre ({!isNaN(wagerToPlay) ? wagerToPlay : 0} HTG)
           </button>
@@ -204,7 +222,7 @@ export default function DominoGame({ socket, onBackToLobby, addNotification, onP
           </div>
         )}
         <div className="flex space-x-4 mt-6">
-          <button onClick={onBackToLobby} className="px-6 py-3 bg-slate-800 text-white rounded-xl font-bold">Quitter</button>
+          <button onClick={handleQuit} className="px-6 py-3 bg-slate-800 text-white rounded-xl font-bold">Quitter</button>
           <button onClick={() => { setGameOver(null); }} className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold">Rejouer (Choisir Mise)</button>
         </div>
       </div>
@@ -217,7 +235,7 @@ export default function DominoGame({ socket, onBackToLobby, addNotification, onP
         <RefreshCw className="h-12 w-12 text-indigo-500 animate-spin mb-4" />
         <h3 className="text-xl font-bold text-white mb-2">Recherche d'un adversaire...</h3>
         <p className="text-slate-400 mb-6">En attente d'un autre joueur pour démarrer la partie.</p>
-        <button onClick={onBackToLobby} className="px-6 py-2 bg-slate-800 text-white rounded-xl text-sm">Annuler</button>
+        <button onClick={handleQuit} className="px-6 py-2 bg-slate-800 text-white rounded-xl text-sm">Annuler</button>
       </div>
     );
   }
@@ -233,7 +251,7 @@ export default function DominoGame({ socket, onBackToLobby, addNotification, onP
       
       {/* Header */}
       <div className="bg-slate-900 border-b border-slate-800 p-3 flex justify-between items-center">
-        <button onClick={onBackToLobby} className="flex items-center space-x-2 text-slate-400 hover:text-white">
+        <button onClick={handleQuit} className="flex items-center space-x-2 text-slate-400 hover:text-white">
           <ArrowLeft className="h-5 w-5" />
           <span className="font-bold hidden sm:inline">Quitter</span>
         </button>
@@ -259,8 +277,8 @@ export default function DominoGame({ socket, onBackToLobby, addNotification, onP
           </div>
           <div className="flex space-x-1.5 justify-center">
             {Array.from({ length: opponent.handCount }).map((_, i) => (
-              <div key={i} className="w-7 h-12 bg-slate-800 rounded-md shadow-inner border border-slate-700 flex flex-col items-center justify-center overflow-hidden">
-                <div className="w-1 h-full bg-indigo-500/10 rotate-45 transform scale-150"></div>
+              <div key={i} className="w-5 h-9 bg-slate-800 rounded-sm shadow-inner border border-slate-700 flex flex-col items-center justify-center overflow-hidden">
+                <div className="w-0.5 h-full bg-indigo-500/10 rotate-45 transform scale-150"></div>
               </div>
             ))}
           </div>
@@ -269,27 +287,40 @@ export default function DominoGame({ socket, onBackToLobby, addNotification, onP
 
       {/* Board Area */}
       <div className="flex-grow bg-slate-950 flex flex-col items-center justify-center p-4 relative overflow-hidden">
+        {selectedTileIndex !== null && (
+          <div className="absolute inset-0 z-20 flex bg-black/40 backdrop-blur-sm">
+            <div onClick={() => handleBoardClick('left')} className="flex-1 flex flex-col items-center justify-center cursor-pointer hover:bg-white/10 transition-colors border-r-2 border-indigo-500/50">
+              <span className="bg-indigo-600 text-white px-4 py-2 rounded-full font-bold shadow-lg animate-bounce">Placer à GAUCHE</span>
+            </div>
+            <div onClick={() => handleBoardClick('right')} className="flex-1 flex flex-col items-center justify-center cursor-pointer hover:bg-white/10 transition-colors border-l-2 border-indigo-500/50">
+              <span className="bg-indigo-600 text-white px-4 py-2 rounded-full font-bold shadow-lg animate-bounce">Placer à DROITE</span>
+            </div>
+          </div>
+        )}
+
         {gameState?.board.length === 0 ? (
           <div className="text-slate-600 font-bold text-2xl opacity-50 border-4 border-dashed border-slate-800 p-8 rounded-3xl">
             La table est vide
           </div>
         ) : (
-          <div className="flex flex-wrap justify-center items-center gap-1.5 max-w-full overflow-auto p-4">
-            {gameState?.board.map((item, idx) => {
-              const [val1, val2] = item.isFlipped ? [item.tile[1], item.tile[0]] : [item.tile[0], item.tile[1]];
-              const isDouble = val1 === val2;
-              return (
-                <div key={idx} className={`flex bg-slate-100 border-2 border-slate-300 rounded-lg shadow-lg items-center justify-center overflow-hidden ${isDouble ? 'flex-col w-9 h-18' : 'flex-row w-18 h-9'}`}>
-                  <div className="flex-1 w-full h-full p-1 relative flex items-center justify-center">
-                    <DominoFace value={val1} horizontal={!isDouble} />
+          <div className="w-full flex justify-center overflow-x-auto whitespace-nowrap p-4 no-scrollbar">
+            <div className="flex items-center space-x-1 shrink-0 px-8">
+              {gameState?.board.map((item, idx) => {
+                const [val1, val2] = item.isFlipped ? [item.tile[1], item.tile[0]] : [item.tile[0], item.tile[1]];
+                const isDouble = val1 === val2;
+                return (
+                  <div key={idx} className={`flex shrink-0 bg-slate-100 border-2 border-slate-300 rounded-md shadow-md items-center justify-center overflow-hidden ${isDouble ? 'flex-col w-6 h-12' : 'flex-row w-12 h-6'}`}>
+                    <div className="flex-1 w-full h-full p-0.5 relative flex items-center justify-center">
+                      <DominoFace value={val1} horizontal={!isDouble} />
+                    </div>
+                    <div className={`bg-slate-400 ${isDouble ? 'w-full h-[1px]' : 'h-full w-[1px]'}`}></div>
+                    <div className="flex-1 w-full h-full p-0.5 relative flex items-center justify-center">
+                      <DominoFace value={val2} horizontal={!isDouble} />
+                    </div>
                   </div>
-                  <div className={`bg-slate-400 ${isDouble ? 'w-full h-[2px]' : 'h-full w-[2px]'}`}></div>
-                  <div className="flex-1 w-full h-full p-1 relative flex items-center justify-center">
-                    <DominoFace value={val2} horizontal={!isDouble} />
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         )}
       </div>
@@ -322,25 +353,24 @@ export default function DominoGame({ socket, onBackToLobby, addNotification, onP
         </div>
         
         <div className="flex space-x-3 justify-center min-w-max px-4">
-          {myHand.map((tile, idx) => (
-            <div key={idx} className="flex flex-col items-center space-y-3">
-              <div 
-                onClick={() => handleDominoClick(idx, tile)}
-                className={`flex flex-col bg-slate-100 border-2 border-slate-300 rounded-xl shadow-xl w-14 h-28 hover:-translate-y-3 transition-transform cursor-pointer overflow-hidden ${isMyTurn ? 'ring-2 ring-indigo-500 ring-offset-2 ring-offset-slate-800' : ''}`}
-              >
-                <div className="flex-1 p-1.5 relative"><DominoFace value={tile[0]} /></div>
-                <div className="w-full h-[2px] bg-slate-300"></div>
-                <div className="flex-1 p-1.5 relative"><DominoFace value={tile[1]} /></div>
-              </div>
-              
-              {isMyTurn && gameState?.board?.length > 0 && (
-                <div className="flex space-x-1.5">
-                  <button onClick={(e) => { e.stopPropagation(); playTile(idx, 'left'); }} className="text-xs bg-slate-700 hover:bg-indigo-600 text-white px-2.5 py-1.5 rounded-lg font-bold transition-colors">G</button>
-                  <button onClick={(e) => { e.stopPropagation(); playTile(idx, 'right'); }} className="text-xs bg-slate-700 hover:bg-indigo-600 text-white px-2.5 py-1.5 rounded-lg font-bold transition-colors">D</button>
+          {myHand.map((tile, idx) => {
+            const isSelected = selectedTileIndex === idx;
+            return (
+              <div key={idx} className="flex flex-col items-center">
+                <div 
+                  onClick={() => handleDominoClick(idx, tile)}
+                  className={`flex flex-col bg-slate-100 border-2 border-slate-300 rounded-xl shadow-xl w-10 h-20 transition-all cursor-pointer overflow-hidden ${
+                    isSelected ? 'ring-4 ring-indigo-500 scale-110 -translate-y-4' : 
+                    isMyTurn ? 'hover:-translate-y-2 ring-2 ring-transparent hover:ring-indigo-300' : 'opacity-80'
+                  }`}
+                >
+                  <div className="flex-1 p-1 relative"><DominoFace value={tile[0]} /></div>
+                  <div className="w-full h-[2px] bg-slate-300"></div>
+                  <div className="flex-1 p-1 relative"><DominoFace value={tile[1]} /></div>
                 </div>
-              )}
-            </div>
-          ))}
+              </div>
+            );
+          })}
         </div>
       </div>
 

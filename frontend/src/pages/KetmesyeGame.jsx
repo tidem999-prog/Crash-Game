@@ -530,12 +530,12 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification })
           ctx.arc(px, py, 9, 0, Math.PI * 2);
           ctx.fill();
           
-          // Draw $ sign inside cash pellet
+          // Draw G sign inside cash pellet
           ctx.fillStyle = '#1e293b';
           ctx.font = 'bold 10px Inter';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.fillText('$', px, py);
+          ctx.fillText('G', px, py);
           ctx.shadowBlur = 0;
         } else {
           // Normal food pellet
@@ -645,7 +645,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification })
         ctx.fill();
 
         // 5. Draw Name and Value Tag (Black box with yellow border)
-        const tagText = `$${s.value.toFixed(2)}`;
+        const tagText = `${s.value.toFixed(2)} G`;
         ctx.font = 'bold 10px Inter';
         const textWidth = ctx.measureText(tagText).width;
         const tagWidth = textWidth + 12;

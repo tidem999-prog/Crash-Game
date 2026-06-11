@@ -86,6 +86,7 @@ if (isVercel) {
   const { initGameEngine } = require('./gameEngine');
   const { initKetmesyeEngine } = require('./ketmesyeEngine');
   const { initChatEngine } = require('./chatEngine');
+  const { initDominoEngine } = require('./dominoEngine');
   const { initializeDatabase } = require('./db');
 
   const server = http.createServer(app);
@@ -105,6 +106,7 @@ if (isVercel) {
     initGameEngine(io);
     initKetmesyeEngine(io);
     initChatEngine(io);
+    initDominoEngine(io);
     server.listen(PORT, () => {
       console.log(`===================================================`);
       console.log(`SERVEUR CRASH GAME DÉMARRÉ SUR LE PORT : ${PORT}`);

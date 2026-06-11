@@ -7,11 +7,12 @@ import {
   Wallet, ShieldAlert, Award, Clock, Coins, Upload, Send, HelpCircle, Gamepad2, ArrowLeft, Users
 } from 'lucide-react';
 import KetmesyeGame from './KetmesyeGame';
+import DominoGame from './DominoGame';
 
 export default function Dashboard() {
   const { user, refreshBalance, updateBalance } = useAuth();
   const [activeTab, setActiveTab] = useState('play'); // 'play', 'deposit', 'withdraw', 'history'
-  const [selectedGame, setSelectedGame] = useState(null); // null, 'crash', 'ketmesye'
+  const [selectedGame, setSelectedGame] = useState(null); // null, 'crash', 'ketmesye', 'domino'
   
   // Game state
   const [socket, setSocket] = useState(null);
@@ -61,6 +62,7 @@ export default function Dashboard() {
   // Local Simulation state & refs
   const [isLocalSim, setIsLocalSim] = useState(false);
   const [isKetmesyePlaying, setIsKetmesyePlaying] = useState(false);
+  const [isDominoPlaying, setIsDominoPlaying] = useState(false);
   const localLoopRef = useRef(null);
   const localBetRef = useRef(null);
   const userBalanceRef = useRef(0);
@@ -725,7 +727,7 @@ export default function Dashboard() {
       <div className={`${selectedGame === 'ketmesye' && activeTab === 'play' ? 'lg:col-span-4' : 'lg:col-span-3'} flex flex-col space-y-6`}>
         
         {/* Navigation Tabs Header */}
-        {!isKetmesyePlaying && (
+        {(!isKetmesyePlaying && !isDominoPlaying) && (
           <div className="flex bg-slate-900/60 p-1.5 rounded-2xl border border-slate-800">
             <button
               onClick={() => setActiveTab('play')}
@@ -849,6 +851,36 @@ export default function Dashboard() {
                   className="w-full py-3.5 bg-yellow-600 hover:bg-yellow-500 text-slate-950 font-black rounded-xl text-xs transition-all tracking-wide shadow-md shadow-yellow-600/15"
                 >
                   SPAWN (KETMESYE ARENA)
+                </button>
+              </div>
+
+              {/* Card 3: Domino */}
+              <div className="glass-panel group relative rounded-3xl p-6 bg-slate-900/40 border border-slate-800 hover:border-emerald-500/30 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-xl transform hover:-translate-y-1 md:col-span-2 max-w-xl mx-auto w-full">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-emerald-500/10 transition-all duration-300"></div>
+
+                <div>
+                  <div className="flex justify-between items-start mb-6">
+                    <div className="bg-emerald-500/10 p-4 rounded-2xl text-emerald-500 border border-emerald-500/15 animate-pulse">
+                      <Users className="h-8 w-8" />
+                    </div>
+                    <span className="text-[10px] font-bold tracking-wider uppercase bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full border border-emerald-500/20">
+                      1v1 PvP
+                    </span>
+                  </div>
+
+                  <h3 className="font-display font-black text-xl text-white mb-2 tracking-wide">
+                    DOMINO ARENA
+                  </h3>
+                  <p className="text-slate-400 text-xs leading-relaxed mb-6">
+                    Affrontez un adversaire en temps réel dans une partie de Domino 1 contre 1. Mise d'entrée de 150 HTG, le gagnant remporte la cagnotte !
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setSelectedGame('domino')}
+                  className="w-full py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-xl text-xs transition-all tracking-wide shadow-md shadow-emerald-600/15"
+                >
+                  REJOINDRE (DOMINO 1v1)
                 </button>
               </div>
             </div>
@@ -1005,7 +1037,22 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Tab content 1: PLAY GAME (KETMESYE ACTIVE) */}
+        {/* Tab content 1: PLAY GAME (DOMINO GAME ACTIVE) */}
+        {activeTab === 'play' && selectedGame === 'domino' && (
+          <div className="animate-fade-in w-full relative">
+             <DominoGame 
+               socket={socket} 
+               onBackToLobby={() => {
+                 setSelectedGame(null);
+                 setIsDominoPlaying(false);
+               }} 
+               addNotification={addNotification}
+               onPlayStateChange={(isPlaying) => setIsDominoPlaying(isPlaying)}
+             />
+          </div>
+        )}
+
+        {/* Tab content 1: PLAY GAME (KETMESYE GAME ACTIVE) */}
         {activeTab === 'play' && selectedGame === 'ketmesye' && (
           <KetmesyeGame 
             socket={socket} 

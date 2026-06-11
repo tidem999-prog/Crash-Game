@@ -316,8 +316,74 @@ const MinesGame = ({ socket, user, balance, setSelectedGame }) => {
             )}
           </div>
 
+          {/* 5x5 Grid */}
+          <div className="bg-slate-900/60 p-3 sm:p-6 rounded-3xl border border-slate-800 shadow-2xl backdrop-blur-sm max-w-md w-full">
+            <div className="grid grid-cols-5 gap-2 sm:gap-3">
+              {[...Array(25)].map((_, index) => {
+                const isRevealed = revealedTiles.includes(index);
+                const isMine = gridMines.includes(index); // only true at end of game
+                
+                // Determine styling based on state
+                let tileClass = "aspect-square rounded-xl transition-all duration-300 transform flex items-center justify-center relative shadow-inner overflow-hidden cursor-pointer";
+                
+                if (gameState === 'playing') {
+                  if (isRevealed) {
+                    tileClass += " bg-slate-800 border border-cyan-500/30 scale-[0.98]";
+                  } else {
+                    tileClass += " bg-slate-800 hover:bg-slate-700 hover:-translate-y-1 hover:shadow-lg border-b-4 border-slate-950 active:translate-y-0 active:border-b-0";
+                  }
+                } else if (isGameOver) {
+                  if (isMine) {
+                    // Highlight the mine that blew up vs unrevealed mines
+                    if (gameState === 'lost' && !isRevealed && index === gridMines.find(m => !revealedTiles.includes(m))) {
+                      // Actually, if lost, the clicked mine isn't in revealedTiles, but it's the one that triggered game over. 
+                      // For simplicity, make all mines red.
+                      tileClass += " bg-red-900/80 border border-red-500/50 scale-[0.95] animate-shake";
+                    } else {
+                      tileClass += " bg-red-900/40 border border-red-500/30 scale-[0.95] opacity-80";
+                    }
+                  } else if (isRevealed) {
+                    tileClass += " bg-slate-800 border border-cyan-500/30 scale-[0.98]";
+                  } else {
+                    // Safe tile unrevealed at end
+                    tileClass += " bg-slate-800/50 opacity-40";
+                  }
+                } else {
+                  // Idle
+                  tileClass += " bg-slate-800/80 border-b-4 border-slate-950/50 opacity-80";
+                }
+
+                return (
+                  <div 
+                    key={index} 
+                    onClick={() => handleTileClick(index)}
+                    className={tileClass}
+                  >
+                    {isRevealed && !isMine && (
+                      <div className="absolute inset-0 bg-cyan-500/10 flex items-center justify-center animate-pop-in">
+                        <Gem className="w-6 h-6 sm:w-8 sm:h-8 text-cyan-400 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
+                      </div>
+                    )}
+                    
+                    {isGameOver && isMine && (
+                      <div className="absolute inset-0 bg-red-500/10 flex items-center justify-center animate-pop-in">
+                        <Bomb className="w-6 h-6 sm:w-8 sm:h-8 text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
+                      </div>
+                    )}
+
+                    {isGameOver && !isMine && !isRevealed && (
+                      <div className="absolute inset-0 flex items-center justify-center opacity-30">
+                        <Gem className="w-5 h-5 sm:w-6 sm:h-6 text-cyan-400/50" />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Mobile Controls (Hidden on Desktop) */}
-          <div className="block lg:hidden w-full max-w-md mb-6">
+          <div className="block lg:hidden w-full max-w-md mt-6">
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div className="space-y-1">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mise (HTG)</label>
@@ -384,71 +450,6 @@ const MinesGame = ({ socket, user, balance, setSelectedGame }) => {
             )}
           </div>
 
-          {/* 5x5 Grid */}
-          <div className="bg-slate-900/60 p-3 sm:p-6 rounded-3xl border border-slate-800 shadow-2xl backdrop-blur-sm max-w-md w-full">
-            <div className="grid grid-cols-5 gap-2 sm:gap-3">
-              {[...Array(25)].map((_, index) => {
-                const isRevealed = revealedTiles.includes(index);
-                const isMine = gridMines.includes(index); // only true at end of game
-                
-                // Determine styling based on state
-                let tileClass = "aspect-square rounded-xl transition-all duration-300 transform flex items-center justify-center relative shadow-inner overflow-hidden cursor-pointer";
-                
-                if (gameState === 'playing') {
-                  if (isRevealed) {
-                    tileClass += " bg-slate-800 border border-cyan-500/30 scale-[0.98]";
-                  } else {
-                    tileClass += " bg-slate-800 hover:bg-slate-700 hover:-translate-y-1 hover:shadow-lg border-b-4 border-slate-950 active:translate-y-0 active:border-b-0";
-                  }
-                } else if (isGameOver) {
-                  if (isMine) {
-                    // Highlight the mine that blew up vs unrevealed mines
-                    if (gameState === 'lost' && !isRevealed && index === gridMines.find(m => !revealedTiles.includes(m))) {
-                      // Actually, if lost, the clicked mine isn't in revealedTiles, but it's the one that triggered game over. 
-                      // For simplicity, make all mines red.
-                      tileClass += " bg-red-900/80 border border-red-500/50 scale-[0.95] animate-shake";
-                    } else {
-                      tileClass += " bg-red-900/40 border border-red-500/30 scale-[0.95] opacity-80";
-                    }
-                  } else if (isRevealed) {
-                    tileClass += " bg-slate-800 border border-cyan-500/30 scale-[0.98]";
-                  } else {
-                    // Safe tile unrevealed at end
-                    tileClass += " bg-slate-800/50 opacity-40";
-                  }
-                } else {
-                  // Idle
-                  tileClass += " bg-slate-800/80 border-b-4 border-slate-950/50 opacity-80";
-                }
-
-                return (
-                  <div 
-                    key={index} 
-                    onClick={() => handleTileClick(index)}
-                    className={tileClass}
-                  >
-                    {isRevealed && !isMine && (
-                      <div className="absolute inset-0 bg-cyan-500/10 flex items-center justify-center animate-pop-in">
-                        <Gem className="w-6 h-6 sm:w-8 sm:h-8 text-cyan-400 drop-shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
-                      </div>
-                    )}
-                    
-                    {isGameOver && isMine && (
-                      <div className="absolute inset-0 bg-red-500/10 flex items-center justify-center animate-pop-in">
-                        <Bomb className="w-6 h-6 sm:w-8 sm:h-8 text-red-500 drop-shadow-[0_0_8px_rgba(239,68,68,0.8)]" />
-                      </div>
-                    )}
-
-                    {isGameOver && !isMine && !isRevealed && (
-                      <div className="absolute inset-0 flex items-center justify-center opacity-30">
-                        <Gem className="w-5 h-5 sm:w-6 sm:h-6 text-cyan-400/50" />
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
         </div>
 
       </div>

@@ -553,28 +553,45 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification })
         const segments = s.segments;
         const head = segments[0];
 
-        // Draw body segments (from tail to neck to overlay correctly)
-        ctx.lineWidth = 1;
-        ctx.shadowBlur = 0;
+        // 1. Draw continuous thick outline underneath
+        ctx.beginPath();
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.lineWidth = 24; // Outline thickness
+        ctx.strokeStyle = '#e2e8f0'; // Light gray border
 
+        if (isLocal) {
+          ctx.shadowColor = '#fbbf24'; // Yellow glow
+          ctx.shadowBlur = 10;
+        } else {
+          ctx.shadowBlur = 0;
+        }
+
+        let pathStarted = false;
+        for (let i = 0; i < segments.length; i++) {
+          const seg = segments[i];
+          const sx = seg.x + offsetX;
+          const sy = seg.y + offsetY;
+          if (!pathStarted) {
+            ctx.moveTo(sx, sy);
+            pathStarted = true;
+          } else {
+            ctx.lineTo(sx, sy);
+          }
+        }
+        ctx.stroke();
+        ctx.shadowBlur = 0; // reset
+
+        // 2. Draw the ribbed body on top
         for (let i = segments.length - 1; i >= 0; i--) {
           const seg = segments[i];
           const sx = seg.x + offsetX;
           const sy = seg.y + offsetY;
 
-          // Skip if segment is way off screen
           if (sx < -40 || sx > w + 40 || sy < -40 || sy > h + 40) continue;
 
-          // Segment size decays slightly towards tail (optimized for mobile/desktop to match 18px backend collision geometry)
-          const segmentRadius = Math.max(6, 10 - i * 0.04);
+          const segmentRadius = 10; // Uniform thickness
 
-          // Apply glow to local player
-          if (isLocal) {
-            ctx.shadowColor = s.color;
-            ctx.shadowBlur = i === 0 ? 10 : 2;
-          }
-
-          // Apply blinking overlay if invincible
           if (s.isInvincible && Math.floor(Date.now() / 150) % 2 === 0) {
             ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
           } else {
@@ -584,14 +601,30 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification })
           ctx.beginPath();
           ctx.arc(sx, sy, segmentRadius, 0, Math.PI * 2);
           ctx.fill();
-          ctx.shadowBlur = 0; // reset
+          
+          // Subtle rib shading
+          ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
+          ctx.lineWidth = 1;
+          ctx.stroke();
         }
 
-        // Draw Head Eyes looking at s.angle (scaled down to fit 10px radius head)
+        // Calculate head position
         const hx = head.x + offsetX;
         const hy = head.y + offsetY;
-        const eyeOffsetRadius = 6;
-        const eyeAngleSpacing = 0.45; // angle from central line
+
+        // 3. Draw local player head indicator (yellow ring)
+        if (isLocal) {
+          ctx.beginPath();
+          ctx.arc(hx, hy, 16, s.angle - Math.PI/1.5, s.angle + Math.PI/1.5);
+          ctx.strokeStyle = '#fbbf24';
+          ctx.lineWidth = 3;
+          ctx.lineCap = 'round';
+          ctx.stroke();
+        }
+
+        // 4. Draw Eyes
+        const eyeOffsetRadius = 5;
+        const eyeAngleSpacing = 0.55; 
 
         const eyeLeftX = hx + Math.cos(s.angle - eyeAngleSpacing) * eyeOffsetRadius;
         const eyeLeftY = hy + Math.sin(s.angle - eyeAngleSpacing) * eyeOffsetRadius;
@@ -600,23 +633,43 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification })
 
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
-        ctx.arc(eyeLeftX, eyeLeftY, 2.5, 0, Math.PI * 2);
-        ctx.arc(eyeRightX, eyeRightY, 2.5, 0, Math.PI * 2);
+        ctx.arc(eyeLeftX, eyeLeftY, 3.5, 0, Math.PI * 2);
+        ctx.arc(eyeRightX, eyeRightY, 3.5, 0, Math.PI * 2);
         ctx.fill();
 
         // Pupils
         ctx.fillStyle = '#000000';
         ctx.beginPath();
-        ctx.arc(eyeLeftX + Math.cos(s.angle) * 1.0, eyeLeftY + Math.sin(s.angle) * 1.0, 1.2, 0, Math.PI * 2);
-        ctx.arc(eyeRightX + Math.cos(s.angle) * 1.0, eyeRightY + Math.sin(s.angle) * 1.0, 1.2, 0, Math.PI * 2);
+        ctx.arc(eyeLeftX + Math.cos(s.angle) * 1.5, eyeLeftY + Math.sin(s.angle) * 1.5, 1.8, 0, Math.PI * 2);
+        ctx.arc(eyeRightX + Math.cos(s.angle) * 1.5, eyeRightY + Math.sin(s.angle) * 1.5, 1.8, 0, Math.PI * 2);
         ctx.fill();
 
-        // Draw name and value above head (positioned closer for cleaner layout)
-        ctx.fillStyle = isLocal ? '#34d399' : '#e2e8f0';
-        ctx.font = 'bold 11px Inter';
+        // 5. Draw Name and Value Tag (Black box with yellow border)
+        const tagText = `$${s.value.toFixed(2)}`;
+        ctx.font = 'bold 10px Inter';
+        const textWidth = ctx.measureText(tagText).width;
+        const tagWidth = textWidth + 12;
+        const tagHeight = 16;
+        const tagX = hx - tagWidth / 2;
+        const tagY = hy - 30;
+
+        ctx.fillStyle = '#111111';
+        ctx.beginPath();
+        ctx.roundRect(tagX, tagY, tagWidth, tagHeight, 4);
+        ctx.fill();
+        ctx.strokeStyle = '#fbbf24';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        ctx.fillStyle = '#fbbf24';
         ctx.textAlign = 'center';
-        ctx.textBaseline = 'bottom';
-        ctx.fillText(`${s.email.split('@')[0]} (${s.value.toFixed(2)} G)`, hx, hy - 14);
+        ctx.textBaseline = 'middle';
+        ctx.fillText(tagText, hx, tagY + tagHeight / 2 + 0.5);
+
+        // Name above tag
+        ctx.fillStyle = '#e2e8f0';
+        ctx.font = 'bold 9px Inter';
+        ctx.fillText(s.email.split('@')[0], hx, tagY - 6);
       });
 
       requestRef.current = requestAnimationFrame(draw);

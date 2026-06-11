@@ -68,10 +68,12 @@ export default function Dashboard() {
   const localBetRef = useRef(null);
   const userBalanceRef = useRef(0);
   const prevStatusRef = useRef('');
+  const userIdRef = useRef(null);
 
   useEffect(() => {
     if (user) {
       userBalanceRef.current = user.balance;
+      userIdRef.current = user.id;
     }
   }, [user]);
 
@@ -284,6 +286,12 @@ export default function Dashboard() {
 
     newSocket.on('player_cashed_out', (data) => {
       addNotification(`${data.email} a encaissé +${data.payout} HTG à ${data.multiplier}x`, 'info');
+    });
+
+    newSocket.on('balance_update', (data) => {
+      if (userIdRef.current && userIdRef.current === data.userId) {
+        updateBalance(data.newBalance);
+      }
     });
 
     return () => {

@@ -793,64 +793,64 @@ export default function Dashboard() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto w-full px-2">
+            <div className="grid grid-cols-2 gap-3 md:gap-8 max-w-4xl mx-auto w-full px-2">
               {/* Card 1: Crash Plane */}
-              <div className="glass-panel group relative rounded-3xl p-6 bg-slate-900/40 border border-slate-800 hover:border-indigo-500/30 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-xl transform hover:-translate-y-1">
+              <div className="glass-panel group relative rounded-2xl md:rounded-3xl p-4 md:p-6 bg-slate-900/40 border border-slate-800 hover:border-indigo-500/30 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-xl transform hover:-translate-y-1">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-indigo-500/10 transition-all duration-300"></div>
                 
                 <div>
-                  <div className="flex justify-between items-start mb-6">
-                    <div className="bg-indigo-600/10 p-4 rounded-2xl text-indigo-400 border border-indigo-500/15">
-                      <Plane className="h-8 w-8 rotate-45" />
+                  <div className="flex justify-between items-start mb-3 md:mb-6">
+                    <div className="bg-indigo-600/10 p-2 md:p-4 rounded-xl md:rounded-2xl text-indigo-400 border border-indigo-500/15">
+                      <Plane className="h-5 w-5 md:h-8 md:w-8 rotate-45" />
                     </div>
-                    <span className="text-[10px] font-bold tracking-wider uppercase bg-indigo-500/10 text-indigo-400 px-3 py-1 rounded-full border border-indigo-500/20">
+                    <span className="hidden md:inline-block text-[10px] font-bold tracking-wider uppercase bg-indigo-500/10 text-indigo-400 px-3 py-1 rounded-full border border-indigo-500/20">
                       Multiplicateur
                     </span>
                   </div>
 
-                  <h3 className="font-display font-black text-xl text-white mb-2 tracking-wide">
+                  <h3 className="font-display font-black text-sm md:text-xl text-white mb-1 md:mb-2 tracking-wide truncate">
                     CRASH PLANE
                   </h3>
-                  <p className="text-slate-400 text-xs leading-relaxed mb-6">
+                  <p className="hidden md:block text-slate-400 text-xs leading-relaxed mb-6">
                     Suivez la courbe de vol en temps réel ! La mise augmente de seconde en seconde. Récupérez vos gains avant le crash inattendu pour empocher jusqu'à 100x votre mise.
                   </p>
                 </div>
 
                 <button
                   onClick={() => setSelectedGame('crash')}
-                  className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-xs transition-all tracking-wide shadow-md shadow-indigo-600/15"
+                  className="w-full py-2.5 md:py-3.5 mt-2 md:mt-0 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg md:rounded-xl text-[10px] md:text-xs transition-all tracking-wide shadow-md shadow-indigo-600/15"
                 >
-                  JOUER (CRASH PLANE)
+                  JOUER
                 </button>
               </div>
 
               {/* Card 2: Ketmesye (Snake) */}
-              <div className="glass-panel group relative rounded-3xl p-6 bg-slate-900/40 border border-slate-800 hover:border-yellow-500/30 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-xl transform hover:-translate-y-1">
+              <div className="glass-panel group relative rounded-2xl md:rounded-3xl p-4 md:p-6 bg-slate-900/40 border border-slate-800 hover:border-yellow-500/30 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-xl transform hover:-translate-y-1">
                 <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-yellow-500/10 transition-all duration-300"></div>
 
                 <div>
-                  <div className="flex justify-between items-start mb-6">
-                    <div className="bg-yellow-500/10 p-4 rounded-2xl text-yellow-500 border border-yellow-500/15 animate-pulse">
-                      <Gamepad2 className="h-8 w-8" />
+                  <div className="flex justify-between items-start mb-3 md:mb-6">
+                    <div className="bg-yellow-500/10 p-2 md:p-4 rounded-xl md:rounded-2xl text-yellow-500 border border-yellow-500/15 animate-pulse">
+                      <Gamepad2 className="h-5 w-5 md:h-8 md:w-8" />
                     </div>
-                    <span className="text-[10px] font-bold tracking-wider uppercase bg-yellow-500/10 text-yellow-400 px-3 py-1 rounded-full border border-yellow-500/20">
-                      Multijoueur Action
+                    <span className="hidden md:inline-block text-[10px] font-bold tracking-wider uppercase bg-yellow-500/10 text-yellow-400 px-3 py-1 rounded-full border border-yellow-500/20">
+                      Multijoueur
                     </span>
                   </div>
 
-                  <h3 className="font-display font-black text-xl text-white mb-2 tracking-wide">
+                  <h3 className="font-display font-black text-sm md:text-xl text-white mb-1 md:mb-2 tracking-wide truncate">
                     KETMESYE
                   </h3>
-                  <p className="text-slate-400 text-xs leading-relaxed mb-6">
+                  <p className="hidden md:block text-slate-400 text-xs leading-relaxed mb-6">
                     L'arène de serpent multijoueur en temps réel avec wagers ! Contrôlez votre serpent avec la souris, mangez des pièces, détruisez les autres jwè yo et encaissez votre butin quand vous le voulez.
                   </p>
                 </div>
 
                 <button
                   onClick={() => setSelectedGame('ketmesye')}
-                  className="w-full py-3.5 bg-yellow-600 hover:bg-yellow-500 text-slate-950 font-black rounded-xl text-xs transition-all tracking-wide shadow-md shadow-yellow-600/15"
+                  className="w-full py-2.5 md:py-3.5 mt-2 md:mt-0 bg-yellow-600 hover:bg-yellow-500 text-slate-950 font-black rounded-lg md:rounded-xl text-[10px] md:text-xs transition-all tracking-wide shadow-md shadow-yellow-600/15"
                 >
-                  SPAWN (KETMESYE ARENA)
+                  SPAWN
                 </button>
               </div>
 

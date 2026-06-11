@@ -9,6 +9,7 @@ import {
 import KetmesyeGame from './KetmesyeGame';
 import DominoGame from './DominoGame';
 import MinesGame from './MinesGame';
+import SnakeDuelGame from './SnakeDuelGame';
 
 export default function Dashboard() {
   const { user, refreshBalance, updateBalance } = useAuth();
@@ -893,6 +894,36 @@ export default function Dashboard() {
                 </button>
               </div>
 
+              {/* Card 4: Duel Snake 1v1 */}
+              <div className="glass-panel group relative rounded-2xl md:rounded-3xl p-3 md:p-6 bg-slate-900/40 border border-slate-800 hover:border-emerald-500/30 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-xl transform hover:-translate-y-1 col-span-2 md:col-span-1 max-w-sm mx-auto md:max-w-none w-full">
+                <div className="absolute top-0 right-0 w-20 h-20 md:w-32 md:h-32 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-emerald-500/10 transition-all duration-300"></div>
+
+                <div>
+                  <div className="flex justify-between items-start mb-3 md:mb-6">
+                    <div className="bg-emerald-500/10 p-2 md:p-4 rounded-xl md:rounded-2xl text-emerald-500 border border-emerald-500/15 animate-pulse">
+                      <Gamepad2 className="h-5 w-5 md:h-8 md:w-8" />
+                    </div>
+                    <span className="text-[8px] md:text-[10px] font-bold tracking-wider uppercase bg-emerald-500/10 text-emerald-400 px-2 md:px-3 py-0.5 md:py-1 rounded-full border border-emerald-500/20">
+                      1v1 P2P
+                    </span>
+                  </div>
+
+                  <h3 className="font-display font-black text-sm md:text-xl text-white mb-1 md:mb-2 tracking-wide">
+                    DUEL SNAKE
+                  </h3>
+                  <p className="text-slate-400 text-[9px] md:text-xs leading-tight md:leading-relaxed mb-4 md:mb-6">
+                    Affrontez un adversaire en 1v1 ! Misez et remportez 90% du pot. (Pénalités de mort)
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setSelectedGame('snake_duel')}
+                  className="w-full py-2 md:py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-lg md:rounded-xl text-[9px] md:text-xs transition-all tracking-wide shadow-md shadow-emerald-600/15"
+                >
+                  DÉFIER
+                </button>
+              </div>
+
             </div>
           </div>
         )}
@@ -1075,6 +1106,11 @@ export default function Dashboard() {
             addNotification={addNotification} 
             onPlayStateChange={(playing) => setIsKetmesyePlaying(playing)}
           />
+        )}
+
+        {/* Tab content: PLAY GAME (SNAKE DUEL ACTIVE) */}
+        {activeTab === 'play' && selectedGame === 'snake_duel' && (
+          <SnakeDuelGame socket={socket} user={user} balance={userBalanceRef.current} setSelectedGame={setSelectedGame} />
         )}
 
         {/* Tab content 2: DEPOSITS */}

@@ -125,8 +125,23 @@ const initializeDatabase = async () => {
       );
     `);
     console.log('Database: Table "mines_games" checked/created.');
+    // 6. Create Duels Table (Snake 1v1)
+    await query(`
+      CREATE TABLE IF NOT EXISTS duels (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        player_a_id UUID REFERENCES users(id) ON DELETE SET NULL,
+        player_b_id UUID REFERENCES users(id) ON DELETE SET NULL,
+        bet_amount DECIMAL(12, 2) NOT NULL,
+        status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'active', 'finished', 'cancelled')),
+        winner_id UUID REFERENCES users(id) ON DELETE SET NULL,
+        player_a_score INT DEFAULT 0,
+        player_b_score INT DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('Database: Table "duels" checked/created.');
 
-    // 5. Seed Admin User
+    // 7. Seed Admin User
     const adminCheck = await query("SELECT * FROM users WHERE role = 'admin' LIMIT 1");
     if (adminCheck.rows.length === 0) {
       const adminEmail = 'admin@crashplane.com';

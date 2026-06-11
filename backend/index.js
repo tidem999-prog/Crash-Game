@@ -88,6 +88,7 @@ if (isVercel) {
   const { initChatEngine } = require('./chatEngine');
   const { initDominoEngine } = require('./dominoEngine');
   const { initMinesEngine } = require('./minesEngine');
+  const { initSnakeEngine, claimSpot } = require('./snakeEngine');
   const { initializeDatabase } = require('./db');
 
   const server = http.createServer(app);
@@ -98,6 +99,12 @@ if (isVercel) {
   const SERVER_START_TIME = Date.now();
   io.on('connection', (socket) => {
     socket.emit('server_version', SERVER_START_TIME);
+
+    socket.on('snake_claim_spot', (payload) => {
+      if(payload && payload.userId && payload.duelId) {
+        claimSpot(socket, payload.userId, payload.duelId);
+      }
+    });
   });
 
   const PORT = process.env.PORT || 5000;
@@ -109,6 +116,7 @@ if (isVercel) {
     initChatEngine(io);
     initDominoEngine(io);
     initMinesEngine(io);
+    initSnakeEngine(io);
     server.listen(PORT, () => {
       console.log(`===================================================`);
       console.log(`SERVEUR CRASH GAME DÉMARRÉ SUR LE PORT : ${PORT}`);

@@ -152,14 +152,6 @@ const MinesGame = ({ socket, user, balance, setSelectedGame }) => {
           </div>
           <span className="font-bold tracking-wide">RETOUR AU LOBBY</span>
         </button>
-        
-        <div className="flex items-center space-x-4 bg-slate-900/60 p-3 rounded-2xl border border-slate-800">
-          <div className="flex items-center space-x-2">
-            <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">SOLDE</span>
-            <span className="text-cyan-400 font-black font-display text-xl tracking-wide">{parseFloat(balance).toFixed(2)}</span>
-            <span className="text-cyan-500 text-xs font-bold">HTG</span>
-          </div>
-        </div>
       </div>
 
       {error && (
@@ -189,7 +181,7 @@ const MinesGame = ({ socket, user, balance, setSelectedGame }) => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* Sidebar Controls */}
-        <div className="lg:col-span-1 space-y-6">
+        <div className="hidden lg:block lg:col-span-1 space-y-6">
           <div className="glass-panel p-6 rounded-3xl bg-slate-900/50 border border-slate-800 shadow-2xl relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
             
@@ -321,6 +313,74 @@ const MinesGame = ({ socket, user, balance, setSelectedGame }) => {
                 </p>
                 <p className="text-red-400/80 text-sm font-bold uppercase tracking-wider">Vous avez perdu la mise.</p>
               </div>
+            )}
+          </div>
+
+          {/* Mobile Controls (Hidden on Desktop) */}
+          <div className="block lg:hidden w-full max-w-md mb-6">
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mise (HTG)</label>
+                <input 
+                  type="number" 
+                  value={betAmount}
+                  onChange={(e) => setBetAmount(e.target.value)}
+                  disabled={gameState === 'playing'}
+                  className="w-full bg-slate-950 border border-slate-800 focus:border-cyan-500 rounded-xl py-3 px-4 text-white font-bold tracking-wide outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mines (5-24)</label>
+                <select 
+                  value={minesCount}
+                  onChange={(e) => setMinesCount(parseInt(e.target.value))}
+                  disabled={gameState === 'playing'}
+                  className="w-full bg-slate-950 border border-slate-800 focus:border-cyan-500 rounded-xl py-3 px-4 text-white font-bold tracking-wide outline-none transition-all appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {[...Array(20)].map((_, i) => (
+                    <option key={i+5} value={i+5}>{i+5} Mines</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {gameState === 'idle' && (
+              <div className="grid grid-cols-4 gap-2 mb-4">
+                {[50, 100, 200, 500].map(amt => (
+                  <button
+                    key={amt}
+                    onClick={() => setBetAmount(amt.toString())}
+                    className="py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold rounded-lg transition-colors"
+                  >
+                    +{amt}
+                  </button>
+                ))}
+              </div>
+            )}
+            
+            {gameState !== 'playing' ? (
+              <button 
+                onClick={handleStart}
+                className="w-full py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-black rounded-xl transition-all shadow-[0_0_15px_rgba(6,182,212,0.3)] transform active:scale-95 flex items-center justify-center space-x-2"
+              >
+                <Play className="w-4 h-4" />
+                <span>JOUER</span>
+              </button>
+            ) : (
+              <button 
+                onClick={handleCashout}
+                disabled={revealedTiles.length === 0}
+                className={`w-full py-3 font-black rounded-xl transition-all flex flex-col items-center justify-center ${
+                  revealedTiles.length > 0 
+                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-[0_0_15px_rgba(16,185,129,0.3)] transform active:scale-95' 
+                    : 'bg-slate-800 text-slate-500 cursor-not-allowed'
+                }`}
+              >
+                <span className="text-xs">CASH OUT</span>
+                {revealedTiles.length > 0 && (
+                  <span className="text-lg tracking-wide">{currentPayout} HTG</span>
+                )}
+              </button>
             )}
           </div>
 

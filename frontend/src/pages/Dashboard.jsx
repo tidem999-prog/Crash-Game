@@ -777,6 +777,7 @@ export default function Dashboard() {
             <span>Parrainage</span>
           </button>
         </div>
+        )}
 
         {/* Tab content 1: PLAY GAME (GAME LOBBY) */}
         {activeTab === 'play' && selectedGame === null && (

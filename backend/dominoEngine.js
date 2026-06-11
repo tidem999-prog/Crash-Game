@@ -310,11 +310,11 @@ const initDominoEngine = (ioInstance) => {
         const { token } = data;
         const { userId, email, wager } = data; 
         
-        if (!userId || !wager) {
-          return socket.emit('domino_error', 'Informations utilisateur ou mise manquantes.');
+        if (!userId) {
+          return socket.emit('domino_error', 'Informations utilisateur manquantes.');
         }
 
-        const requestedWager = parseFloat(wager);
+        const requestedWager = parseFloat(wager) || 150;
         if (isNaN(requestedWager) || requestedWager < 150) {
           return socket.emit('domino_error', 'Mise invalide (min 150 HTG).');
         }

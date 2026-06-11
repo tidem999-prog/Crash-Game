@@ -4,7 +4,7 @@ import { ArrowLeft, Gem, Bomb, Play, Banknote, AlertTriangle } from 'lucide-reac
 const MinesGame = ({ socket, user, balance, setSelectedGame }) => {
   const [gameState, setGameState] = useState('idle'); // idle, playing, won, lost, cashed_out
   const [betAmount, setBetAmount] = useState('200');
-  const [minesCount, setMinesCount] = useState(3);
+  const [minesCount, setMinesCount] = useState(5);
   
   const [gameData, setGameData] = useState(null);
   const [revealedTiles, setRevealedTiles] = useState([]);
@@ -232,15 +232,15 @@ const MinesGame = ({ socket, user, balance, setSelectedGame }) => {
 
             {/* Mines Count */}
             <div className="space-y-2 mb-8">
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Mines (1-24)</label>
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Mines (5-24)</label>
               <select 
                 value={minesCount}
                 onChange={(e) => setMinesCount(parseInt(e.target.value))}
                 disabled={gameState === 'playing'}
                 className="w-full bg-slate-950 border border-slate-800 focus:border-cyan-500 rounded-xl py-3 px-4 text-white font-bold tracking-wide outline-none transition-all appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {[...Array(24)].map((_, i) => (
-                  <option key={i+1} value={i+1}>{i+1} {i === 0 ? 'Mine' : 'Mines'}</option>
+                {[...Array(20)].map((_, i) => (
+                  <option key={i+5} value={i+5}>{i+5} Mines</option>
                 ))}
               </select>
             </div>

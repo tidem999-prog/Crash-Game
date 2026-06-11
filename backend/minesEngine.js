@@ -55,8 +55,8 @@ const generateMines = (serverSeed, clientSeed, minesCount) => {
 const handleMinesStart = async (socket, payload) => {
   const { userId, betAmount, minesCount } = payload;
 
-  if (!userId || !betAmount || betAmount <= 0 || !minesCount || minesCount < 1 || minesCount > 24) {
-    return socket.emit('mines_error', 'Paramètres invalides.');
+  if (!userId || !betAmount || betAmount <= 0 || !minesCount || minesCount < 5 || minesCount > 24) {
+    return socket.emit('mines_error', 'Paramètres invalides. Le nombre de mines doit être entre 5 et 24.');
   }
 
   try {

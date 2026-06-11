@@ -773,11 +773,6 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification })
 
   // Track touch coordinates on canvas to compute moving direction (mobile support)
   const handleTouchStart = (e) => {
-    const now = Date.now();
-    if (now - lastTouchTimeRef.current < 300) {
-      handleBoostChange(true);
-    }
-    lastTouchTimeRef.current = now;
     handleTouchMove(e);
   };
 
@@ -860,8 +855,37 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification })
     }
   };
 
+  // Fullscreen & Landscape Rotation
+  const toggleFullscreenAndRotate = async () => {
+    try {
+      if (!document.fullscreenElement) {
+        // Request full screen on the document body or HTML
+        await document.documentElement.requestFullscreen();
+        // Try locking orientation to landscape for mobile devices
+        if (window.screen && window.screen.orientation && window.screen.orientation.lock) {
+          try {
+            await window.screen.orientation.lock('landscape');
+          } catch (e) {
+            console.warn("Screen orientation lock failed or not supported", e);
+          }
+        }
+      } else {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      addNotification("Rotation plein écran non supportée sur cet appareil.", "info");
+    }
+  };
+
   return (
-    <div className="flex flex-col bg-slate-950 w-full min-h-[500px] border border-slate-900 rounded-3xl overflow-hidden relative">
+    <div className={`flex flex-col bg-slate-950 overflow-hidden relative transition-all duration-300 ${
+      isPlaying
+        ? 'fixed inset-0 z-50 rounded-none' // Fullscreen mode over Dashboard when playing
+        : 'w-full min-h-[500px] border border-slate-900 rounded-3xl' // Normal embedded mode
+    }`}>
       
       {/* Header bar */}
       <div className="bg-slate-900/90 border-b border-slate-800 px-3 py-2 sm:px-6 sm:py-4 flex items-center justify-between z-10">
@@ -882,12 +906,28 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification })
           </div>
         </div>
 
-        {/* Display connection status */}
-        <div className="flex items-center space-x-1.5 sm:space-x-2 bg-slate-950 border border-slate-800 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full shrink-0">
-          <div className={`h-1.5 w-1.5 sm:h-2.5 sm:w-2.5 rounded-full ${isLocalSim ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`} />
-          <span className="text-[9px] sm:text-xs font-semibold text-slate-400 font-mono">
-            {isLocalSim ? `Mode Démo (${onlinePlayers})` : `${onlinePlayers} Joueur${onlinePlayers > 1 ? 's' : ''} en ligne`}
-          </span>
+        {/* Display connection status and rotate button */}
+        <div className="flex items-center space-x-2 shrink-0">
+          {isPlaying && (
+            <button 
+              onClick={toggleFullscreenAndRotate}
+              className="bg-slate-800/80 hover:bg-slate-700 text-slate-300 p-1.5 sm:p-2 rounded-lg transition-all border border-slate-700"
+              title="Tourner / Plein Écran"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="sm:w-5 sm:h-5">
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                <path d="M3 3v5h5"/>
+                <path d="M12 20v-4"/>
+                <path d="M8 16h8"/>
+              </svg>
+            </button>
+          )}
+          <div className="flex items-center space-x-1.5 sm:space-x-2 bg-slate-950 border border-slate-800 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full">
+            <div className={`h-1.5 w-1.5 sm:h-2.5 sm:w-2.5 rounded-full ${isLocalSim ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500'}`} />
+            <span className="text-[9px] sm:text-xs font-semibold text-slate-400 font-mono">
+              {isLocalSim ? `Mode Démo (${onlinePlayers})` : `${onlinePlayers} Joueur${onlinePlayers > 1 ? 's' : ''} en ligne`}
+            </span>
+          </div>
         </div>
       </div>
 

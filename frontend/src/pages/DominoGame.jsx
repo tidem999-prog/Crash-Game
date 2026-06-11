@@ -10,6 +10,8 @@ export default function DominoGame({ socket, onBackToLobby, addNotification, onP
   const [myHand, setMyHand] = useState([]);
   const [error, setError] = useState(null);
   const [gameOver, setGameOver] = useState(null);
+  const [selectedWager, setSelectedWager] = useState(150);
+  const [customWager, setCustomWager] = useState('');
 
   // Inform Dashboard when playing to hide tabs
   useEffect(() => {
@@ -64,7 +66,12 @@ export default function DominoGame({ socket, onBackToLobby, addNotification, onP
     if (!socket || !user) return;
     setError(null);
     setGameOver(null);
-    socket.emit('domino_join', { userId: user.id, email: user.email });
+    const wager = customWager !== '' ? parseFloat(customWager) : selectedWager;
+    if (isNaN(wager) || wager < 150) {
+      setError("La mise minimum est de 150 HTG");
+      return;
+    }
+    socket.emit('domino_join', { userId: user.id, email: user.email, wager });
   };
 
   const playTile = (tileIndex, side) => {
@@ -84,15 +91,53 @@ export default function DominoGame({ socket, onBackToLobby, addNotification, onP
 
   // Render
   if (!isJoined && !gameOver) {
+    const wagerToPlay = customWager !== '' ? parseFloat(customWager) : selectedWager;
+    const potentialWin = !isNaN(wagerToPlay) ? (wagerToPlay * 2) * 0.9 : 0;
+
     return (
       <div className="flex flex-col items-center justify-center p-8 bg-slate-900 rounded-3xl border border-slate-800 text-center">
         <h2 className="text-3xl font-black text-white mb-4">DOMINO ARENA 1v1</h2>
-        <p className="text-slate-400 mb-6">Mise : 150 HTG | Le gagnant remporte 270 HTG !</p>
+        <p className="text-slate-400 mb-6">Sélectionnez votre mise pour affronter un joueur au même montant.</p>
+        
+        {/* Wager Selection */}
+        <div className="flex flex-col items-center space-y-4 mb-8 w-full max-w-sm">
+          <div className="grid grid-cols-4 gap-2 w-full">
+            {[150, 250, 500, 1250].map(amount => (
+              <button
+                key={amount}
+                onClick={() => { setSelectedWager(amount); setCustomWager(''); }}
+                className={`py-2 rounded-lg font-bold text-sm transition-all ${
+                  selectedWager === amount && customWager === ''
+                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20' 
+                    : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                }`}
+              >
+                {amount}
+              </button>
+            ))}
+          </div>
+          <div className="w-full flex items-center space-x-2 bg-slate-800 p-2 rounded-xl">
+            <span className="text-slate-400 font-bold ml-2">Perso:</span>
+            <input 
+              type="number" 
+              value={customWager}
+              onChange={(e) => { setCustomWager(e.target.value); setSelectedWager(null); }}
+              placeholder="Ex: 300"
+              className="flex-1 bg-slate-900 border border-slate-700 rounded-lg py-2 px-3 text-white font-bold focus:outline-none focus:border-indigo-500"
+              min="150"
+            />
+            <span className="text-slate-400 font-bold mr-2">HTG</span>
+          </div>
+          <div className="bg-emerald-950/50 text-emerald-400 px-4 py-2 rounded-full text-sm font-bold w-full border border-emerald-500/20">
+            Gain potentiel : +{potentialWin.toFixed(2)} HTG
+          </div>
+        </div>
+
         {error && <p className="text-red-500 mb-4">{error}</p>}
         <div className="flex space-x-4">
           <button onClick={onBackToLobby} className="px-6 py-3 bg-slate-800 text-white rounded-xl font-bold">Retour</button>
-          <button onClick={joinGame} className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-500">
-            Rejoindre une Table (150 HTG)
+          <button onClick={joinGame} className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-500 shadow-xl shadow-indigo-600/20">
+            Rejoindre ({!isNaN(wagerToPlay) ? wagerToPlay : 0} HTG)
           </button>
         </div>
       </div>
@@ -116,7 +161,7 @@ export default function DominoGame({ socket, onBackToLobby, addNotification, onP
         )}
         <div className="flex space-x-4 mt-6">
           <button onClick={onBackToLobby} className="px-6 py-3 bg-slate-800 text-white rounded-xl font-bold">Quitter</button>
-          <button onClick={joinGame} className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold">Rejouer (150 HTG)</button>
+          <button onClick={() => { setGameOver(null); }} className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold">Rejouer (Choisir Mise)</button>
         </div>
       </div>
     );

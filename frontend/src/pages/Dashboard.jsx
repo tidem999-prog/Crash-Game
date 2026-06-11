@@ -872,7 +872,7 @@ export default function Dashboard() {
                     DOMINO ARENA
                   </h3>
                   <p className="text-slate-400 text-xs leading-relaxed mb-6">
-                    Affrontez un adversaire en temps réel dans une partie de Domino 1 contre 1. Mise d'entrée de 150 HTG, le gagnant remporte la cagnotte !
+                    Affrontez un adversaire en temps réel dans une partie de Domino 1 contre 1. Choisissez votre mise, le gagnant remporte la cagnotte !
                   </p>
                 </div>
 

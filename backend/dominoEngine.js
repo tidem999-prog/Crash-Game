@@ -2,7 +2,6 @@ const { query } = require('./db');
 
 let io;
 
-const BUY_IN = 150;
 const RAKE_PERCENT = 10;
 const TURN_TIMEOUT_MS = 20000;
 const DISCONNECT_TIMEOUT_MS = 30000;
@@ -62,18 +61,18 @@ const startMatch = async (roomId) => {
   // Debit balances & record bets
   for (let p of room.players) {
     const userRes = await query('SELECT balance FROM users WHERE id = $1 FOR UPDATE', [p.userId]);
-    const newBalance = parseFloat(userRes.rows[0].balance) - BUY_IN;
+    const newBalance = parseFloat(userRes.rows[0].balance) - room.buyIn;
     await query('UPDATE users SET balance = $1 WHERE id = $2', [newBalance, p.userId]);
     
     const betRes = await query(
       `INSERT INTO bets (user_id, game_id, bet_amount, cashout_multiplier, payout_amount, is_won) 
        VALUES ($1, null, $2, null, 0.00, false) RETURNING id`,
-      [p.userId, BUY_IN]
+      [p.userId, room.buyIn]
     );
     p.betId = betRes.rows[0].id;
     p.hasPaid = true;
   }
-  room.pot = BUY_IN * 2;
+  room.pot = room.buyIn * 2;
 
   broadcastRoomState(roomId);
   startTurnTimer(roomId);
@@ -230,7 +229,7 @@ const handleGameEnd = async (roomId, reason, winnerIndex = -1) => {
     await query('UPDATE users SET balance = balance + $1 WHERE id = $2', [winAmount, winner.userId]);
     
     // Update bet record as won
-    const multiplier = parseFloat((winAmount / BUY_IN).toFixed(2));
+    const multiplier = parseFloat((winAmount / room.buyIn).toFixed(2));
     await query(
       `UPDATE bets SET cashout_multiplier = $1, payout_amount = $2, is_won = true WHERE id = $3`,
       [multiplier, winAmount, winner.betId]
@@ -250,11 +249,11 @@ const handleGameEnd = async (roomId, reason, winnerIndex = -1) => {
   } else {
     // Draw: refund buy-ins
     for (let p of room.players) {
-      await query('UPDATE users SET balance = balance + $1 WHERE id = $2', [BUY_IN, p.userId]);
+      await query('UPDATE users SET balance = balance + $1 WHERE id = $2', [room.buyIn, p.userId]);
       // Update bet to show refunded
       await query(
         `UPDATE bets SET cashout_multiplier = 1.00, payout_amount = $1, is_won = false WHERE id = $2`,
-        [BUY_IN, p.betId]
+        [room.buyIn, p.betId]
       );
     }
     io.to(roomId).emit('domino_game_over', { reason: 'draw', p1Points, p2Points });
@@ -310,20 +309,26 @@ const initDominoEngine = (ioInstance) => {
       const { token } = data;
       // Note: Token verification logic should be extracted/shared, assuming frontend sends valid email/userId for now (or verify token securely)
       // For simplicity, requiring userId and email in data for this implementation, MUST secure in prod
-      const { userId, email } = data; 
+      const { userId, email, wager } = data; 
       
-      if (!userId) return;
+      if (!userId || !wager) return;
+
+      const requestedWager = parseFloat(wager);
+      if (isNaN(requestedWager) || requestedWager < 150) {
+        return socket.emit('domino_error', 'Mise invalide (min 150 HTG).');
+      }
 
       // Check balance
-      const [user] = await query('SELECT balance FROM users WHERE id = ?', [userId]);
-      if (!user || user.balance < BUY_IN) {
-        return socket.emit('domino_error', 'Solde insuffisant pour jouer (150 HTG requis).');
+      const userRes = await query('SELECT balance FROM users WHERE id = $1', [userId]);
+      const user = userRes.rows[0];
+      if (!user || user.balance < requestedWager) {
+        return socket.emit('domino_error', `Solde insuffisant pour jouer (${requestedWager} HTG requis).`);
       }
 
       // Find waiting room or create new
       let roomId = null;
       for (const id in rooms) {
-        if (rooms[id].status === 'waiting' && rooms[id].players.length < 2) {
+        if (rooms[id].status === 'waiting' && rooms[id].buyIn === requestedWager && rooms[id].players.length < 2) {
           // Check if already in room
           if (!rooms[id].players.find(p => p.userId === userId)) {
             roomId = id;
@@ -337,6 +342,7 @@ const initDominoEngine = (ioInstance) => {
         rooms[roomId] = {
           id: roomId,
           status: 'waiting',
+          buyIn: requestedWager,
           players: [],
         };
       }

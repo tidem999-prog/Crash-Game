@@ -306,61 +306,66 @@ const initDominoEngine = (ioInstance) => {
   io.on('connection', (socket) => {
 
     socket.on('domino_join', async (data) => {
-      const { token } = data;
-      // Note: Token verification logic should be extracted/shared, assuming frontend sends valid email/userId for now (or verify token securely)
-      // For simplicity, requiring userId and email in data for this implementation, MUST secure in prod
-      const { userId, email, wager } = data; 
-      
-      if (!userId || !wager) return;
+      try {
+        const { token } = data;
+        const { userId, email, wager } = data; 
+        
+        if (!userId || !wager) {
+          return socket.emit('domino_error', 'Informations utilisateur ou mise manquantes.');
+        }
 
-      const requestedWager = parseFloat(wager);
-      if (isNaN(requestedWager) || requestedWager < 150) {
-        return socket.emit('domino_error', 'Mise invalide (min 150 HTG).');
-      }
+        const requestedWager = parseFloat(wager);
+        if (isNaN(requestedWager) || requestedWager < 150) {
+          return socket.emit('domino_error', 'Mise invalide (min 150 HTG).');
+        }
 
-      // Check balance
-      const userRes = await query('SELECT balance FROM users WHERE id = $1', [userId]);
-      const user = userRes.rows[0];
-      if (!user || user.balance < requestedWager) {
-        return socket.emit('domino_error', `Solde insuffisant pour jouer (${requestedWager} HTG requis).`);
-      }
+        // Check balance
+        const userRes = await query('SELECT balance FROM users WHERE id = $1', [userId]);
+        const user = userRes.rows[0];
+        if (!user || parseFloat(user.balance) < requestedWager) {
+          return socket.emit('domino_error', `Solde insuffisant pour jouer (${requestedWager} HTG requis).`);
+        }
 
-      // Find waiting room or create new
-      let roomId = null;
-      for (const id in rooms) {
-        if (rooms[id].status === 'waiting' && rooms[id].buyIn === requestedWager && rooms[id].players.length < 2) {
-          // Check if already in room
-          if (!rooms[id].players.find(p => p.userId === userId)) {
-            roomId = id;
-            break;
+        // Find waiting room or create new
+        let roomId = null;
+        for (const id in rooms) {
+          if (rooms[id].status === 'waiting' && rooms[id].buyIn === requestedWager && rooms[id].players.length < 2) {
+            // Check if already in room
+            if (!rooms[id].players.find(p => p.userId === userId)) {
+              roomId = id;
+              break;
+            }
           }
         }
-      }
 
-      if (!roomId) {
-        roomId = `domino_${Math.random().toString(36).substr(2, 6)}`;
-        rooms[roomId] = {
-          id: roomId,
-          status: 'waiting',
-          buyIn: requestedWager,
-          players: [],
-        };
-      }
+        if (!roomId) {
+          roomId = `domino_${Math.random().toString(36).substr(2, 6)}`;
+          rooms[roomId] = {
+            id: roomId,
+            status: 'waiting',
+            buyIn: requestedWager,
+            players: [],
+          };
+        }
 
-      socket.join(roomId);
-      rooms[roomId].players.push({
-        userId,
-        email,
-        socketId: socket.id,
-        connected: true,
-        hand: []
-      });
+        socket.join(roomId);
+        rooms[roomId].players.push({
+          userId,
+          email,
+          socketId: socket.id,
+          connected: true,
+          hand: []
+        });
 
-      socket.dominoRoom = roomId;
-      broadcastRoomState(roomId);
+        socket.dominoRoom = roomId;
+        broadcastRoomState(roomId);
 
-      if (rooms[roomId].players.length === 2) {
-        startMatch(roomId);
+        if (rooms[roomId].players.length === 2) {
+          startMatch(roomId);
+        }
+      } catch (err) {
+        console.error('Erreur domino_join:', err);
+        socket.emit('domino_error', 'Erreur interne lors de la connexion à la table.');
       }
     });
 

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Award, Play, AlertTriangle, ArrowLeft, Trophy, Shield, Coins, Sparkles, HelpCircle, Zap } from 'lucide-react';
 
-export default function KetmesyeGame({ socket, onBackToLobby, addNotification }) {
+export default function KetmesyeGame({ socket, onBackToLobby, addNotification, onPlayStateChange }) {
   const { user, refreshBalance, updateBalance } = useAuth();
 
   // Game configuration
@@ -38,6 +38,12 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification })
   const mySnakeIdRef = useRef(null);
 
   // Initialize socket listeners for Ketmesye
+  useEffect(() => {
+    if (onPlayStateChange) {
+      onPlayStateChange(isPlaying);
+    }
+  }, [isPlaying, onPlayStateChange]);
+
   useEffect(() => {
     if (!socket || !socket.connected) {
       // Server is offline, fallback to local simulation

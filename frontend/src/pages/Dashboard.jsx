@@ -60,6 +60,7 @@ export default function Dashboard() {
 
   // Local Simulation state & refs
   const [isLocalSim, setIsLocalSim] = useState(false);
+  const [isKetmesyePlaying, setIsKetmesyePlaying] = useState(false);
   const localLoopRef = useRef(null);
   const localBetRef = useRef(null);
   const userBalanceRef = useRef(0);
@@ -724,9 +725,10 @@ export default function Dashboard() {
       <div className={`${selectedGame === 'ketmesye' && activeTab === 'play' ? 'lg:col-span-4' : 'lg:col-span-3'} flex flex-col space-y-6`}>
         
         {/* Navigation Tabs Header */}
-        <div className="flex bg-slate-900/60 p-1.5 rounded-2xl border border-slate-800">
-          <button
-            onClick={() => setActiveTab('play')}
+        {!isKetmesyePlaying && (
+          <div className="flex bg-slate-900/60 p-1.5 rounded-2xl border border-slate-800">
+            <button
+              onClick={() => setActiveTab('play')}
             className={`flex-1 py-2 px-1 sm:py-3 sm:px-4 rounded-xl text-[10px] sm:text-sm font-bold transition-all flex flex-col sm:flex-row items-center justify-center space-y-1 sm:space-y-0 sm:space-x-2 ${
               activeTab === 'play' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/10' : 'text-slate-400 hover:text-slate-200'
             }`}
@@ -1008,6 +1010,7 @@ export default function Dashboard() {
             socket={socket} 
             onBackToLobby={() => setSelectedGame(null)} 
             addNotification={addNotification} 
+            onPlayStateChange={(playing) => setIsKetmesyePlaying(playing)}
           />
         )}
 

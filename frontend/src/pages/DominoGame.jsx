@@ -318,20 +318,20 @@ export default function DominoGame({ socket, onBackToLobby, addNotification, onP
 
       {/* Selection Left/Right Target Overlays */}
       {selectedTileIndex !== null && (
-        <div className="absolute inset-0 z-40 flex flex-col bg-black/40 backdrop-blur-sm pointer-events-auto">
+        <div className="absolute inset-0 z-[100] flex flex-col bg-black/60 backdrop-blur-md pointer-events-auto">
           <div onClick={() => handleBoardClick('left')} className="flex-1 flex flex-col items-center justify-end pb-12 cursor-pointer hover:bg-white/10 transition-colors border-b-2 border-indigo-500/50">
             <span className="bg-indigo-600 text-white px-8 py-4 rounded-full font-black text-2xl shadow-[0_0_20px_rgba(79,70,229,0.8)] animate-bounce border-2 border-indigo-300">
-              PLACER EN HAUT (Gauche)
+              PLACER EN HAUT
             </span>
           </div>
           <div onClick={() => handleBoardClick('right')} className="flex-1 flex flex-col items-center justify-start pt-12 cursor-pointer hover:bg-white/10 transition-colors border-t-2 border-indigo-500/50">
             <span className="bg-emerald-600 text-white px-8 py-4 rounded-full font-black text-2xl shadow-[0_0_20px_rgba(5,150,105,0.8)] animate-bounce border-2 border-emerald-300">
-              PLACER EN BAS (Droite)
+              PLACER EN BAS
             </span>
           </div>
           {/* Cancel selection */}
-          <button onClick={() => setSelectedTileIndex(null)} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-slate-800 text-white px-6 py-2 rounded-full font-bold shadow-lg border border-slate-600">
-            Annuler la sélection
+          <button onClick={() => setSelectedTileIndex(null)} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-slate-800 text-white px-8 py-4 rounded-full font-bold shadow-[0_0_20px_rgba(0,0,0,0.8)] border-4 border-slate-600 text-xl hover:bg-slate-700">
+            Annuler
           </button>
         </div>
       )}

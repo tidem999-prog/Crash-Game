@@ -864,25 +864,38 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
   // Fullscreen & Landscape Rotation
   const toggleFullscreenAndRotate = async () => {
     try {
-      if (!document.fullscreenElement) {
-        // Request full screen on the document body or HTML
-        await document.documentElement.requestFullscreen();
-        // Try locking orientation to landscape for mobile devices
+      const docElm = document.documentElement;
+      const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement;
+
+      if (!isFullscreen) {
+        // Request full screen
+        if (docElm.requestFullscreen) {
+          await docElm.requestFullscreen();
+        } else if (docElm.webkitRequestFullscreen) {
+          await docElm.webkitRequestFullscreen(); // Safari
+        } else {
+          throw new Error("Fullscreen API not supported");
+        }
+
+        // Try locking orientation to landscape
         if (window.screen && window.screen.orientation && window.screen.orientation.lock) {
           try {
             await window.screen.orientation.lock('landscape');
           } catch (e) {
-            console.warn("Screen orientation lock failed or not supported", e);
+            console.warn("Screen orientation lock failed", e);
           }
         }
       } else {
+        // Exit full screen
         if (document.exitFullscreen) {
           await document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) {
+          await document.webkitExitFullscreen(); // Safari
         }
       }
     } catch (err) {
       console.error(err);
-      addNotification("Rotation plein écran non supportée sur cet appareil.", "info");
+      addNotification("Vire telefòn nan kouche ak men w (Safari/iPhone pa aksepte l otomatik).", "info");
     }
   };
 

@@ -4,7 +4,8 @@ import io from 'socket.io-client';
 import { useAuth, apiRequest } from '../context/AuthContext';
 import { 
   Plane, Landmark, ArrowUpRight, ArrowDownRight, History, 
-  Wallet, ShieldAlert, Award, Clock, Coins, Upload, Send, HelpCircle, Gamepad2, ArrowLeft, Users, Gem
+  Wallet, ShieldAlert, Award, Clock, Coins, Upload, Send, HelpCircle, Gamepad2, ArrowLeft, Users, Gem,
+  Copy, Check
 } from 'lucide-react';
 import KetmesyeGame from './KetmesyeGame';
 import DominoGame from './DominoGame';
@@ -40,6 +41,9 @@ export default function Dashboard() {
   const [depSuccess, setDepSuccess] = useState('');
   const [depError, setDepError] = useState('');
   const [depLoading, setDepLoading] = useState(false);
+  const [copiedText, setCopiedText] = useState({ moncash: false, natcash: false });
+  const [filePreviewUrl, setFilePreviewUrl] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
   
   // Withdrawal state
   const [wdAmount, setWdAmount] = useState('');
@@ -337,6 +341,16 @@ export default function Dashboard() {
       fetchReferralsData();
     }
   }, [activeTab]);
+
+  useEffect(() => {
+    if (depFile) {
+      const url = URL.createObjectURL(depFile);
+      setFilePreviewUrl(url);
+      return () => URL.revokeObjectURL(url);
+    } else {
+      setFilePreviewUrl(null);
+    }
+  }, [depFile]);
 
   // 3. Play Canvas Animation
   useEffect(() => {
@@ -639,6 +653,18 @@ export default function Dashboard() {
       if (!socket || !myBet || myBet.status !== 'placed') return;
       socket.emit('cash_out', { userId: user.id });
     }
+  };
+
+  const handleCopyToClipboard = (text, key) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedText(prev => ({ ...prev, [key]: true }));
+      addNotification(`Le numéro officiel ${key === 'moncash' ? 'MonCash' : 'NatCash'} a été copié.`, 'success');
+      setTimeout(() => {
+        setCopiedText(prev => ({ ...prev, [key]: false }));
+      }, 2000);
+    }).catch(err => {
+      addNotification('Impossible de copier le numéro.', 'danger');
+    });
   };
 
   // 6. Deposit Form Handler
@@ -1156,110 +1182,258 @@ export default function Dashboard() {
 
         {/* Tab content 2: DEPOSITS */}
         {activeTab === 'deposit' && (
-          <div className="glass-panel p-8 rounded-3xl space-y-6">
-            <div>
+          <div className="glass-panel p-6 sm:p-8 rounded-3xl space-y-6 max-w-4xl mx-auto">
+            <div className="text-center md:text-left">
               <h3 className="font-display font-black text-2xl text-white">Méthode de Dépôt</h3>
               <p className="text-sm text-slate-400 mt-1">Créditez votre compte manuellement en effectuant un transfert sur nos numéros officiels.</p>
             </div>
 
             {/* Payment instructions */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="p-4 bg-yellow-950/20 border border-yellow-500/20 rounded-2xl flex items-start space-x-3">
-                <Coins className="h-6 w-6 text-yellow-400 shrink-0 mt-0.5" />
+              
+              {/* MonCash Card */}
+              <div className="p-5 bg-gradient-to-b from-slate-900/60 to-yellow-500/5 border border-yellow-500/10 hover:border-yellow-500/30 rounded-2xl flex flex-col justify-between transition-all duration-300 shadow-md">
+                <div className="flex justify-between items-center mb-3">
+                  <div className="flex items-center space-x-2">
+                    <span className="h-7 w-7 rounded-full bg-yellow-500 text-slate-950 flex items-center justify-center font-black text-sm">M</span>
+                    <span className="font-bold text-slate-200 text-sm">MonCash Haïti</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyToClipboard('36203465', 'moncash')}
+                    className={`flex items-center space-x-1 px-2.5 py-1 rounded-lg text-[10px] font-semibold border transition-all cursor-pointer ${
+                      copiedText.moncash 
+                        ? 'bg-emerald-950/40 border-emerald-500 text-emerald-400' 
+                        : 'bg-slate-800/40 border-slate-700/50 hover:bg-slate-800 hover:text-white text-slate-400'
+                    }`}
+                  >
+                    {copiedText.moncash ? (
+                      <>
+                        <Check className="h-3 w-3" />
+                        <span>Copié !</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-3 w-3" />
+                        <span>Copier</span>
+                      </>
+                    )}
+                  </button>
+                </div>
                 <div>
-                  <h4 className="font-bold text-slate-200 text-sm">MonCash Haïti</h4>
-                  <p className="text-xs text-slate-400 mt-1">Numéro de transfert :</p>
-                  <p className="font-mono font-black text-lg text-yellow-400">36203465</p>
+                  <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Numéro de transfert :</p>
+                  <p className="font-mono font-black text-xl text-yellow-400 mt-0.5">36203465</p>
                 </div>
               </div>
 
-              <div className="p-4 bg-red-950/20 border border-red-500/20 rounded-2xl flex items-start space-x-3">
-                <Coins className="h-6 w-6 text-red-400 shrink-0 mt-0.5" />
+              {/* NatCash Card */}
+              <div className="p-5 bg-gradient-to-b from-slate-900/60 to-red-500/5 border border-red-500/10 hover:border-red-500/30 rounded-2xl flex flex-col justify-between transition-all duration-300 shadow-md">
+                <div className="flex justify-between items-center mb-3">
+                  <div className="flex items-center space-x-2">
+                    <span className="h-7 w-7 rounded-full bg-red-500 text-white flex items-center justify-center font-black text-sm">N</span>
+                    <span className="font-bold text-slate-200 text-sm">NatCash Haïti</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleCopyToClipboard('42398022', 'natcash')}
+                    className={`flex items-center space-x-1 px-2.5 py-1 rounded-lg text-[10px] font-semibold border transition-all cursor-pointer ${
+                      copiedText.natcash 
+                        ? 'bg-emerald-950/40 border-emerald-500 text-emerald-400' 
+                        : 'bg-slate-800/40 border-slate-700/50 hover:bg-slate-800 hover:text-white text-slate-400'
+                    }`}
+                  >
+                    {copiedText.natcash ? (
+                      <>
+                        <Check className="h-3 w-3" />
+                        <span>Copié !</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-3 w-3" />
+                        <span>Copier</span>
+                      </>
+                    )}
+                  </button>
+                </div>
                 <div>
-                  <h4 className="font-bold text-slate-200 text-sm">NatCash Haïti</h4>
-                  <p className="text-xs text-slate-400 mt-1">Numéro de transfert :</p>
-                  <p className="font-mono font-black text-lg text-red-400">42398022</p>
+                  <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Numéro de transfert :</p>
+                  <p className="font-mono font-black text-xl text-red-400 mt-0.5">42398022</p>
                 </div>
               </div>
+
             </div>
 
-            <form onSubmit={handleDepositSubmit} className="space-y-4">
+            <form onSubmit={handleDepositSubmit} className="space-y-5">
               {depError && (
-                <div className="p-3 bg-red-950/40 border border-red-500/30 text-red-300 text-xs rounded-xl">
+                <div className="p-3.5 bg-red-950/30 border border-red-500/20 text-red-400 text-xs rounded-xl animate-fade-in">
                   {depError}
                 </div>
               )}
               {depSuccess && (
-                <div className="p-3 bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-xs rounded-xl">
+                <div className="p-3.5 bg-emerald-950/30 border border-emerald-500/20 text-emerald-400 text-xs rounded-xl animate-fade-in">
                   {depSuccess}
                 </div>
               )}
 
               {/* Provider choice */}
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Choisir le fournisseur</label>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Choisir le fournisseur</label>
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
                     onClick={() => setDepProvider('moncash')}
-                    className={`py-3 px-4 rounded-xl text-sm font-bold border transition-all ${
-                      depProvider === 'moncash' ? 'border-yellow-500/50 bg-yellow-500/5 text-yellow-400' : 'border-slate-800 text-slate-400'
+                    className={`py-3 px-4 rounded-xl text-sm font-bold border transition-all flex items-center justify-center space-x-2 cursor-pointer ${
+                      depProvider === 'moncash' 
+                        ? 'border-yellow-500 bg-yellow-500/10 text-yellow-400 shadow-[0_0_10px_rgba(234,179,8,0.1)]' 
+                        : 'border-slate-850 bg-slate-950/40 text-slate-400 hover:text-slate-200'
                     }`}
                   >
-                    MonCash
+                    <span className={`h-2 w-2 rounded-full ${depProvider === 'moncash' ? 'bg-yellow-400' : 'bg-slate-600'}`}></span>
+                    <span>MonCash</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setDepProvider('natcash')}
-                    className={`py-3 px-4 rounded-xl text-sm font-bold border transition-all ${
-                      depProvider === 'natcash' ? 'border-red-500/50 bg-red-500/5 text-red-400' : 'border-slate-800 text-slate-400'
+                    className={`py-3 px-4 rounded-xl text-sm font-bold border transition-all flex items-center justify-center space-x-2 cursor-pointer ${
+                      depProvider === 'natcash' 
+                        ? 'border-red-500 bg-red-500/10 text-red-400 shadow-[0_0_10px_rgba(239,68,68,0.1)]' 
+                        : 'border-slate-850 bg-slate-950/40 text-slate-400 hover:text-slate-200'
                     }`}
                   >
-                    NatCash
+                    <span className={`h-2 w-2 rounded-full ${depProvider === 'natcash' ? 'bg-red-500' : 'bg-slate-600'}`}></span>
+                    <span>NatCash</span>
                   </button>
                 </div>
               </div>
 
               {/* Amount */}
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Montant envoyé (HTG)</label>
-                <input
-                  type="number"
-                  placeholder="Ex: 500"
-                  value={depAmount}
-                  onChange={(e) => setDepAmount(e.target.value)}
-                  className="block w-full px-4 py-3 bg-slate-950/70 border border-slate-800 rounded-xl text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
-                  required
-                />
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Montant envoyé (HTG)</label>
+                <div className="relative flex items-center">
+                  <input
+                    type="number"
+                    placeholder="Ex: 500"
+                    value={depAmount}
+                    onChange={(e) => setDepAmount(e.target.value)}
+                    className="block w-full px-4 py-3 bg-slate-950/70 border border-slate-800 rounded-xl text-sm text-slate-100 font-semibold focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 placeholder-slate-700"
+                    required
+                  />
+                  <span className="absolute right-4 text-xs font-bold text-slate-500 pointer-events-none">HTG</span>
+                </div>
+                
+                {/* Preset Chips */}
+                <div className="flex flex-wrap gap-2 mt-2.5">
+                  {[250, 500, 1000, 2500, 5000].map((val) => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setDepAmount(prev => {
+                        const current = parseFloat(prev) || 0;
+                        return (current + val).toString();
+                      })}
+                      className="bg-slate-955/40 hover:bg-slate-900 border border-slate-850 hover:border-slate-700 text-slate-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer active:scale-95"
+                    >
+                      +{val.toLocaleString('fr-FR')} HTG
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* File Screenshot Upload */}
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Capture d'écran de la transaction</label>
-                <div className="border border-dashed border-slate-800 rounded-xl p-6 text-center hover:border-slate-700 transition-colors relative">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => setDepFile(e.target.files[0])}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                    required
-                  />
-                  <Upload className="h-8 w-8 text-slate-500 mx-auto mb-2" />
-                  <p className="text-xs text-slate-400 font-bold">
-                    {depFile ? depFile.name : "Cliquez ou déposez votre capture d'écran ici"}
-                  </p>
-                  <p className="text-[10px] text-slate-600 mt-1">Seuls les formats JPEG, PNG et GIF sont autorisés.</p>
-                </div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Capture d'écran de la transaction</label>
+                
+                {!depFile ? (
+                  <div 
+                    onClick={() => {
+                      const input = document.getElementById('screenshot-upload-input');
+                      if (input) input.click();
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setIsDragging(true);
+                    }}
+                    onDragLeave={() => setIsDragging(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setIsDragging(false);
+                      const files = e.dataTransfer.files;
+                      if (files && files.length > 0) {
+                        const file = files[0];
+                        if (['image/jpeg', 'image/png', 'image/gif'].includes(file.type)) {
+                          setDepFile(file);
+                        } else {
+                          addNotification('Seuls les formats JPEG, PNG et GIF sont autorisés.', 'danger');
+                        }
+                      }
+                    }}
+                    className={`border-2 border-dashed rounded-2xl p-6 text-center hover:bg-slate-900/10 hover:border-indigo-500/50 transition-all relative flex flex-col items-center justify-center cursor-pointer ${
+                      isDragging ? 'border-indigo-500 bg-indigo-500/5' : 'border-slate-800 bg-slate-950/40'
+                    }`}
+                  >
+                    <input
+                      id="screenshot-upload-input"
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files[0];
+                        if (file) setDepFile(file);
+                      }}
+                      className="hidden"
+                    />
+                    <div className="bg-slate-900/60 p-3 rounded-full text-slate-500 mb-2.5">
+                      <Upload className="h-6 w-6" />
+                    </div>
+                    <p className="text-xs text-slate-350 font-bold">
+                      Cliquez ou déposez votre capture d'écran ici
+                    </p>
+                    <p className="text-[10px] text-slate-600 mt-1">Seuls les formats JPEG, PNG et GIF sont autorisés (max. 5 Mo).</p>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between bg-slate-950/60 border border-slate-800 rounded-xl p-3.5 animate-slide-up">
+                    <div className="flex items-center">
+                      {filePreviewUrl ? (
+                        <img
+                          src={filePreviewUrl}
+                          alt="Reçu"
+                          className="w-12 h-12 rounded-lg border border-slate-800 object-cover bg-black"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded-lg border border-slate-800 bg-slate-900 flex items-center justify-center text-slate-500">
+                          <Upload className="h-5 w-5" />
+                        </div>
+                      )}
+                      <div className="flex flex-col text-left ml-3">
+                        <span className="text-xs font-bold text-slate-200 max-w-[200px] truncate" title={depFile.name}>
+                          {depFile.name}
+                        </span>
+                        <span className="text-[10px] text-slate-500">
+                          {(depFile.size / 1024).toFixed(1)} Ko
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setDepFile(null)}
+                      className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-950/20 hover:bg-red-950/40 border border-red-900/30 hover:border-red-500 text-red-400 transition-all cursor-pointer"
+                    >
+                      <span>Retirer</span>
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Submit button */}
               <button
                 type="submit"
                 disabled={depLoading}
-                className="w-full py-3.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-sm transition-all disabled:opacity-50 flex items-center justify-center space-x-2"
+                className="w-full py-4 px-4 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-bold rounded-xl text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 shadow-lg shadow-indigo-600/10 hover:shadow-indigo-600/20 transform hover:-translate-y-0.5 active:translate-y-0 active:scale-98 cursor-pointer font-display"
               >
                 {depLoading ? (
-                  <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <>
+                    <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Traitement en cours...</span>
+                  </>
                 ) : (
                   <>
                     <Send className="h-4 w-4" />

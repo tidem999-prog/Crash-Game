@@ -1160,8 +1160,8 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
 
           {/* MODE SELECTOR (First Screen) */}
           {gameMode === null && !isPlaying && (
-            <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-6 z-20 animate-fade-in">
-              <div className="max-w-2xl w-full text-center">
+            <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-md flex flex-col items-center justify-start sm:justify-center p-6 z-20 animate-fade-in overflow-y-auto">
+              <div className="max-w-2xl w-full text-center py-4 my-auto">
                 <h3 className="font-display font-black text-2xl sm:text-3xl text-white mb-2 uppercase tracking-wide">
                   CHOISISSEZ VOTRE MODE DE JEU
                 </h3>
@@ -1214,8 +1214,8 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
 
           {/* CLASSIC JOIN SCREEN */}
           {gameMode === 'classic' && !isPlaying && !cashoutStats && !deathStats && (
-            <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center p-6 z-20">
-              <div className="bg-gradient-to-r from-yellow-500/10 to-indigo-500/10 p-6 rounded-3xl border border-slate-800 max-w-sm w-full text-center shadow-2xl animate-fade-in">
+            <div className="absolute inset-0 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-start sm:justify-center p-6 z-20 overflow-y-auto">
+              <div className="bg-gradient-to-r from-yellow-500/10 to-indigo-500/10 p-6 rounded-3xl border border-slate-800 max-w-sm w-full text-center shadow-2xl animate-fade-in py-6 my-auto">
                 <div className="h-14 w-14 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl flex items-center justify-center text-yellow-500 mx-auto mb-4">
                   <Play className="h-7 w-7" />
                 </div>

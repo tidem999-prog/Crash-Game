@@ -865,7 +865,7 @@ export default function Dashboard() {
               </div>
 
               {/* Card 3: Mines */}
-              <div className="glass-panel group relative rounded-2xl md:rounded-3xl p-3 md:p-6 bg-slate-900/40 border border-slate-800 hover:border-cyan-500/30 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-xl transform hover:-translate-y-1 col-span-2 md:col-span-1 max-w-sm mx-auto md:max-w-none w-full">
+              <div className="glass-panel group relative rounded-2xl md:rounded-3xl p-3 md:p-6 bg-slate-900/40 border border-slate-800 hover:border-cyan-500/30 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-xl transform hover:-translate-y-1">
                 <div className="absolute top-0 right-0 w-20 h-20 md:w-32 md:h-32 bg-cyan-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-cyan-500/10 transition-all duration-300"></div>
 
                 <div>
@@ -895,7 +895,7 @@ export default function Dashboard() {
               </div>
 
               {/* Card 4: Duel Snake 1v1 */}
-              <div className="glass-panel group relative rounded-2xl md:rounded-3xl p-3 md:p-6 bg-slate-900/40 border border-slate-800 hover:border-emerald-500/30 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-xl transform hover:-translate-y-1 col-span-2 md:col-span-1 max-w-sm mx-auto md:max-w-none w-full">
+              <div className="glass-panel group relative rounded-2xl md:rounded-3xl p-3 md:p-6 bg-slate-900/40 border border-slate-800 hover:border-emerald-500/30 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-xl transform hover:-translate-y-1">
                 <div className="absolute top-0 right-0 w-20 h-20 md:w-32 md:h-32 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-emerald-500/10 transition-all duration-300"></div>
 
                 <div>
@@ -925,7 +925,7 @@ export default function Dashboard() {
               </div>
 
               {/* Card 5: KOTH (King of the Hill) */}
-              <div className="glass-panel group relative rounded-2xl md:rounded-3xl p-3 md:p-6 bg-slate-900/40 border border-slate-800 hover:border-purple-500/30 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-xl transform hover:-translate-y-1 col-span-2 md:col-span-1 max-w-sm mx-auto md:max-w-none w-full">
+              <div className="glass-panel group relative rounded-2xl md:rounded-3xl p-3 md:p-6 bg-slate-900/40 border border-slate-800 hover:border-purple-500/30 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-xl transform hover:-translate-y-1">
                 <div className="absolute top-0 right-0 w-20 h-20 md:w-32 md:h-32 bg-purple-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-purple-500/10 transition-all duration-300"></div>
 
                 <div>

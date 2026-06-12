@@ -1189,19 +1189,19 @@ export default function Dashboard() {
             </div>
 
             {/* Payment instructions */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
               
               {/* MonCash Card */}
-              <div className="p-5 bg-gradient-to-b from-slate-900/60 to-yellow-500/5 border border-yellow-500/10 hover:border-yellow-500/30 rounded-2xl flex flex-col justify-between transition-all duration-300 shadow-md">
-                <div className="flex justify-between items-center mb-3">
-                  <div className="flex items-center space-x-2">
-                    <span className="h-7 w-7 rounded-full bg-yellow-500 text-slate-950 flex items-center justify-center font-black text-sm">M</span>
-                    <span className="font-bold text-slate-200 text-sm">MonCash Haïti</span>
+              <div className="p-3 sm:p-5 bg-gradient-to-b from-slate-900/60 to-yellow-500/5 border border-yellow-500/10 hover:border-yellow-500/30 rounded-2xl flex flex-col justify-between transition-all duration-300 shadow-md">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-3">
+                  <div className="flex items-center space-x-1.5 shrink-0">
+                    <span className="h-6 w-6 sm:h-7 sm:w-7 rounded-full bg-yellow-500 text-slate-950 flex items-center justify-center font-black text-xs sm:text-sm">M</span>
+                    <span className="font-bold text-slate-200 text-xs sm:text-sm">MonCash</span>
                   </div>
                   <button
                     type="button"
                     onClick={() => handleCopyToClipboard('36203465', 'moncash')}
-                    className={`flex items-center space-x-1 px-2.5 py-1 rounded-lg text-[10px] font-semibold border transition-all cursor-pointer ${
+                    className={`flex items-center justify-center space-x-1 px-2 py-1 rounded-lg text-[10px] font-semibold border transition-all cursor-pointer ${
                       copiedText.moncash 
                         ? 'bg-emerald-950/40 border-emerald-500 text-emerald-400' 
                         : 'bg-slate-800/40 border-slate-700/50 hover:bg-slate-800 hover:text-white text-slate-400'
@@ -1209,34 +1209,34 @@ export default function Dashboard() {
                   >
                     {copiedText.moncash ? (
                       <>
-                        <Check className="h-3 w-3" />
+                        <Check className="h-2.5 w-2.5" />
                         <span>Copié !</span>
                       </>
                     ) : (
                       <>
-                        <Copy className="h-3 w-3" />
+                        <Copy className="h-2.5 w-2.5" />
                         <span>Copier</span>
                       </>
                     )}
                   </button>
                 </div>
                 <div>
-                  <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Numéro de transfert :</p>
-                  <p className="font-mono font-black text-xl text-yellow-400 mt-0.5">36203465</p>
+                  <p className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">Numéro :</p>
+                  <p className="font-mono font-black text-sm sm:text-xl text-yellow-400 mt-0.5">36203465</p>
                 </div>
               </div>
 
               {/* NatCash Card */}
-              <div className="p-5 bg-gradient-to-b from-slate-900/60 to-red-500/5 border border-red-500/10 hover:border-red-500/30 rounded-2xl flex flex-col justify-between transition-all duration-300 shadow-md">
-                <div className="flex justify-between items-center mb-3">
-                  <div className="flex items-center space-x-2">
-                    <span className="h-7 w-7 rounded-full bg-red-500 text-white flex items-center justify-center font-black text-sm">N</span>
-                    <span className="font-bold text-slate-200 text-sm">NatCash Haïti</span>
+              <div className="p-3 sm:p-5 bg-gradient-to-b from-slate-900/60 to-red-500/5 border border-red-500/10 hover:border-red-500/30 rounded-2xl flex flex-col justify-between transition-all duration-300 shadow-md">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-3">
+                  <div className="flex items-center space-x-1.5 shrink-0">
+                    <span className="h-6 w-6 sm:h-7 sm:w-7 rounded-full bg-red-500 text-white flex items-center justify-center font-black text-xs sm:text-sm">N</span>
+                    <span className="font-bold text-slate-200 text-xs sm:text-sm">NatCash</span>
                   </div>
                   <button
                     type="button"
                     onClick={() => handleCopyToClipboard('42398022', 'natcash')}
-                    className={`flex items-center space-x-1 px-2.5 py-1 rounded-lg text-[10px] font-semibold border transition-all cursor-pointer ${
+                    className={`flex items-center justify-center space-x-1 px-2 py-1 rounded-lg text-[10px] font-semibold border transition-all cursor-pointer ${
                       copiedText.natcash 
                         ? 'bg-emerald-950/40 border-emerald-500 text-emerald-400' 
                         : 'bg-slate-800/40 border-slate-700/50 hover:bg-slate-800 hover:text-white text-slate-400'
@@ -1244,20 +1244,20 @@ export default function Dashboard() {
                   >
                     {copiedText.natcash ? (
                       <>
-                        <Check className="h-3 w-3" />
+                        <Check className="h-2.5 w-2.5" />
                         <span>Copié !</span>
                       </>
                     ) : (
                       <>
-                        <Copy className="h-3 w-3" />
+                        <Copy className="h-2.5 w-2.5" />
                         <span>Copier</span>
                       </>
                     )}
                   </button>
                 </div>
                 <div>
-                  <p className="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Numéro de transfert :</p>
-                  <p className="font-mono font-black text-xl text-red-400 mt-0.5">42398022</p>
+                  <p className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">Numéro :</p>
+                  <p className="font-mono font-black text-sm sm:text-xl text-red-400 mt-0.5">42398022</p>
                 </div>
               </div>
 

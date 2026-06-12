@@ -1192,10 +1192,10 @@ export default function Dashboard() {
             <div className="grid grid-cols-2 gap-3 sm:gap-4">
               
               {/* MonCash Card */}
-              <div className="p-3 sm:p-5 bg-gradient-to-b from-slate-900/60 to-yellow-500/5 border border-yellow-500/10 hover:border-yellow-500/30 rounded-2xl flex flex-col justify-between transition-all duration-300 shadow-md">
+              <div className="p-3 sm:p-5 bg-gradient-to-b from-slate-900/60 to-red-500/5 border border-red-500/10 hover:border-red-500/30 rounded-2xl flex flex-col justify-between transition-all duration-300 shadow-md">
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-3">
                   <div className="flex items-center space-x-1.5 shrink-0">
-                    <span className="h-6 w-6 sm:h-7 sm:w-7 rounded-full bg-yellow-500 text-slate-950 flex items-center justify-center font-black text-xs sm:text-sm">M</span>
+                    <span className="h-6 w-6 sm:h-7 sm:w-7 rounded-full bg-red-600 text-white flex items-center justify-center font-black text-xs sm:text-sm">M</span>
                     <span className="font-bold text-slate-200 text-xs sm:text-sm">MonCash</span>
                   </div>
                   <button
@@ -1222,15 +1222,15 @@ export default function Dashboard() {
                 </div>
                 <div>
                   <p className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">Numéro :</p>
-                  <p className="font-mono font-black text-sm sm:text-xl text-yellow-400 mt-0.5">36203465</p>
+                  <p className="font-mono font-black text-sm sm:text-xl text-red-500 mt-0.5">36203465</p>
                 </div>
               </div>
 
               {/* NatCash Card */}
-              <div className="p-3 sm:p-5 bg-gradient-to-b from-slate-900/60 to-red-500/5 border border-red-500/10 hover:border-red-500/30 rounded-2xl flex flex-col justify-between transition-all duration-300 shadow-md">
+              <div className="p-3 sm:p-5 bg-gradient-to-b from-slate-900/60 to-emerald-500/5 border border-emerald-500/10 hover:border-emerald-500/30 rounded-2xl flex flex-col justify-between transition-all duration-300 shadow-md">
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-3">
                   <div className="flex items-center space-x-1.5 shrink-0">
-                    <span className="h-6 w-6 sm:h-7 sm:w-7 rounded-full bg-red-500 text-white flex items-center justify-center font-black text-xs sm:text-sm">N</span>
+                    <span className="h-6 w-6 sm:h-7 sm:w-7 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center font-black text-xs sm:text-sm">N</span>
                     <span className="font-bold text-slate-200 text-xs sm:text-sm">NatCash</span>
                   </div>
                   <button
@@ -1257,7 +1257,7 @@ export default function Dashboard() {
                 </div>
                 <div>
                   <p className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">Numéro :</p>
-                  <p className="font-mono font-black text-sm sm:text-xl text-red-400 mt-0.5">42398022</p>
+                  <p className="font-mono font-black text-sm sm:text-xl text-emerald-400 mt-0.5">42398022</p>
                 </div>
               </div>
 
@@ -1284,11 +1284,11 @@ export default function Dashboard() {
                     onClick={() => setDepProvider('moncash')}
                     className={`py-3 px-4 rounded-xl text-sm font-bold border transition-all flex items-center justify-center space-x-2 cursor-pointer ${
                       depProvider === 'moncash' 
-                        ? 'border-yellow-500 bg-yellow-500/10 text-yellow-400 shadow-[0_0_10px_rgba(234,179,8,0.1)]' 
+                        ? 'border-red-500 bg-red-500/10 text-red-400 shadow-[0_0_10px_rgba(239,68,68,0.1)]' 
                         : 'border-slate-850 bg-slate-950/40 text-slate-400 hover:text-slate-200'
                     }`}
                   >
-                    <span className={`h-2 w-2 rounded-full ${depProvider === 'moncash' ? 'bg-yellow-400' : 'bg-slate-600'}`}></span>
+                    <span className={`h-2 w-2 rounded-full ${depProvider === 'moncash' ? 'bg-red-400' : 'bg-slate-600'}`}></span>
                     <span>MonCash</span>
                   </button>
                   <button
@@ -1296,11 +1296,11 @@ export default function Dashboard() {
                     onClick={() => setDepProvider('natcash')}
                     className={`py-3 px-4 rounded-xl text-sm font-bold border transition-all flex items-center justify-center space-x-2 cursor-pointer ${
                       depProvider === 'natcash' 
-                        ? 'border-red-500 bg-red-500/10 text-red-400 shadow-[0_0_10px_rgba(239,68,68,0.1)]' 
+                        ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.1)]' 
                         : 'border-slate-850 bg-slate-950/40 text-slate-400 hover:text-slate-200'
                     }`}
                   >
-                    <span className={`h-2 w-2 rounded-full ${depProvider === 'natcash' ? 'bg-red-500' : 'bg-slate-600'}`}></span>
+                    <span className={`h-2 w-2 rounded-full ${depProvider === 'natcash' ? 'bg-emerald-400' : 'bg-slate-600'}`}></span>
                     <span>NatCash</span>
                   </button>
                 </div>
@@ -1447,98 +1447,130 @@ export default function Dashboard() {
 
         {/* Tab content 3: WITHDRAWALS */}
         {activeTab === 'withdraw' && (
-          <div className="glass-panel p-8 rounded-3xl space-y-6">
-            <div>
+          <div className="glass-panel p-6 sm:p-8 rounded-3xl space-y-6 max-w-2xl mx-auto">
+            <div className="text-center md:text-left">
               <h3 className="font-display font-black text-2xl text-white">Demande de Retrait</h3>
-              <p className="text-sm text-slate-400 mt-1">Retirez vos HTG vers votre compte MonCash ou NatCash. Les fonds sont envoyés sous 24h par l'admin.</p>
+              <p className="text-sm text-slate-400 mt-1">Retirez vos HTG vers votre compte MonCash ou NatCash. Les fonds sont envoyés sous 24h par l'administration.</p>
             </div>
 
             {/* Fee Warning */}
             <div className="p-4 bg-indigo-950/20 border border-indigo-500/20 rounded-2xl flex items-start space-x-3 text-indigo-300 text-xs">
-              <ShieldAlert className="h-5 w-5 shrink-0" />
+              <ShieldAlert className="h-5 w-5 text-indigo-400 shrink-0 mt-0.5" />
               <div>
                 <p className="font-bold">Frais de retrait de 10% applicables</p>
-                <p className="mt-0.5 text-indigo-400">Pour assurer les coûts opérationnels et de transfert, 10% sont automatiquement prélevés sur chaque retrait.</p>
+                <p className="mt-0.5 text-indigo-400/80">Pour assurer les coûts opérationnels et de transfert, 10% sont automatiquement prélevés sur chaque retrait.</p>
               </div>
             </div>
 
-            <form onSubmit={handleWithdrawSubmit} className="space-y-4">
+            <form onSubmit={handleWithdrawSubmit} className="space-y-5">
               {wdError && (
-                <div className="p-3 bg-red-950/40 border border-red-500/30 text-red-300 text-xs rounded-xl">
+                <div className="p-3.5 bg-red-950/30 border border-red-500/20 text-red-400 text-xs rounded-xl animate-fade-in">
                   {wdError}
                 </div>
               )}
               {wdSuccess && (
-                <div className="p-3 bg-emerald-950/40 border border-emerald-500/30 text-emerald-300 text-xs rounded-xl">
+                <div className="p-3.5 bg-emerald-950/30 border border-emerald-500/20 text-emerald-400 text-xs rounded-xl animate-fade-in">
                   {wdSuccess}
                 </div>
               )}
 
               {/* Provider choice */}
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Choisir la méthode de retrait</label>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Choisir la méthode de retrait</label>
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
                     onClick={() => setWdProvider('moncash')}
-                    className={`py-3 px-4 rounded-xl text-sm font-bold border transition-all ${
-                      wdProvider === 'moncash' ? 'border-yellow-500/50 bg-yellow-500/5 text-yellow-400' : 'border-slate-800 text-slate-400'
+                    className={`py-3 px-4 rounded-xl text-sm font-bold border transition-all flex items-center justify-center space-x-2 cursor-pointer ${
+                      wdProvider === 'moncash' 
+                        ? 'border-red-500 bg-red-500/10 text-red-400 shadow-[0_0_10px_rgba(239,68,68,0.1)]' 
+                        : 'border-slate-850 bg-slate-950/40 text-slate-400 hover:text-slate-200'
                     }`}
                   >
-                    MonCash
+                    <span className={`h-2 w-2 rounded-full ${wdProvider === 'moncash' ? 'bg-red-500' : 'bg-slate-600'}`}></span>
+                    <span>MonCash</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setWdProvider('natcash')}
-                    className={`py-3 px-4 rounded-xl text-sm font-bold border transition-all ${
-                      wdProvider === 'natcash' ? 'border-red-500/50 bg-red-500/5 text-red-400' : 'border-slate-800 text-slate-400'
+                    className={`py-3 px-4 rounded-xl text-sm font-bold border transition-all flex items-center justify-center space-x-2 cursor-pointer ${
+                      wdProvider === 'natcash' 
+                        ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.1)]' 
+                        : 'border-slate-850 bg-slate-950/40 text-slate-400 hover:text-slate-200'
                     }`}
                   >
-                    NatCash
+                    <span className={`h-2 w-2 rounded-full ${wdProvider === 'natcash' ? 'bg-emerald-400' : 'bg-slate-600'}`}></span>
+                    <span>NatCash</span>
                   </button>
                 </div>
               </div>
 
               {/* Amount */}
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Montant du retrait (HTG)</label>
-                <input
-                  type="number"
-                  placeholder="Min: 100 HTG"
-                  value={wdAmount}
-                  onChange={(e) => setWdAmount(e.target.value)}
-                  className="block w-full px-4 py-3 bg-slate-950/70 border border-slate-800 rounded-xl text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
-                  required
-                />
+                <div className="flex justify-between items-center mb-2">
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Montant du retrait (HTG)</label>
+                  <button
+                    type="button"
+                    onClick={() => setWdAmount(user.balance.toString())}
+                    className="text-[10px] font-bold text-indigo-400 hover:text-indigo-300 uppercase cursor-pointer"
+                  >
+                    Solde Max ({user.balance.toLocaleString('fr-FR')} G)
+                  </button>
+                </div>
+                <div className="relative flex items-center">
+                  <input
+                    type="number"
+                    placeholder="Min: 100 HTG"
+                    value={wdAmount}
+                    onChange={(e) => setWdAmount(e.target.value)}
+                    className="block w-full px-4 py-3 bg-slate-950/70 border border-slate-800 rounded-xl text-sm text-slate-100 font-semibold focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 placeholder-slate-700"
+                    required
+                  />
+                  <span className="absolute right-4 text-xs font-bold text-slate-500 pointer-events-none">HTG</span>
+                </div>
+                
+                {/* Preset Chips */}
+                <div className="flex flex-wrap gap-2 mt-2.5">
+                  {[100, 250, 500, 1000, 5000].map((val) => (
+                    <button
+                      key={val}
+                      type="button"
+                      onClick={() => setWdAmount(val.toString())}
+                      className="bg-slate-955/40 hover:bg-slate-900 border border-slate-850 hover:border-slate-700 text-slate-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer active:scale-95"
+                    >
+                      {val.toLocaleString('fr-FR')} HTG
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Phone number */}
               <div>
-                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Numéro de Téléphone (MonCash / NatCash)</label>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Numéro de Téléphone (MonCash / NatCash)</label>
                 <input
                   type="text"
                   placeholder="Ex: 36203465"
                   value={wdPhone}
                   onChange={(e) => setWdPhone(e.target.value)}
-                  className="block w-full px-4 py-3 bg-slate-950/70 border border-slate-800 rounded-xl text-sm text-slate-200 focus:outline-none focus:border-indigo-500"
+                  className="block w-full px-4 py-3.5 bg-slate-950/70 border border-slate-800 rounded-xl text-sm text-slate-100 font-semibold focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 placeholder-slate-700"
                   required
                 />
               </div>
 
               {/* Automatic Fee Calculation display */}
               {wdAmount && parseFloat(wdAmount) >= 100 && (
-                <div className="p-4 bg-slate-900/60 rounded-xl border border-slate-800 space-y-2 text-xs">
+                <div className="p-4 bg-slate-950/60 rounded-xl border border-slate-850 space-y-2.5 text-xs animate-slide-up">
                   <div className="flex justify-between">
                     <span className="text-slate-500">Montant demandé :</span>
-                    <span className="font-mono text-slate-300 font-bold">{parseFloat(wdAmount).toFixed(2)} HTG</span>
+                    <span className="font-mono text-slate-350 font-bold">{parseFloat(wdAmount).toFixed(2)} HTG</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">Frais opérationnels (10%) :</span>
-                    <span className="font-mono text-red-400">-{ (parseFloat(wdAmount) * 0.1).toFixed(2) } HTG</span>
+                    <span className="font-mono text-red-500">-{ (parseFloat(wdAmount) * 0.1).toFixed(2) } HTG</span>
                   </div>
                   <div className="border-t border-slate-800 pt-2 flex justify-between font-bold text-sm">
-                    <span className="text-slate-300">Total net à recevoir :</span>
-                    <span className="font-mono text-emerald-400">{ (parseFloat(wdAmount) * 0.9).toFixed(2) } HTG</span>
+                    <span className="text-slate-200">Total net à recevoir :</span>
+                    <span className="font-mono text-emerald-400 font-black tracking-wide">{ (parseFloat(wdAmount) * 0.9).toFixed(2) } HTG</span>
                   </div>
                 </div>
               )}
@@ -1547,10 +1579,13 @@ export default function Dashboard() {
               <button
                 type="submit"
                 disabled={wdLoading}
-                className="w-full py-3.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-sm transition-all disabled:opacity-50 flex items-center justify-center space-x-2"
+                className="w-full py-4 px-4 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-bold rounded-xl text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 shadow-lg shadow-indigo-600/10 hover:shadow-indigo-600/20 transform hover:-translate-y-0.5 active:translate-y-0 active:scale-98 cursor-pointer font-display"
               >
                 {wdLoading ? (
-                  <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <>
+                    <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>Traitement en cours...</span>
+                  </>
                 ) : (
                   <>
                     <Send className="h-4 w-4" />

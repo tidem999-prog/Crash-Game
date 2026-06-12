@@ -70,15 +70,21 @@ router.post('/signup', async (req, res) => {
       to: user.email,
       subject: 'Confirmez votre compte - Ketarena',
       html: `
-        <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
-          <h2 style="color: #6366f1; text-align: center;">Bienvenue sur Ketarena !</h2>
-          <p>Bonjour,</p>
-          <p>Merci de vous être inscrit sur notre plateforme. Veuillez confirmer votre adresse e-mail en cliquant sur le bouton ci-dessous :</p>
-          <div style="margin: 30px 0; text-align: center;">
-            <a href="${verifyUrl}" style="background-color: #6366f1; color: white; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 8px; display: inline-block;">Confirmer mon compte</a>
+        <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 24px; border: 1px solid #1e293b; border-radius: 16px; background-color: #0b0f19; color: #f8fafc;">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <div style="display: inline-block; background: linear-gradient(135deg, #eab308 0%, #6366f1 100%); padding: 12px 20px; border-radius: 12px; color: #ffffff; font-weight: 900; font-size: 20px; letter-spacing: 1px;">
+              🎮 KETARENA
+            </div>
           </div>
-          <p style="color: #64748b; font-size: 12px;">Si le bouton ne fonctionne pas, vous pouvez copier et coller ce lien dans votre navigateur :<br/>${verifyUrl}</p>
-          <p>Si vous n'avez pas créé de compte, vous pouvez ignorer cet e-mail.</p>
+          <h2 style="color: #ffffff; text-align: center; margin-top: 0; font-family: sans-serif;">Bienvenue sur Ketarena !</h2>
+          <p style="color: #94a3b8; font-size: 15px; line-height: 1.6; font-family: sans-serif;">Bonjour,</p>
+          <p style="color: #94a3b8; font-size: 15px; line-height: 1.6; font-family: sans-serif;">Merci de vous être inscrit sur notre plateforme. Veuillez confirmer votre adresse e-mail en cliquant sur le bouton ci-dessous :</p>
+          <div style="margin: 30px 0; text-align: center;">
+            <a href="${verifyUrl}" style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: #ffffff; padding: 14px 28px; text-decoration: none; font-weight: bold; font-size: 15px; border-radius: 10px; display: inline-block; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);">Confirmer mon compte</a>
+          </div>
+          <p style="color: #64748b; font-size: 12px; text-align: center; margin-top: 30px; font-family: sans-serif;">Si le bouton ne fonctionne pas, vous pouvez copier et coller ce lien dans votre navigateur :<br/><a href="${verifyUrl}" style="color: #6366f1; text-decoration: underline;">${verifyUrl}</a></p>
+          <hr style="border: 0; border-top: 1px solid #1e293b; margin: 24px 0;" />
+          <p style="color: #475569; font-size: 12px; text-align: center; margin-bottom: 0; font-family: sans-serif;">Si vous n'avez pas créé de compte, vous pouvez ignorer cet e-mail.</p>
         </div>
       `,
       text: `Bonjour,\n\nMerci de vous être inscrit sur Ketarena. Veuillez confirmer votre adresse e-mail en cliquant sur le lien suivant :\n${verifyUrl}`
@@ -209,16 +215,22 @@ router.post('/forgot-password', async (req, res) => {
       to: user.email,
       subject: 'Réinitialisation de votre mot de passe - Ketarena',
       html: `
-        <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px;">
-          <h2 style="color: #6366f1; text-align: center;">Réinitialisation de mot de passe</h2>
-          <p>Bonjour,</p>
-          <p>Vous avez demandé la réinitialisation de votre mot de passe pour votre compte Ketarena.</p>
-          <p>Veuillez cliquer sur le bouton ci-dessous pour modifier votre mot de passe (ce lien est valide pendant 1 heure) :</p>
-          <div style="margin: 30px 0; text-align: center;">
-            <a href="${resetUrl}" style="background-color: #6366f1; color: white; padding: 12px 24px; text-decoration: none; font-weight: bold; border-radius: 8px; display: inline-block;">Réinitialiser mon mot de passe</a>
+        <div style="font-family: sans-serif; max-width: 600px; margin: auto; padding: 24px; border: 1px solid #1e293b; border-radius: 16px; background-color: #0b0f19; color: #f8fafc;">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <div style="display: inline-block; background: linear-gradient(135deg, #eab308 0%, #6366f1 100%); padding: 12px 20px; border-radius: 12px; color: #ffffff; font-weight: 900; font-size: 20px; letter-spacing: 1px;">
+              🎮 KETARENA
+            </div>
           </div>
-          <p style="color: #64748b; font-size: 12px;">Si le bouton ne fonctionne pas, vous pouvez copier et coller ce lien dans votre navigateur :<br/>${resetUrl}</p>
-          <p>Si vous n'avez pas demandé ce changement, vous pouvez ignorer cet e-mail en toute sécurité.</p>
+          <h2 style="color: #ffffff; text-align: center; margin-top: 0; font-family: sans-serif;">Réinitialisation de mot de passe</h2>
+          <p style="color: #94a3b8; font-size: 15px; line-height: 1.6; font-family: sans-serif;">Bonjour,</p>
+          <p style="color: #94a3b8; font-size: 15px; line-height: 1.6; font-family: sans-serif;">Vous avez demandé la réinitialisation de votre mot de passe pour votre compte Ketarena.</p>
+          <p style="color: #94a3b8; font-size: 15px; line-height: 1.6; font-family: sans-serif;">Veuillez cliquer sur le bouton ci-dessous pour modifier votre mot de passe (ce lien est valide pendant 1 heure) :</p>
+          <div style="margin: 30px 0; text-align: center;">
+            <a href="${resetUrl}" style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); color: #ffffff; padding: 14px 28px; text-decoration: none; font-weight: bold; font-size: 15px; border-radius: 10px; display: inline-block; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);">Réinitialiser mon mot de passe</a>
+          </div>
+          <p style="color: #64748b; font-size: 12px; text-align: center; margin-top: 30px; font-family: sans-serif;">Si le bouton ne fonctionne pas, vous pouvez copier et coller ce lien dans votre navigateur :<br/><a href="${resetUrl}" style="color: #6366f1; text-decoration: underline;">${resetUrl}</a></p>
+          <hr style="border: 0; border-top: 1px solid #1e293b; margin: 24px 0;" />
+          <p style="color: #475569; font-size: 12px; text-align: center; margin-bottom: 0; font-family: sans-serif;">Si vous n'avez pas demandé ce changement, vous pouvez ignorer cet e-mail en toute sécurité.</p>
         </div>
       `,
       text: `Bonjour,\n\nVous avez demandé la réinitialisation de votre mot de passe sur Ketarena.\n\nVeuillez cliquer sur le lien suivant (valide 1h) pour modifier votre mot de passe :\n${resetUrl}`

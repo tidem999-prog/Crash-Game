@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
 import { apiRequest } from '../context/AuthContext';
-import { CheckCircle, XCircle, Loader2, Plane } from 'lucide-react';
+import { CheckCircle, XCircle, Loader2, Gamepad2 } from 'lucide-react';
 
 export default function VerifyEmail() {
   const [searchParams] = useSearchParams();
@@ -43,11 +43,11 @@ export default function VerifyEmail() {
 
         {/* Logo */}
         <div className="flex flex-col items-center justify-center space-y-2 mb-6">
-          <div className="bg-indigo-600 p-2.5 rounded-xl text-white transform rotate-45 shadow-md shadow-indigo-500/20">
-            <Plane className="h-6 w-6" />
+          <div className="bg-gradient-to-tr from-yellow-500 to-indigo-600 p-3 rounded-2xl text-white transform hover:rotate-12 transition-transform duration-300 shadow-lg shadow-indigo-500/20 mb-2">
+            <Gamepad2 className="h-6 w-6" />
           </div>
           <span className="font-display font-extrabold text-xl tracking-tight text-white mt-2">
-            CRASH<span className="text-indigo-500">PLANE</span>
+            KET<span className="text-indigo-500">ARENA</span>
           </span>
         </div>
 

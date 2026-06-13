@@ -20,6 +20,7 @@ export default function Admin() {
   });
 
   const [transactions, setTransactions] = useState([]);
+  const [visibleTransactionsCount, setVisibleTransactionsCount] = useState(15);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(null); // stores transaction ID being processed
@@ -382,7 +383,7 @@ export default function Admin() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-900">
-                  {transactions.map((tx, idx) => (
+                  {transactions.slice(0, visibleTransactionsCount).map((tx, idx) => (
                     <tr key={idx} className="hover:bg-slate-900/15">
                       <td className="py-4">
                         <div className="flex flex-col">
@@ -454,6 +455,16 @@ export default function Admin() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+          {transactions.length > visibleTransactionsCount && (
+            <div className="flex justify-center pt-2">
+              <button
+                onClick={() => setVisibleTransactionsCount(prev => prev + 15)}
+                className="bg-slate-950 hover:bg-slate-900 text-slate-300 font-bold px-6 py-2.5 rounded-xl text-xs border border-slate-800 hover:border-slate-700 transition-all uppercase tracking-wider shadow-sm active:scale-95"
+              >
+                Voir Plus
+              </button>
             </div>
           )}
         </div>

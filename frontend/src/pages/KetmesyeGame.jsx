@@ -19,6 +19,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
   const [duelWager, setDuelWager] = useState('150');
   const [duelData, setDuelData] = useState(null);
   const [duelResult, setDuelResult] = useState(null);
+  const [currentDuelId, setCurrentDuelId] = useState(null);
 
   const [wager, setWager] = useState(125);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -165,6 +166,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
 
     socket.on('ketmesye_duel_created', (data) => {
       setDuelState('waiting');
+      setCurrentDuelId(data.duelId);
     });
 
     socket.on('ketmesye_duel_starting', (data) => {
@@ -1383,8 +1385,11 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
               
               <button 
                 onClick={() => {
-                  socket.emit('disconnect'); // cancel matching
+                  if (currentDuelId && socket && socket.connected) {
+                    socket.emit('ketmesye_cancel_duel', { duelId: currentDuelId, userId: user.id });
+                  }
                   setDuelState('lobby');
+                  setCurrentDuelId(null);
                 }}
                 className="mt-6 py-2 px-6 bg-slate-850 hover:bg-slate-800 text-slate-300 font-bold rounded-xl text-xs transition-colors"
               >

@@ -754,6 +754,33 @@ const cancelDuel = async (duelId, reason = 'Jeu annulé.') => {
   delete activeDuels[duelId];
 };
 
+const cancelPendingDuel = async (duelId, reason = 'Jeu annulé.') => {
+  const pending = pendingDuels[duelId];
+  if (!pending) return;
+
+  try {
+    await query('BEGIN');
+    await query('UPDATE users SET balance = balance + $1 WHERE id = $2', [pending.betAmount, pending.playerAId]);
+    await query(`UPDATE duels SET status = 'cancelled' WHERE id = $1`, [duelId]);
+    await query(
+      `INSERT INTO audit_logs (user_id, game_id, game_type, amount, action) VALUES ($1, $2, 'snake_duel', $3, 'escrow_refund')`,
+      [pending.playerAId, duelId, pending.betAmount]
+    );
+    await query('COMMIT');
+
+    const creatorSocket = io.sockets.sockets.get(pending.socketId);
+    if (creatorSocket) {
+      creatorSocket.emit('ketmesye_duel_cancelled', { reason });
+    }
+  } catch (err) {
+    await query('ROLLBACK');
+    console.error('Ketmesye Cancel Pending Duel Error:', err);
+  }
+
+  delete pendingDuels[duelId];
+  broadcastPendingDuels();
+};
+
 // Initialize the socket.io handlers
 const initKetmesyeEngine = (socketIoInstance) => {
   io = socketIoInstance;
@@ -997,7 +1024,8 @@ const initKetmesyeEngine = (socketIoInstance) => {
           id: duelId,
           betAmount,
           creatorEmail: user.email,
-          playerAId: userId
+          playerAId: userId,
+          socketId: socket.id
         };
 
         socket.emit('ketmesye_duel_created', { duelId, betAmount });
@@ -1109,8 +1137,24 @@ const initKetmesyeEngine = (socketIoInstance) => {
       sendPendingDuelsToSocket(socket);
     });
 
+    socket.on('ketmesye_cancel_duel', async (payload) => {
+      const { duelId, userId } = payload;
+      const pending = pendingDuels[duelId];
+      if (pending && pending.playerAId === userId) {
+        await cancelPendingDuel(duelId, 'Défi annulé.');
+      }
+    });
+
     // 5. Handle client disconnection (automatic death/cleanup)
     socket.on('disconnect', () => {
+      // Check if they had a pending duel and cancel it
+      Object.keys(pendingDuels).forEach(async (dId) => {
+        const pending = pendingDuels[dId];
+        if (pending && pending.socketId === socket.id) {
+          await cancelPendingDuel(dId, 'Créateur déconnecté.');
+        }
+      });
+
       const duelId = activeDuelPlayers[socket.id];
       if (duelId && activeDuels[duelId]) {
         // Handle forfeit during duel

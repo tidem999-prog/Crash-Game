@@ -7,7 +7,7 @@ const sendEmail = async ({ to, subject, html, text }) => {
   const user = process.env.SMTP_USER;
   const pass = process.env.SMTP_PASS;
   // Fòse itilize domèn nan pou evite pwoblèm Brevo yo avèk Gmail
-  const from = '"Ketarena Support" <support@ketarena.com>';
+  const from = process.env.SMTP_FROM ? `"Ketarena Support" <${process.env.SMTP_FROM}>` : '"Ketarena Support" <support@ketarena.com>';
 
   console.log(`\n===================================================`);
   console.log(`EMAIL UTILITY - SENDING EMAIL`);

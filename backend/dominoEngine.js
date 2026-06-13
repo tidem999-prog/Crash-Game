@@ -59,12 +59,18 @@ const startMatch = async (roomId) => {
   room.turnIndex = firstIndex;
   
   try {
+    await query('BEGIN');
     // Debit balances & record bets
     for (let p of room.players) {
-      const userRes = await query('SELECT balance FROM users WHERE id = $1 FOR UPDATE', [p.userId]);
-      const newBalance = parseFloat(userRes.rows[0].balance) - room.buyIn;
-      await query('UPDATE users SET balance = $1 WHERE id = $2', [newBalance, p.userId]);
+      const userRes = await query(
+        'UPDATE users SET balance = balance - $1 WHERE id = $2 AND balance >= $1 RETURNING balance',
+        [room.buyIn, p.userId]
+      );
       
+      if (userRes.rows.length === 0) {
+        throw new Error(`Solde insuffisant ou utilisateur introuvable pour ${p.email || p.userId}.`);
+      }
+
       const betRes = await query(
         `INSERT INTO bets (user_id, game_id, bet_amount, cashout_multiplier, payout_amount, is_won) 
          VALUES ($1, null, $2, null, 0.00, false) RETURNING id`,
@@ -73,13 +79,16 @@ const startMatch = async (roomId) => {
       p.betId = betRes.rows[0].id;
       p.hasPaid = true;
     }
+    await query('COMMIT');
+
     room.pot = room.buyIn * 2;
 
     broadcastRoomState(roomId);
     startTurnTimer(roomId);
   } catch (err) {
+    await query('ROLLBACK').catch(() => {});
     console.error('Erreur lors du démarrage de la partie Domino:', err);
-    io.to(roomId).emit('domino_error', 'Erreur serveur lors de la création de la partie. Les mises n\'ont pas été prélevées.');
+    io.to(roomId).emit('domino_error', 'Erreur serveur ou solde insuffisant lors du démarrage de la partie. Les mises n\'ont pas été prélevées.');
     room.status = 'finished';
     delete rooms[roomId];
   }
@@ -244,43 +253,53 @@ const handleGameEnd = async (roomId, reason, winnerIndex = -1) => {
   }
 
   // Calculate payouts
-  if (winnerIndex !== -1) {
-    const winner = room.players[winnerIndex];
-    const rake = Math.floor(room.pot * (RAKE_PERCENT / 100));
-    const winAmount = room.pot - rake;
-    
-    // Credit winner
-    await query('UPDATE users SET balance = balance + $1 WHERE id = $2', [winAmount, winner.userId]);
-    
-    // Update bet record as won
-    const multiplier = parseFloat((winAmount / room.buyIn).toFixed(2));
-    await query(
-      `UPDATE bets SET cashout_multiplier = $1, payout_amount = $2, is_won = true WHERE id = $3`,
-      [multiplier, winAmount, winner.betId]
-    );
-    
-    // Store winner for next game first turn
-    room.lastWinnerIndex = winnerIndex;
-    
-    io.to(roomId).emit('domino_game_over', { 
-      winnerId: winner.userId,
-      winnerEmail: winner.email,
-      reason,
-      p1Points,
-      p2Points,
-      winAmount
-    });
-  } else {
-    // Draw: refund buy-ins
-    for (let p of room.players) {
-      await query('UPDATE users SET balance = balance + $1 WHERE id = $2', [room.buyIn, p.userId]);
-      // Update bet to show refunded
+  try {
+    await query('BEGIN');
+    if (winnerIndex !== -1) {
+      const winner = room.players[winnerIndex];
+      const rake = Math.floor(room.pot * (RAKE_PERCENT / 100));
+      const winAmount = room.pot - rake;
+      
+      // Credit winner
+      await query('UPDATE users SET balance = balance + $1 WHERE id = $2', [winAmount, winner.userId]);
+      
+      // Update bet record as won
+      const multiplier = parseFloat((winAmount / room.buyIn).toFixed(2));
       await query(
-        `UPDATE bets SET cashout_multiplier = 1.00, payout_amount = $1, is_won = false WHERE id = $2`,
-        [room.buyIn, p.betId]
+        `UPDATE bets SET cashout_multiplier = $1, payout_amount = $2, is_won = true WHERE id = $3`,
+        [multiplier, winAmount, winner.betId]
       );
+      
+      await query('COMMIT');
+
+      // Store winner for next game first turn
+      room.lastWinnerIndex = winnerIndex;
+      
+      io.to(roomId).emit('domino_game_over', { 
+        winnerId: winner.userId,
+        winnerEmail: winner.email,
+        reason,
+        p1Points,
+        p2Points,
+        winAmount
+      });
+    } else {
+      // Draw: refund buy-ins
+      for (let p of room.players) {
+        await query('UPDATE users SET balance = balance + $1 WHERE id = $2', [room.buyIn, p.userId]);
+        // Update bet to show refunded
+        await query(
+          `UPDATE bets SET cashout_multiplier = 1.00, payout_amount = $1, is_won = false WHERE id = $2`,
+          [room.buyIn, p.betId]
+        );
+      }
+      await query('COMMIT');
+      io.to(roomId).emit('domino_game_over', { reason: 'draw', p1Points, p2Points });
     }
-    io.to(roomId).emit('domino_game_over', { reason: 'draw', p1Points, p2Points });
+  } catch (err) {
+    await query('ROLLBACK').catch(() => {});
+    console.error('Error resolving Domino game end payouts:', err);
+    io.to(roomId).emit('domino_error', 'Erreur lors de la distribution des gains.');
   }
 
   // Reset room for rematch

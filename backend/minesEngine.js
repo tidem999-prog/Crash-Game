@@ -60,26 +60,27 @@ const handleMinesStart = async (socket, payload) => {
   }
 
   try {
+    await query('BEGIN');
+
     // 1. Check existing active games for this user (prevent multiple active games)
     const activeRes = await query(`SELECT id FROM mines_games WHERE user_id = $1 AND status = 'active'`, [userId]);
     if (activeRes.rows.length > 0) {
+      await query('ROLLBACK');
       return socket.emit('mines_error', 'Vous avez déjà une partie de Mines en cours. Veuillez la terminer ou l\'actualiser.');
     }
 
-    // 2. Validate balance
-    const userRes = await query('SELECT balance FROM users WHERE id = $1 FOR UPDATE', [userId]);
+    // 2. Validate balance and deduct bet amount atomically
+    const userRes = await query(
+      'UPDATE users SET balance = balance - $1 WHERE id = $2 AND balance >= $1 RETURNING balance',
+      [betAmount, userId]
+    );
+
     if (userRes.rows.length === 0) {
-      return socket.emit('mines_error', 'Utilisateur non trouvé.');
+      await query('ROLLBACK');
+      return socket.emit('mines_error', 'Solde insuffisant ou utilisateur introuvable.');
     }
 
-    let balance = parseFloat(userRes.rows[0].balance);
-    if (balance < betAmount) {
-      return socket.emit('mines_error', 'Fonds insuffisants.');
-    }
-
-    // 3. Deduct bet amount
-    const newBalance = balance - betAmount;
-    await query('UPDATE users SET balance = $1 WHERE id = $2', [newBalance, userId]);
+    const newBalance = parseFloat(userRes.rows[0].balance);
 
     // 4. Calculate Net Stake
     const fee = betAmount * (RAKE_PERCENT / 100);
@@ -102,6 +103,8 @@ const handleMinesStart = async (socket, payload) => {
 
     const gameId = insertRes.rows[0].id;
 
+    await query('COMMIT');
+
     // Send updated balance to user globally
     io.emit('balance_update', { userId, newBalance });
 
@@ -117,6 +120,7 @@ const handleMinesStart = async (socket, payload) => {
     startMinesTimer(socket, userId, gameId);
 
   } catch (err) {
+    await query('ROLLBACK').catch(() => {});
     console.error('Error starting Mines game:', err);
     socket.emit('mines_error', 'Erreur lors de la création de la partie.');
   }
@@ -129,13 +133,17 @@ const handleMinesReveal = async (socket, payload) => {
   if (tileIndex < 0 || tileIndex > 24) return;
 
   try {
+    await query('BEGIN');
+
     const gameRes = await query(`SELECT * FROM mines_games WHERE id = $1 AND user_id = $2 FOR UPDATE`, [gameId, userId]);
     if (gameRes.rows.length === 0) {
+      await query('ROLLBACK');
       return socket.emit('mines_error', 'Partie introuvable.');
     }
 
     const game = gameRes.rows[0];
     if (game.status !== 'active') {
+      await query('ROLLBACK');
       return socket.emit('mines_error', 'Partie déjà terminée.');
     }
 
@@ -143,6 +151,7 @@ const handleMinesReveal = async (socket, payload) => {
     const revealedTiles = game.revealed_tiles;
 
     if (revealedTiles.includes(tileIndex)) {
+      await query('ROLLBACK');
       return; // Already revealed
     }
 
@@ -151,6 +160,7 @@ const handleMinesReveal = async (socket, payload) => {
     if (gridMines.includes(tileIndex)) {
       // BOOM! Lost.
       await query(`UPDATE mines_games SET status = 'lost' WHERE id = $1`, [gameId]);
+      await query('COMMIT');
       return socket.emit('mines_game_over', {
         status: 'lost',
         gridMines,
@@ -161,13 +171,6 @@ const handleMinesReveal = async (socket, payload) => {
     // SAFE!
     revealedTiles.push(tileIndex);
     const k = revealedTiles.length;
-    
-    // Calculate new multiplier
-    // formula: Mk+1 = Mk * ((25 - k + 1) / (25 - mines_count - k + 1)) * 0.99
-    // actually, simpler to compute the total probability from step 0 to k,
-    // to avoid floating point compounding errors.
-    // Prob to reach step k: Combinations(25-mines, k) / Combinations(25, k)
-    // Fair multiplier = Combinations(25, k) / Combinations(25-mines, k)
     
     let prob = 1.0;
     for (let i = 0; i < k; i++) {
@@ -182,14 +185,24 @@ const handleMinesReveal = async (socket, payload) => {
       // Auto cashout!
       const payoutAmount = parseFloat(game.net_stake) * currentMultiplier;
       
-      const userRes = await query('SELECT balance FROM users WHERE id = $1 FOR UPDATE', [userId]);
-      const newBalance = parseFloat(userRes.rows[0].balance) + payoutAmount;
-      await query('UPDATE users SET balance = $1 WHERE id = $2', [newBalance, userId]);
+      const userRes = await query(
+        'UPDATE users SET balance = balance + $1 WHERE id = $2 RETURNING balance',
+        [payoutAmount, userId]
+      );
+
+      if (userRes.rows.length === 0) {
+        await query('ROLLBACK');
+        return socket.emit('mines_error', 'Utilisateur introuvable.');
+      }
+
+      const newBalance = parseFloat(userRes.rows[0].balance);
 
       await query(
         `UPDATE mines_games SET status = 'cashed_out', current_multiplier = $1, payout_amount = $2, revealed_tiles = $3 WHERE id = $4`,
         [currentMultiplier, payoutAmount, JSON.stringify(revealedTiles), gameId]
       );
+
+      await query('COMMIT');
 
       io.emit('balance_update', { userId, newBalance });
 
@@ -208,6 +221,8 @@ const handleMinesReveal = async (socket, payload) => {
       [JSON.stringify(revealedTiles), currentMultiplier, gameId]
     );
 
+    await query('COMMIT');
+
     socket.emit('mines_reveal_safe', {
       tileIndex,
       currentMultiplier,
@@ -217,6 +232,7 @@ const handleMinesReveal = async (socket, payload) => {
     startMinesTimer(socket, userId, gameId);
 
   } catch (err) {
+    await query('ROLLBACK').catch(() => {});
     console.error('Error revealing Mines tile:', err);
     socket.emit('mines_error', 'Erreur lors du traitement de la case.');
   }
@@ -227,27 +243,48 @@ const handleMinesCashout = async (socket, payload) => {
   const { userId, gameId } = payload;
 
   try {
+    await query('BEGIN');
+
     const gameRes = await query(`SELECT * FROM mines_games WHERE id = $1 AND user_id = $2 FOR UPDATE`, [gameId, userId]);
-    if (gameRes.rows.length === 0) return socket.emit('mines_error', 'Partie introuvable.');
+    if (gameRes.rows.length === 0) {
+      await query('ROLLBACK');
+      return socket.emit('mines_error', 'Partie introuvable.');
+    }
     
     const game = gameRes.rows[0];
-    if (game.status !== 'active') return socket.emit('mines_error', 'Partie déjà terminée.');
-    if (game.revealed_tiles.length === 0) return socket.emit('mines_error', 'Vous devez révéler au moins une case.');
+    if (game.status !== 'active') {
+      await query('ROLLBACK');
+      return socket.emit('mines_error', 'Partie déjà terminée.');
+    }
+    if (game.revealed_tiles.length === 0) {
+      await query('ROLLBACK');
+      return socket.emit('mines_error', 'Vous devez révéler au moins une case.');
+    }
 
     clearMinesTimer(gameId);
 
     const payoutAmount = parseFloat(game.net_stake) * parseFloat(game.current_multiplier);
 
-    // Update User Balance
-    const userRes = await query('SELECT balance FROM users WHERE id = $1 FOR UPDATE', [userId]);
-    const newBalance = parseFloat(userRes.rows[0].balance) + payoutAmount;
-    await query('UPDATE users SET balance = $1 WHERE id = $2', [newBalance, userId]);
+    // Update User Balance atomically
+    const userRes = await query(
+      'UPDATE users SET balance = balance + $1 WHERE id = $2 RETURNING balance',
+      [payoutAmount, userId]
+    );
+
+    if (userRes.rows.length === 0) {
+      await query('ROLLBACK');
+      return socket.emit('mines_error', 'Utilisateur introuvable.');
+    }
+
+    const newBalance = parseFloat(userRes.rows[0].balance);
 
     // Update Game
     await query(
       `UPDATE mines_games SET status = 'cashed_out', payout_amount = $1 WHERE id = $2`,
       [payoutAmount, gameId]
     );
+
+    await query('COMMIT');
 
     io.emit('balance_update', { userId, newBalance });
 
@@ -260,6 +297,7 @@ const handleMinesCashout = async (socket, payload) => {
     });
 
   } catch (err) {
+    await query('ROLLBACK').catch(() => {});
     console.error('Error on Mines cashout:', err);
     socket.emit('mines_error', 'Erreur lors du Cash Out.');
   }

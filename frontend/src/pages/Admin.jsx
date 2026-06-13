@@ -314,41 +314,116 @@ export default function Admin() {
             </div>
             
             {searchResult.bets.length === 0 ? (
-              <p className="text-xs text-slate-500 text-center py-6">Aucun pari trouvé pour cet utilisateur.</p>
+              <p className="text-xs text-slate-500 text-center py-6">Aucune activité trouvée pour cet utilisateur.</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="border-b border-slate-900 text-slate-500 font-bold uppercase tracking-wider">
-                      <th className="pb-3">Jeu</th>
+                      <th className="pb-3">Activité / Jeu</th>
                       <th className="pb-3">Date</th>
-                      <th className="pb-3">Mise</th>
+                      <th className="pb-3">Mise / Montant</th>
                       <th className="pb-3">Mult.</th>
+                      <th className="pb-3">Solde Résultant</th>
                       <th className="pb-3 text-right">Résultat</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-900">
-                    {searchResult.bets.map((bet, idx) => (
-                      <tr key={idx} className="hover:bg-slate-900/15">
-                        <td className="py-3 font-bold text-slate-300">
-                          {bet.game_id ? 'Crash Plane' : 'Snake (Ketmesye)'}
-                        </td>
-                        <td className="py-3 text-[10px] text-slate-500 font-mono">
-                          {new Date(bet.created_at).toLocaleString('fr-FR')}
-                        </td>
-                        <td className="py-3 font-mono font-bold text-slate-400">{bet.bet_amount.toFixed(2)}</td>
-                        <td className="py-3 font-mono text-slate-400">
-                          {bet.cashout_multiplier ? `${bet.cashout_multiplier.toFixed(2)}x` : '-'}
-                        </td>
-                        <td className="py-3 text-right">
-                          {bet.is_won ? (
-                            <span className="text-emerald-400 font-bold font-mono">+{bet.payout_amount.toFixed(2)} HTG</span>
+                    {searchResult.bets.map((bet, idx) => {
+                      const getActivityLabel = (act) => {
+                        if (act.activity_type === 'bet') {
+                          return act.game_id ? 'Crash Plane' : 'Snake (Ketmesye)';
+                        }
+                        if (act.activity_type === 'mines') {
+                          return 'Mines';
+                        }
+                        if (act.activity_type === 'transaction') {
+                          const typeLabel = act.tx_type === 'deposit' ? 'Dépôt' : 'Retrait';
+                          const providerLabel = act.provider ? act.provider.toUpperCase() : '';
+                          return `${typeLabel} ${providerLabel ? `(${providerLabel})` : ''}`;
+                        }
+                        if (act.activity_type === 'koth') {
+                          if (act.action === 'JOIN_ESCROW_DEDUCTION') return 'KOTH (Mise)';
+                          if (act.action === 'WIN_POT_DISTRIBUTION') return 'KOTH (Victoire)';
+                          if (act.action === 'REFUND_CANCELLED_ROOM') return 'KOTH (Remboursement)';
+                          return 'KOTH';
+                        }
+                        return 'Activité';
+                      };
+
+                      const renderResult = (act) => {
+                        if (act.activity_type === 'bet') {
+                          return act.is_won ? (
+                            <span className="text-emerald-400 font-bold font-mono">+{act.payout_amount.toFixed(2)} HTG</span>
                           ) : (
                             <span className="text-red-400 font-bold font-mono">Perdu</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                          );
+                        }
+                        if (act.activity_type === 'mines') {
+                          if (act.status === 'cashed_out') {
+                            return <span className="text-emerald-400 font-bold font-mono">+{act.payout_amount.toFixed(2)} HTG</span>;
+                          }
+                          if (act.status === 'lost') {
+                            return <span className="text-red-400 font-bold font-mono">Perdu</span>;
+                          }
+                          return <span className="text-amber-400 font-bold font-mono">En cours</span>;
+                        }
+                        if (act.activity_type === 'transaction') {
+                          if (act.tx_type === 'deposit') {
+                            if (act.status === 'approved') {
+                              return <span className="text-emerald-400 font-bold font-mono">+{act.payout_amount.toFixed(2)} HTG</span>;
+                            }
+                            if (act.status === 'pending') {
+                              return <span className="text-amber-400 font-bold font-mono">En attente</span>;
+                            }
+                            return <span className="text-red-400 font-bold font-mono">Refusé</span>;
+                          } else {
+                            if (act.status === 'approved') {
+                              return <span className="text-red-400 font-bold font-mono">-{act.bet_amount.toFixed(2)} HTG</span>;
+                            }
+                            if (act.status === 'pending') {
+                              return <span className="text-amber-400 font-bold font-mono">En attente</span>;
+                            }
+                            return <span className="text-slate-400 font-bold font-mono">Refusé (Remboursé)</span>;
+                          }
+                        }
+                        if (act.activity_type === 'koth') {
+                          if (act.action === 'JOIN_ESCROW_DEDUCTION') {
+                            return <span className="text-red-400 font-bold font-mono">-{act.bet_amount.toFixed(2)} HTG</span>;
+                          }
+                          if (act.action === 'WIN_POT_DISTRIBUTION') {
+                            return <span className="text-emerald-400 font-bold font-mono">+{act.bet_amount.toFixed(2)} HTG</span>;
+                          }
+                          if (act.action === 'REFUND_CANCELLED_ROOM') {
+                            return <span className="text-emerald-400/70 font-bold font-mono">+{act.bet_amount.toFixed(2)} HTG (Remboursé)</span>;
+                          }
+                        }
+                        return null;
+                      };
+
+                      return (
+                        <tr key={idx} className="hover:bg-slate-900/15">
+                          <td className="py-3 font-bold text-slate-300">
+                            {getActivityLabel(bet)}
+                          </td>
+                          <td className="py-3 text-[10px] text-slate-500 font-mono">
+                            {new Date(bet.created_at).toLocaleString('fr-FR')}
+                          </td>
+                          <td className="py-3 font-mono font-bold text-slate-400">
+                            {bet.bet_amount.toFixed(2)}
+                          </td>
+                          <td className="py-3 font-mono text-slate-400">
+                            {bet.cashout_multiplier ? `${bet.cashout_multiplier.toFixed(2)}x` : '-'}
+                          </td>
+                          <td className="py-3 font-mono text-slate-200 font-bold">
+                            {bet.balance_after ? `${bet.balance_after.toFixed(2)} HTG` : '-'}
+                          </td>
+                          <td className="py-3 text-right">
+                            {renderResult(bet)}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

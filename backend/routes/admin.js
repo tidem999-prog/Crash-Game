@@ -297,7 +297,7 @@ router.post('/reset/withdrawals', async (req, res) => {
   }
 });
 
-// 11. Search user bets by ID or Email
+// 11. Search user bets by ID or Email (modified to return all activities with running balance)
 router.get('/user-bets', async (req, res) => {
   const { query: searchQuery } = req.query;
   
@@ -308,15 +308,17 @@ router.get('/user-bets', async (req, res) => {
   try {
     let userId = searchQuery.trim();
     let userEmail = '';
+    let currentBalance = 0;
 
     // If query is an email, resolve it to an ID
     if (userId.includes('@')) {
-      const userRes = await query('SELECT id, email FROM users WHERE email = $1', [userId]);
+      const userRes = await query('SELECT id, email, balance FROM users WHERE email = $1', [userId]);
       if (userRes.rows.length === 0) {
         return res.status(404).json({ error: 'Aucun utilisateur trouvé avec cet e-mail.' });
       }
       userId = userRes.rows[0].id;
       userEmail = userRes.rows[0].email;
+      currentBalance = parseFloat(userRes.rows[0].balance || 0);
     } else {
       // Validate if it's a UUID
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -324,38 +326,146 @@ router.get('/user-bets', async (req, res) => {
         return res.status(400).json({ error: 'ID Utilisateur invalide.' });
       }
       
-      const userRes = await query('SELECT email FROM users WHERE id = $1', [userId]);
+      const userRes = await query('SELECT email, balance FROM users WHERE id = $1', [userId]);
       if (userRes.rows.length === 0) {
         return res.status(404).json({ error: 'Aucun utilisateur trouvé avec cet ID.' });
       }
       userEmail = userRes.rows[0].email;
+      currentBalance = parseFloat(userRes.rows[0].balance || 0);
     }
 
-    // Fetch bets
-    const result = await query(
-      `SELECT id, game_id, bet_amount, cashout_multiplier, payout_amount, is_won, created_at 
-       FROM bets 
-       WHERE user_id = $1 
-       ORDER BY created_at DESC 
-       LIMIT 50`,
-       [userId]
+    // Now we fetch all user activities
+    const activitiesRes = await query(
+      `SELECT 
+        id, 
+        'bet'::varchar AS activity_type, 
+        game_id::varchar, 
+        bet_amount::numeric, 
+        cashout_multiplier::numeric, 
+        payout_amount::numeric, 
+        is_won::boolean, 
+        NULL::varchar AS status, 
+        NULL::varchar AS tx_type, 
+        NULL::varchar AS provider, 
+        NULL::varchar AS action, 
+        created_at 
+      FROM bets 
+      WHERE user_id = $1
+
+      UNION ALL
+
+      SELECT 
+        id, 
+        'mines'::varchar AS activity_type, 
+        NULL::varchar AS game_id, 
+        bet_amount::numeric, 
+        current_multiplier::numeric AS cashout_multiplier, 
+        payout_amount::numeric, 
+        (status = 'cashed_out')::boolean AS is_won, 
+        status::varchar AS status, 
+        NULL::varchar AS tx_type, 
+        NULL::varchar AS provider, 
+        NULL::varchar AS action, 
+        created_at 
+      FROM mines_games 
+      WHERE user_id = $1
+
+      UNION ALL
+
+      SELECT 
+        id, 
+        'transaction'::varchar AS activity_type, 
+        NULL::varchar AS game_id, 
+        amount::numeric AS bet_amount, 
+        NULL::numeric AS cashout_multiplier, 
+        net_amount::numeric AS payout_amount, 
+        (status = 'approved')::boolean AS is_won, 
+        status::varchar AS status, 
+        type::varchar AS tx_type, 
+        provider::varchar AS provider, 
+        NULL::varchar AS action, 
+        created_at 
+      FROM transactions 
+      WHERE user_id = $1
+
+      UNION ALL
+
+      SELECT 
+        id, 
+        'koth'::varchar AS activity_type, 
+        NULL::varchar AS game_id, 
+        amount::numeric AS bet_amount, 
+        NULL::numeric AS cashout_multiplier, 
+        NULL::numeric AS payout_amount, 
+        (action = 'WIN_POT_DISTRIBUTION' OR action = 'REFUND_CANCELLED_ROOM')::boolean AS is_won, 
+        NULL::varchar AS status, 
+        NULL::varchar AS tx_type, 
+        NULL::varchar AS provider, 
+        action::varchar AS action, 
+        created_at 
+      FROM audit_logs 
+      WHERE user_id = $1 AND game_type = 'KOTH'
+
+      ORDER BY created_at DESC 
+      LIMIT 500`,
+      [userId]
     );
+
+    // Reconstruct the balance progression walking backwards from currentBalance
+    let runningBalance = currentBalance;
+    const activities = activitiesRes.rows.map(r => ({
+      ...r,
+      bet_amount: parseFloat(r.bet_amount || 0),
+      cashout_multiplier: r.cashout_multiplier ? parseFloat(r.cashout_multiplier) : null,
+      payout_amount: parseFloat(r.payout_amount || 0),
+    }));
+
+    const activitiesWithBalance = [];
+
+    for (const act of activities) {
+      const balanceAfter = runningBalance;
+      let delta = 0;
+
+      if (act.activity_type === 'bet') {
+        delta = (act.is_won ? act.payout_amount : 0) - act.bet_amount;
+      } else if (act.activity_type === 'mines') {
+        delta = (act.status === 'cashed_out' ? act.payout_amount : 0) - act.bet_amount;
+      } else if (act.activity_type === 'transaction') {
+        if (act.tx_type === 'deposit') {
+          delta = (act.status === 'approved') ? act.bet_amount : 0;
+        } else if (act.tx_type === 'withdrawal') {
+          delta = (act.status === 'rejected') ? 0 : -act.bet_amount;
+        }
+      } else if (act.activity_type === 'koth') {
+        if (act.action === 'JOIN_ESCROW_DEDUCTION') {
+          delta = -act.bet_amount;
+        } else if (act.action === 'WIN_POT_DISTRIBUTION' || act.action === 'REFUND_CANCELLED_ROOM') {
+          delta = act.bet_amount;
+        }
+      }
+
+      // runningBalance represents the balance before this activity took place
+      runningBalance = parseFloat((runningBalance - delta).toFixed(2));
+      
+      activitiesWithBalance.push({
+        ...act,
+        balance_after: balanceAfter,
+        balance_before: runningBalance,
+        delta
+      });
+    }
 
     res.json({
       user: {
         id: userId,
-        email: userEmail
+        email: userEmail,
+        balance: currentBalance
       },
-      bets: result.rows.map(r => ({
-        ...r,
-        bet_amount: parseFloat(r.bet_amount),
-        cashout_multiplier: r.cashout_multiplier ? parseFloat(r.cashout_multiplier) : null,
-        payout_amount: parseFloat(r.payout_amount)
-      }))
+      bets: activitiesWithBalance // Keeping variable name 'bets' to minimize frontend change issues, but it actually contains all activities
     });
   } catch (err) {
     console.error('Admin user bets search error:', err);
-    res.status(500).json({ error: 'Erreur lors de la recherche des paris.' });
+    res.status(500).json({ error: 'Erreur lors de la recherche des activités.' });
   }
 });
 

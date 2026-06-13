@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const { query } = require('../db');
 const { authenticateToken } = require('../middleware/auth');
+const { sendEmail } = require('../utils/email');
 
 // Make sure upload directory exists (skipped silently on read-only filesystems like Vercel)
 const uploadDir = process.env.UPLOAD_DIR || path.join(__dirname, '../uploads');
@@ -45,10 +46,10 @@ const upload = multer({
 
 // 1. Submit Deposit Proof
 router.post('/deposit', authenticateToken, upload.single('screenshot'), async (req, res) => {
-  const { provider, amount } = req.body;
+  const { provider, amount, phone_number } = req.body;
 
-  if (!provider || !amount) {
-    return res.status(400).json({ error: 'Fournisseur (moncash/natcash) et montant requis.' });
+  if (!provider || !amount || !phone_number) {
+    return res.status(400).json({ error: 'Fournisseur, montant et numéro de téléphone requis.' });
   }
 
   const depositAmount = parseFloat(amount);
@@ -64,18 +65,36 @@ router.post('/deposit', authenticateToken, upload.single('screenshot'), async (r
 
   try {
     // Check if user is suspended
-    const userRes = await query('SELECT is_suspended FROM users WHERE id = $1', [req.user.id]);
+    const userRes = await query('SELECT is_suspended, email FROM users WHERE id = $1', [req.user.id]);
     if (userRes.rows[0].is_suspended) {
       return res.status(403).json({ error: 'Compte suspendu. Impossible d\'effectuer des transactions.' });
     }
 
+    const userEmail = userRes.rows[0].email;
+
     // Insert pending deposit
     // For deposit: net_amount is same as amount (no fees on deposit)
     await query(
-      `INSERT INTO transactions (user_id, type, status, amount, fee, net_amount, provider, screenshot_url) 
-       VALUES ($1, 'deposit', 'pending', $2, 0.00, $2, $3, $4)`,
-      [req.user.id, depositAmount, provider.toLowerCase(), screenshotUrl]
+      `INSERT INTO transactions (user_id, type, status, amount, fee, net_amount, provider, screenshot_url, phone_number) 
+       VALUES ($1, 'deposit', 'pending', $2, 0.00, $2, $3, $4, $5)`,
+      [req.user.id, depositAmount, provider.toLowerCase(), screenshotUrl, phone_number]
     );
+
+    // Send email alert to admin
+    const appUrl = process.env.APP_URL || `${req.protocol}://${req.get('host')}`;
+    sendEmail({
+      to: 'tidem999@gmail.com',
+      subject: `[KetMesye Arena] Nouveau Dépôt de ${userEmail} - ${depositAmount} HTG`,
+      text: `Nouveau dépôt soumis :\n\nUtilisateur : ${userEmail}\nFournisseur : ${provider}\nMontant : ${depositAmount} HTG\nNuméro de téléphone expéditeur : ${phone_number}\nReçu : ${appUrl}${screenshotUrl}`,
+      html: `<p><strong>Nouveau dépôt soumis :</strong></p>
+             <ul>
+               <li><strong>Utilisateur :</strong> ${userEmail}</li>
+               <li><strong>Fournisseur :</strong> ${provider.toUpperCase()}</li>
+               <li><strong>Montant :</strong> ${depositAmount} HTG</li>
+               <li><strong>Numéro expéditeur (depuis lequel les fonds sont envoyés) :</strong> ${phone_number}</li>
+               <li><strong>Lien du reçu :</strong> <a href="${appUrl}${screenshotUrl}" target="_blank">Voir la capture d'écran</a></li>
+             </ul>`
+    }).catch(err => console.error('Error sending deposit email notification:', err));
 
     res.status(201).json({
       message: 'Votre reçu de dépôt a été soumis. Un administrateur va le valider sous peu.'
@@ -143,6 +162,22 @@ router.post('/withdraw', authenticateToken, async (req, res) => {
     );
 
     await query('COMMIT');
+
+    // Send email alert to admin
+    sendEmail({
+      to: 'tidem999@gmail.com',
+      subject: `[KetMesye Arena] Nouvelle Demande de Retrait de ${req.user.email} - ${withdrawAmount} HTG`,
+      text: `Nouvelle demande de retrait soumise :\n\nUtilisateur : ${req.user.email}\nFournisseur : ${selectedProvider}\nMontant brut : ${withdrawAmount} HTG\nFrais (10%) : ${fee} HTG\nMontant net à payer : ${netAmount} HTG\nNuméro destinataire : ${phone_number}`,
+      html: `<p><strong>Nouvelle demande de retrait soumise :</strong></p>
+             <ul>
+               <li><strong>Utilisateur :</strong> ${req.user.email}</li>
+               <li><strong>Fournisseur :</strong> ${selectedProvider.toUpperCase()}</li>
+               <li><strong>Montant brut :</strong> ${withdrawAmount} HTG</li>
+               <li><strong>Frais (10%) :</strong> ${fee} HTG</li>
+               <li><strong>Montant net à payer :</strong> ${netAmount} HTG</li>
+               <li><strong>Numéro destinataire :</strong> ${phone_number}</li>
+             </ul>`
+    }).catch(err => console.error('Error sending withdrawal email notification:', err));
 
     res.status(201).json({
       message: 'Demande de retrait enregistrée. Le montant a été déduit et l\'admin va traiter le paiement.',

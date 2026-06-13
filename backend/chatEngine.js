@@ -1,4 +1,5 @@
 const chatSessions = new Map(); // Store chat sessions in memory: sessionId -> { messages: [] }
+const { sendEmail } = require('./utils/email');
 
 function initChatEngine(io) {
   io.on('connection', (socket) => {
@@ -43,6 +44,16 @@ function initChatEngine(io) {
       
       // Ensure admin gets the updated session list with the new session/email
       io.to('admin_room').emit('active_sessions', Array.from(chatSessions.entries()));
+
+      // Send email alert to admin
+      sendEmail({
+        to: 'tidem999@gmail.com',
+        subject: `[KetMesye Arena] Nouveau message support de ${email || 'un utilisateur'}`,
+        text: `Utilisateur: ${email || 'Inconnu'}\nMessage: ${text}\nSession ID: ${sessionId}`,
+        html: `<p><strong>Utilisateur:</strong> ${email || 'Inconnu'}</p>
+               <p><strong>Message:</strong> ${text}</p>
+               <p><strong>Session ID:</strong> ${sessionId}</p>`
+      }).catch(err => console.error('Error sending support email:', err));
     });
 
     // Handle reply from admin

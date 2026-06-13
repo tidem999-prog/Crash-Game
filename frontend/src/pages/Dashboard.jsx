@@ -38,6 +38,7 @@ export default function Dashboard() {
   const [depProvider, setDepProvider] = useState('moncash');
   const [depAmount, setDepAmount] = useState('');
   const [depFile, setDepFile] = useState(null);
+  const [depPhone, setDepPhone] = useState('');
   const [depSuccess, setDepSuccess] = useState('');
   const [depError, setDepError] = useState('');
   const [depLoading, setDepLoading] = useState(false);
@@ -677,6 +678,10 @@ export default function Dashboard() {
       return setDepError('Veuillez saisir un montant valide.');
     }
 
+    if (!depPhone) {
+      return setDepError('Veuillez saisir le numéro de téléphone expéditeur.');
+    }
+
     if (!depFile) {
       return setDepError('Veuillez télécharger la capture d\'écran comme preuve.');
     }
@@ -684,6 +689,7 @@ export default function Dashboard() {
     const formData = new FormData();
     formData.append('provider', depProvider);
     formData.append('amount', depAmount);
+    formData.append('phone_number', depPhone);
     formData.append('screenshot', depFile);
 
     setDepLoading(true);
@@ -696,6 +702,7 @@ export default function Dashboard() {
       });
       setDepSuccess('Votre demande a été soumise avec succès ! Un administrateur va créditer votre compte après vérification du reçu.');
       setDepAmount('');
+      setDepPhone('');
       setDepFile(null);
     } catch (err) {
       setDepError(err.message || 'Échec de la soumission.');
@@ -1337,6 +1344,24 @@ export default function Dashboard() {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* Phone number from which money is sent */}
+              <div>
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+                  Numéro de téléphone expéditeur (MonCash / NatCash)
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ex: 36203465"
+                  value={depPhone}
+                  onChange={(e) => setDepPhone(e.target.value)}
+                  className="block w-full px-4 py-3 bg-slate-950/70 border border-slate-800 rounded-xl text-sm text-slate-100 font-semibold focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 placeholder-slate-700"
+                  required
+                />
+                <p className="text-[10px] text-slate-500 mt-1.5 leading-relaxed">
+                  Veuillez saisir le numéro de téléphone avec lequel vous avez effectué le transfert de fonds (le numéro expéditeur), afin que notre équipe puisse associer et valider votre transaction.
+                </p>
               </div>
 
               {/* File Screenshot Upload */}

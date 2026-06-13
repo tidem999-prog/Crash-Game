@@ -32,9 +32,12 @@ router.get('/stats', async (req, res) => {
     const usersCountRes = await query("SELECT COUNT(*) as count FROM users WHERE role = 'user'");
     const usersCount = parseInt(usersCountRes.rows[0].count || 0);
 
-    // Game stats (House profit)
-    // House Profit = Total Bets - Total Payouts + Withdrawal Fees
-    const betRes = await query("SELECT SUM(bet_amount) as total_bets, SUM(payout_amount) as total_payouts FROM bets");
+    const betRes = await query(
+      `SELECT SUM(b.bet_amount) as total_bets, SUM(b.payout_amount) as total_payouts 
+       FROM bets b
+       JOIN users u ON b.user_id = u.id
+       WHERE u.role = 'user'`
+    );
     const totalBets = parseFloat(betRes.rows[0].total_bets || 0);
     const totalPayouts = parseFloat(betRes.rows[0].total_payouts || 0);
     const houseGameProfit = totalBets - totalPayouts;

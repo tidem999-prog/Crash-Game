@@ -102,7 +102,7 @@ const Navbar = () => {
             <Gamepad2 className="h-4 w-4 sm:h-5 sm:w-5" />
           </div>
           <span className="font-display font-black text-sm sm:text-base tracking-tight bg-gradient-to-r from-white via-slate-200 to-indigo-400 bg-clip-text text-transparent uppercase">
-            Ket<span className="hidden sm:inline">mesye</span><span className="text-yellow-500">Arena</span>
+            Ket<span className="text-yellow-500">arena</span>
           </span>
         </Link>
 
@@ -231,7 +231,7 @@ const AppContent = () => {
       {/* Premium Footer */}
       <footer className="border-t border-slate-900 py-4 sm:py-6 bg-slate-950 text-slate-500 text-center text-[10px] sm:text-xs">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-4">
-          <p>© {new Date().getFullYear()} KetMesye Arena. Tous droits réservés.</p>
+          <p>© {new Date().getFullYear()} Ketarena. Tous droits réservés.</p>
           <div className="flex flex-wrap items-center justify-center gap-1 sm:space-x-1.5 text-[9px] sm:text-xs">
             <span>Sécurisé avec House Edge de 5%</span>
             <span className="h-1 w-1 sm:h-1.5 sm:w-1.5 rounded-full bg-emerald-500"></span>

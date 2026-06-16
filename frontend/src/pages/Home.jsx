@@ -147,13 +147,13 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Testimonials Section in Creole */}
+      {/* Testimonials Section */}
       <section className="relative max-w-5xl mx-auto px-4 py-16 z-10 w-full border-t border-slate-900">
         <h2 className="font-display font-black text-3xl text-center text-white mb-4">
-          Sa Jwè yo ap Di sou Ketarena
+          Ce que disent nos joueurs sur Ketarena
         </h2>
         <p className="text-slate-400 text-center text-sm max-w-lg mx-auto mb-12">
-          Eksperyans jwè nou yo k ap fè benefis chak jou nan Arena a.
+          Découvrez les retours d'expérience de nos joueurs qui gagnent au quotidien dans l'arène.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Testimonial 1 */}
@@ -170,7 +170,7 @@ export default function Home() {
             </div>
             <div>
               <div className="font-bold text-sm text-white">Katalina L.</div>
-              <div className="text-xs text-indigo-400 mt-0.5">Jwè aktif</div>
+              <div className="text-xs text-indigo-400 mt-0.5">Joueur actif</div>
             </div>
           </div>
 
@@ -188,7 +188,7 @@ export default function Home() {
             </div>
             <div>
               <div className="font-bold text-sm text-white">Jean-Robert M.</div>
-              <div className="text-xs text-indigo-400 mt-0.5">Jwè depi 3 mwa</div>
+              <div className="text-xs text-indigo-400 mt-0.5">Joueur depuis 3 mois</div>
             </div>
           </div>
 
@@ -206,7 +206,7 @@ export default function Home() {
             </div>
             <div>
               <div className="font-bold text-sm text-white">Maken</div>
-              <div className="text-xs text-indigo-400 mt-0.5">Jwè pwofesyonèl</div>
+              <div className="text-xs text-indigo-400 mt-0.5">Joueur professionnel</div>
             </div>
           </div>
         </div>

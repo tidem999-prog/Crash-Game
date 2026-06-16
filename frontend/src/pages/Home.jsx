@@ -280,9 +280,6 @@ export default function Home() {
             </div>
           </div>
         </div>
-        <div className="max-w-5xl mx-auto border-t border-slate-900 mt-8 pt-8 text-center text-xs text-slate-600">
-          <p>© {new Date().getFullYear()} Ketarena. Tous droits réservés.</p>
-        </div>
       </footer>
 
     </div>

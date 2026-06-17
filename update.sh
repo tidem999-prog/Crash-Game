@@ -6,6 +6,7 @@ echo "MISE À JOUR DE KETMESYE / CRASH GAME"
 echo "============================================="
 
 cd /root/Crash-Game
+git pull
 
 echo "[1/3] Mise à jour du Frontend..."
 cd frontend

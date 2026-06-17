@@ -1,4 +1,5 @@
 const { query } = require('./db');
+const activePlayersStore = require('./activePlayersStore');
 
 let io;
 
@@ -224,6 +225,9 @@ const handleGameTick = async () => {
           valueLost: snake.value
         });
       }
+
+      activePlayersStore.losePlayer(snake.userId, 'ketmesye', 'dead');
+      activePlayersStore.notify(`Le serpent de ${snake.email.split('@')[0]} est mort et a perdu ${snake.value.toFixed(0)} HTG !`, 'danger');
     }
   }
 
@@ -681,6 +685,9 @@ const resolveDuel = async (duelId, disconnectWinnerId = null) => {
       );
 
       io.to(duel.roomId).emit('ketmesye_duel_over', { reason: 'tie', message: 'Égalité parfaite ! Les mises sont remboursées.' });
+      activePlayersStore.removePlayer(duel.playerA_id, 'snake_duel');
+      activePlayersStore.removePlayer(duel.playerB_id, 'snake_duel');
+      activePlayersStore.notify(`Le duel de serpent s'est terminé par une égalité !`, 'info');
     } else {
       // Pay winner
       await query('UPDATE users SET balance = balance + $1 WHERE id = $2', [payout, winnerId]);
@@ -742,6 +749,8 @@ const cancelDuel = async (duelId, reason = 'Jeu annulé.') => {
     await query('COMMIT');
 
     io.to(duel.roomId).emit('ketmesye_duel_cancelled', { reason });
+    activePlayersStore.removePlayer(duel.playerA_id, 'snake_duel');
+    if (duel.playerB_id) activePlayersStore.removePlayer(duel.playerB_id, 'snake_duel');
   } catch (err) {
     await query('ROLLBACK');
     console.error('Ketmesye Cancel Duel Error:', err);
@@ -767,6 +776,7 @@ const cancelPendingDuel = async (duelId, reason = 'Jeu annulé.') => {
       [pending.playerAId, duelId, pending.betAmount]
     );
     await query('COMMIT');
+    activePlayersStore.removePlayer(pending.playerAId, 'snake_duel');
 
     const creatorSocket = io.sockets.sockets.get(pending.socketId);
     if (creatorSocket) {
@@ -887,6 +897,8 @@ const initKetmesyeEngine = (socketIoInstance) => {
         });
 
         console.log(`Ketmesye: ${email} joined with ${entryWager} HTG wager.`);
+        activePlayersStore.addPlayer(userId, email, 'ketmesye', entryWager);
+        activePlayersStore.notify(`${email.split('@')[0]} a rejoint l'arène de KetMesye avec ${entryWager} HTG !`, 'info');
 
       } catch (err) {
         await query('ROLLBACK');
@@ -977,6 +989,8 @@ const initKetmesyeEngine = (socketIoInstance) => {
         });
 
         console.log(`Ketmesye: ${snake.email} cashed out +${payout} HTG.`);
+        activePlayersStore.cashoutPlayer(snake.userId, 'ketmesye', payout, multiplier);
+        activePlayersStore.notify(`${snake.email.split('@')[0]} a encaissé +${payout.toFixed(0)} HTG de l'arène KetMesye !`, 'success');
 
         // Remove from memory
         delete snakes[socket.id];
@@ -1125,7 +1139,10 @@ const initKetmesyeEngine = (socketIoInstance) => {
       // Set user email
       query('SELECT email FROM users WHERE id = $1', [userId]).then(res => {
         if (res.rows.length > 0 && duel.snakes[socket.id]) {
-          duel.snakes[socket.id].email = res.rows[0].email;
+          const email = res.rows[0].email;
+          duel.snakes[socket.id].email = email;
+          activePlayersStore.addPlayer(userId, email, 'snake_duel', duel.betAmount);
+          activePlayersStore.notify(`${email.split('@')[0]} a rejoint le duel de serpent (${duel.betAmount} HTG) !`, 'info');
         }
       }).catch(err => console.error(err));
 
@@ -1191,6 +1208,9 @@ const initKetmesyeEngine = (socketIoInstance) => {
             isCashDrop: true
           });
         });
+
+        activePlayersStore.losePlayer(snake.userId, 'ketmesye', 'dead');
+        activePlayersStore.notify(`Le serpent de ${snake.email.split('@')[0]} s'est déconnecté et a perdu ${snake.value.toFixed(0)} HTG !`, 'danger');
 
         delete snakes[socket.id];
       }

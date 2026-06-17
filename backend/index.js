@@ -96,15 +96,19 @@ if (isVercel) {
     cors: { origin: '*', methods: ['GET', 'POST'] }
   });
 
+  const { initActivePlayersStore, getActivePlayersList } = require('./activePlayersStore');
+
   const SERVER_START_TIME = Date.now();
   io.on('connection', (socket) => {
     socket.emit('server_version', SERVER_START_TIME);
+    socket.emit('active_players_update', getActivePlayersList());
   });
 
   const PORT = process.env.PORT || 5000;
 
   (async () => {
     await initializeDatabase();
+    initActivePlayersStore(io);
     initGameEngine(io);
     initKetmesyeEngine(io);
     initChatEngine(io);

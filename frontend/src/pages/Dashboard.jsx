@@ -239,8 +239,6 @@ export default function Dashboard() {
       setMultiplier(parseFloat(data.multiplier));
       setCountdown(data.countdown);
       setGameHistory(data.history || []);
-      setActiveBets(data.activeBetsList || []);
-      setActiveBetsCount(data.activeBetsCount || 0);
       setOnlineUsersCount(data.onlineUsersCount || 0);
 
       // Only reset active bet states when transitioning from another state (e.g. crashed) to 'waiting'
@@ -298,6 +296,15 @@ export default function Dashboard() {
       if (userIdRef.current && userIdRef.current === data.userId) {
         updateBalance(data.newBalance);
       }
+    });
+
+    newSocket.on('global_notification', (data) => {
+      addNotification(data.message, data.type);
+    });
+
+    newSocket.on('active_players_update', (data) => {
+      setActiveBets(data || []);
+      setActiveBetsCount(data ? data.length : 0);
     });
 
     return () => {
@@ -1872,18 +1879,27 @@ export default function Dashboard() {
                 <div key={idx} className="flex justify-between items-center bg-slate-950/40 p-2.5 rounded-xl border border-slate-900/60">
                   <div className="flex flex-col">
                     <span className="text-xs font-bold text-slate-300">{player.email}</span>
-                    <span className="text-[10px] font-mono text-slate-500">{player.betAmount.toFixed(0)} HTG</span>
-                  </div>
-                  {player.cashedOut ? (
-                    <span className="text-[10px] font-mono font-black text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-md border border-emerald-500/15">
-                      +{player.payoutAmount.toFixed(0)} HTG ({player.cashoutMultiplier.toFixed(2)}x)
+                    <span className="text-[10px] font-mono text-slate-500">
+                      {player.betAmount ? player.betAmount.toFixed(0) : '0'} HTG | <span className="text-indigo-400 font-semibold">{player.game === 'crash' ? 'Crash' : player.game === 'ketmesye' ? 'Snake' : player.game === 'snake_duel' ? 'Duel Snake' : player.game === 'koth' ? 'KOTH' : player.game === 'mines' ? 'Mines' : player.game}</span>
                     </span>
-                  ) : gameStatus === 'crashed' ? (
+                  </div>
+                  {player.status === 'cashed_out' || player.cashedOut ? (
+                    <span className="text-[10px] font-mono font-black text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-md border border-emerald-500/15">
+                      +{player.payoutAmount ? player.payoutAmount.toFixed(0) : '0'} HTG {player.cashoutMultiplier ? `(${player.cashoutMultiplier.toFixed(2)}x)` : ''}
+                    </span>
+                  ) : player.status === 'lost' || player.status === 'crashed' || player.status === 'dead' || player.status === 'eliminated' ? (
+                    <span className="text-[10px] font-mono font-bold text-red-400 bg-red-500/10 px-2 py-1 rounded-md border border-red-500/15 uppercase">
+                      {player.status === 'dead' ? 'Mort' : player.status === 'eliminated' ? 'Éliminé' : 'Perdu'}
+                    </span>
+                  ) : player.game === 'crash' && gameStatus === 'crashed' ? (
                     <span className="text-[10px] font-mono font-bold text-red-400 bg-red-500/10 px-2 py-1 rounded-md border border-red-500/15">
                       Crash
                     </span>
                   ) : (
-                    <div className="h-2 w-2 rounded-full bg-indigo-500 animate-ping"></div>
+                    <div className="flex items-center space-x-1.5">
+                      <span className="text-[9px] text-slate-500 animate-pulse">En jeu</span>
+                      <div className="h-2 w-2 rounded-full bg-indigo-500 animate-ping"></div>
+                    </div>
                   )}
                 </div>
               ))

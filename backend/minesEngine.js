@@ -1,5 +1,6 @@
 const { query } = require('./db');
 const crypto = require('crypto');
+const activePlayersStore = require('./activePlayersStore');
 
 let io;
 
@@ -24,6 +25,7 @@ const startMinesTimer = (socket, userId, gameId) => {
       if (gameRes.rows.length > 0 && gameRes.rows[0].status === 'active') {
         const game = gameRes.rows[0];
         await query(`UPDATE mines_games SET status = 'lost' WHERE id = $1`, [gameId]);
+        activePlayersStore.losePlayer(userId, 'mines', 'lost');
         socket.emit('mines_game_over', {
           status: 'lost_timeout',
           gridMines: game.grid_mines,
@@ -71,7 +73,7 @@ const handleMinesStart = async (socket, payload) => {
 
     // 2. Validate balance and deduct bet amount atomically
     const userRes = await query(
-      'UPDATE users SET balance = balance - $1 WHERE id = $2 AND balance >= $1 RETURNING balance',
+      'UPDATE users SET balance = balance - $1 WHERE id = $2 AND balance >= $1 RETURNING balance, email',
       [betAmount, userId]
     );
 
@@ -81,6 +83,7 @@ const handleMinesStart = async (socket, payload) => {
     }
 
     const newBalance = parseFloat(userRes.rows[0].balance);
+    const email = userRes.rows[0].email;
 
     // 4. Calculate Net Stake
     const fee = betAmount * (RAKE_PERCENT / 100);
@@ -107,6 +110,8 @@ const handleMinesStart = async (socket, payload) => {
 
     // Send updated balance to user globally
     io.emit('balance_update', { userId, newBalance });
+
+    activePlayersStore.addPlayer(userId, email, 'mines', betAmount);
 
     socket.emit('mines_started', {
       gameId,
@@ -161,6 +166,13 @@ const handleMinesReveal = async (socket, payload) => {
       // BOOM! Lost.
       await query(`UPDATE mines_games SET status = 'lost' WHERE id = $1`, [gameId]);
       await query('COMMIT');
+      
+      const userRes = await query('SELECT email FROM users WHERE id = $1', [userId]);
+      const email = userRes.rows[0]?.email || 'Joueur';
+      const displayName = email.split('@')[0];
+      activePlayersStore.losePlayer(userId, 'mines', 'lost');
+      activePlayersStore.notify(`${displayName} a heurté une mine à Mines et a perdu !`, 'danger');
+
       return socket.emit('mines_game_over', {
         status: 'lost',
         gridMines,
@@ -205,6 +217,12 @@ const handleMinesReveal = async (socket, payload) => {
       await query('COMMIT');
 
       io.emit('balance_update', { userId, newBalance });
+
+      const userRes = await query('SELECT email FROM users WHERE id = $1', [userId]);
+      const email = userRes.rows[0]?.email || 'Joueur';
+      const displayName = email.split('@')[0];
+      activePlayersStore.cashoutPlayer(userId, 'mines', payoutAmount, currentMultiplier);
+      activePlayersStore.notify(`${displayName} a gagné +${payoutAmount.toFixed(0)} HTG à Mines (${currentMultiplier.toFixed(2)}x) !`, 'success');
 
       return socket.emit('mines_game_over', {
         status: 'won', // special status for clearing the board
@@ -287,6 +305,12 @@ const handleMinesCashout = async (socket, payload) => {
     await query('COMMIT');
 
     io.emit('balance_update', { userId, newBalance });
+
+    const userRes = await query('SELECT email FROM users WHERE id = $1', [userId]);
+    const email = userRes.rows[0]?.email || 'Joueur';
+    const displayName = email.split('@')[0];
+    activePlayersStore.cashoutPlayer(userId, 'mines', payoutAmount, game.current_multiplier);
+    activePlayersStore.notify(`${displayName} a gagné +${payoutAmount.toFixed(0)} HTG à Mines (${parseFloat(game.current_multiplier).toFixed(2)}x) !`, 'success');
 
     socket.emit('mines_game_over', {
       status: 'cashed_out',

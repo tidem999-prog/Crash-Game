@@ -1,4 +1,5 @@
 const { query } = require('./db');
+const activePlayersStore = require('./activePlayersStore');
 
 let io;
 
@@ -88,6 +89,8 @@ const initKothEngine = (socketIo) => {
 
         socket.emit('koth_room_joined', { roomId, potTotal: potContribution });
         broadcastLobbies();
+        activePlayersStore.addPlayer(userId, email, 'koth', KOTH_ENTRY_FEE);
+        activePlayersStore.notify(`${email.split('@')[0]} a rejoint la partie King of the Hill !`, 'info');
 
         // Start Lobby Timer
         startLobbyCountdown(roomId);
@@ -144,6 +147,8 @@ const initKothEngine = (socketIo) => {
         
         io.to(`koth_${roomId}`).emit('koth_lobby_update', getLobbyUpdate(room));
         broadcastLobbies();
+        activePlayersStore.addPlayer(userId, email, 'koth', KOTH_ENTRY_FEE);
+        activePlayersStore.notify(`${email.split('@')[0]} a rejoint la partie King of the Hill !`, 'info');
 
       } catch (err) {
         await query('ROLLBACK');
@@ -324,6 +329,10 @@ const resolveRound = async (roomId) => {
     }
   });
 
+  eliminatedThisRound.forEach(elim => {
+    activePlayersStore.losePlayer(elim.id, 'koth', 'eliminated');
+  });
+
   alivePlayers = Object.values(room.players).filter(p => p.alive);
 
   io.to(`koth_${roomId}`).emit('koth_round_result', {
@@ -370,6 +379,9 @@ const endGameWinner = async (roomId, winnerPlayer) => {
       winner: winnerPlayer,
       potTotal: room.potTotal
     });
+    const winMult = parseFloat((room.potTotal / KOTH_ENTRY_FEE).toFixed(2));
+    activePlayersStore.cashoutPlayer(winnerPlayer.id, 'koth', room.potTotal, winMult);
+    activePlayersStore.notify(`${winnerPlayer.email.split('@')[0]} est le King of the Hill et remporte la cagnotte de +${room.potTotal.toFixed(0)} HTG !`, 'success');
   } catch (err) {
     await query('ROLLBACK');
     console.error('KOTH Final Payout Error:', err);
@@ -387,6 +399,10 @@ const endGameNoWinner = async (roomId) => {
     io.to(`koth_${roomId}`).emit('koth_game_over', {
       winner: null,
       message: 'Tout le monde est éliminé ! La plateforme remporte la mise.'
+    });
+    activePlayersStore.notify(`Partie King of the Hill terminée : Aucun gagnant !`, 'info');
+    Object.values(room.players).forEach(p => {
+      activePlayersStore.losePlayer(p.id, 'koth', 'eliminated');
     });
   } catch (err) {
     console.error(err);
@@ -406,10 +422,12 @@ const handleDisconnect = async (roomId, socketId) => {
     // Optional: could refund and remove from lobby. For simplicity we'll keep their bet and they forfeit.
     player.alive = false;
     io.to(`koth_${roomId}`).emit('koth_player_left', { email: player.email });
+    activePlayersStore.removePlayer(player.id, 'koth');
   } else if (room.status === 'playing') {
     // Forfeit
     player.alive = false;
     io.to(`koth_${roomId}`).emit('koth_player_left', { email: player.email });
+    activePlayersStore.losePlayer(player.id, 'koth', 'eliminated');
     
     // If it makes it 1 player left, they win
     const alivePlayers = Object.values(room.players).filter(p => p.alive);
@@ -439,6 +457,9 @@ const cancelRoom = async (roomId, reason) => {
 
     await query(`UPDATE koth_rooms SET status = 'cancelled' WHERE id = $1`, [roomId]);
     await query('COMMIT');
+    Object.values(room.players).forEach(p => {
+      activePlayersStore.removePlayer(p.id, 'koth');
+    });
 
     io.to(`koth_${roomId}`).emit('koth_game_cancelled', reason);
   } catch (err) {

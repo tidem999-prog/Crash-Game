@@ -1,4 +1,5 @@
 const { query } = require('./db');
+const activePlayersStore = require('./activePlayersStore');
 
 let io;
 let gameState = {
@@ -79,6 +80,7 @@ const startWaitingPhase = async () => {
   gameState.multiplier = 1.00;
   gameState.countdown = 10;
   activeBets = {}; // Reset bets for the new round
+  activePlayersStore.clearGame('crash');
   
   // Fetch history
   gameState.history = await getRecentHistory();
@@ -189,6 +191,8 @@ const processCashout = async (userId, multiplier) => {
     bet.cashedOut = true;
     bet.cashoutMultiplier = multiplier;
     bet.payoutAmount = payout;
+    
+    activePlayersStore.cashoutPlayer(userId, 'crash', payout, multiplier);
 
     console.log(`Game: User ${bet.email} cashed out successfully: +${payout} HTG`);
 
@@ -241,6 +245,7 @@ const handleCrashPhase = async () => {
            VALUES ($1, $2, $3, null, 0.00, false)`,
           [userId, gameState.gameId, bet.betAmount]
         );
+        activePlayersStore.losePlayer(userId, 'crash', 'crashed');
       }
     }
 
@@ -343,6 +348,8 @@ const initGameEngine = (socketIoInstance) => {
 
         console.log(`Game: Bet placed by ${email}: ${betAmount} HTG (AutoCashOut: ${autoCashout || 'None'})`);
         
+        activePlayersStore.addPlayer(userId, email, 'crash', betAmount);
+
         socket.emit('bet_success', {
           betAmount,
           autoCashout,

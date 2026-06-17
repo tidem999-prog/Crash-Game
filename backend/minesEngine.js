@@ -167,8 +167,8 @@ const handleMinesReveal = async (socket, payload) => {
       await query(`UPDATE mines_games SET status = 'lost' WHERE id = $1`, [gameId]);
       await query('COMMIT');
       
-      const userRes = await query('SELECT email FROM users WHERE id = $1', [userId]);
-      const email = userRes.rows[0]?.email || 'Joueur';
+      const emailRes = await query('SELECT email FROM users WHERE id = $1', [userId]);
+      const email = emailRes.rows[0]?.email || 'Joueur';
       const displayName = email.split('@')[0];
       activePlayersStore.losePlayer(userId, 'mines', 'lost');
       activePlayersStore.notify(`${displayName} a heurté une mine à Mines et a perdu !`, 'danger');
@@ -218,8 +218,8 @@ const handleMinesReveal = async (socket, payload) => {
 
       io.emit('balance_update', { userId, newBalance });
 
-      const userRes = await query('SELECT email FROM users WHERE id = $1', [userId]);
-      const email = userRes.rows[0]?.email || 'Joueur';
+      const emailRes = await query('SELECT email FROM users WHERE id = $1', [userId]);
+      const email = emailRes.rows[0]?.email || 'Joueur';
       const displayName = email.split('@')[0];
       activePlayersStore.cashoutPlayer(userId, 'mines', payoutAmount, currentMultiplier);
       activePlayersStore.notify(`${displayName} a gagné +${payoutAmount.toFixed(0)} HTG à Mines (${currentMultiplier.toFixed(2)}x) !`, 'success');
@@ -306,8 +306,8 @@ const handleMinesCashout = async (socket, payload) => {
 
     io.emit('balance_update', { userId, newBalance });
 
-    const userRes = await query('SELECT email FROM users WHERE id = $1', [userId]);
-    const email = userRes.rows[0]?.email || 'Joueur';
+    const emailRes = await query('SELECT email FROM users WHERE id = $1', [userId]);
+    const email = emailRes.rows[0]?.email || 'Joueur';
     const displayName = email.split('@')[0];
     activePlayersStore.cashoutPlayer(userId, 'mines', payoutAmount, game.current_multiplier);
     activePlayersStore.notify(`${displayName} a gagné +${payoutAmount.toFixed(0)} HTG à Mines (${parseFloat(game.current_multiplier).toFixed(2)}x) !`, 'success');

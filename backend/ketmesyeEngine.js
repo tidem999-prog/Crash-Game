@@ -11,13 +11,13 @@ const PATH_SPACING = 2; // Spacing of path history indices for body segments
 const INVINCIBLE_TIME_MS = 2000; // 2 seconds invincibility on spawn
 const GAME_DURATION_MS = 2 * 60 * 1000; // 2 minutes for a duel
 
-// Game State (Public Sandbox)
-let snakes = {}; // { [socketId]: { id, userId, email, wager, value, segments, pathHistory, angle, speed, color, eliminations, isInvincible, spawnTime, betId } }
-let pellets = []; // Array of { id, x, y, value, color, isCashDrop }
+// Game State (Public Sandbox partitioned by currency)
+let snakes = { HTG: {}, KET: {} };
+let pellets = { HTG: [], KET: [] };
 
 // Game State (1v1 Duels)
-const pendingDuels = {}; // maps duelId -> { id, betAmount, creatorEmail, playerAId }
-const activeDuels = {}; // maps duelId -> { id, roomId, betAmount, status, playerA_id, playerB_id, snakes: {}, pellets: [], timeLeft, startedAt, timer }
+const pendingDuels = {}; // maps duelId -> { id, betAmount, creatorEmail, playerAId, currency }
+const activeDuels = {}; // maps duelId -> { id, roomId, betAmount, status, playerA_id, playerB_id, snakes: {}, pellets: [], timeLeft, startedAt, timer, currency }
 const activeDuelPlayers = {}; // maps socketId -> duelId
 
 let gameLoopInterval = null;
@@ -31,33 +31,36 @@ const getRandomColor = () => {
   return colors[Math.floor(Math.random() * colors.length)];
 };
 
-// Spawn random normal pellets
-const spawnNormalPellets = (count) => {
+// Spawn random normal pellets for a specific sandbox
+const spawnNormalPellets = (currency, count) => {
   for (let i = 0; i < count; i++) {
-    pellets.push({
+    pellets[currency].push({
       id: Math.random().toString(36).substring(2, 9),
       x: Math.floor(Math.random() * (MAP_WIDTH - 40)) + 20,
       y: Math.floor(Math.random() * (MAP_HEIGHT - 40)) + 20,
-      value: 0.10, // Each normal pellet is worth 0.10 HTG
+      value: currency === 'KET' ? 0.80 : 0.10, // KET pellets worth 0.80 KET, HTG pellets worth 0.10 HTG
       color: getRandomColor(),
       isCashDrop: false
     });
   }
 };
 
-// Initialize the pellets pool (150 normal pellets)
-spawnNormalPellets(150);
+// Initialize the pellets pool (150 normal pellets per sandbox)
+spawnNormalPellets('HTG', 150);
+spawnNormalPellets('KET', 150);
 
-// Tick loop running on the server for the public arena
-const handleGameTick = async () => {
-  const socketIds = Object.keys(snakes);
+// Tick sandbox routine for a specific currency sandbox
+const tickSandbox = async (currency) => {
+  const sandboxSnakes = snakes[currency];
+  const sandboxPellets = pellets[currency];
+  const socketIds = Object.keys(sandboxSnakes);
   if (socketIds.length === 0) return;
 
   const now = Date.now();
 
   // 1. Move snakes
   socketIds.forEach(id => {
-    const snake = snakes[id];
+    const snake = sandboxSnakes[id];
     
     // Check invincibility timeout
     if (snake.isInvincible && now - snake.spawnTime > INVINCIBLE_TIME_MS) {
@@ -86,7 +89,6 @@ const handleGameTick = async () => {
     const segmentCount = snake.segments.length;
     for (let i = 0; i < segmentCount; i++) {
       const historyIndex = i * PATH_SPACING;
-      // Fallback to last known position if history isn't long enough yet
       if (snake.pathHistory[historyIndex]) {
         snake.segments[i] = { ...snake.pathHistory[historyIndex] };
       } else {
@@ -107,7 +109,7 @@ const handleGameTick = async () => {
 
   // 2. Collision checking
   socketIds.forEach(idA => {
-    const snakeA = snakes[idA];
+    const snakeA = sandboxSnakes[idA];
     const headA = snakeA.segments[0];
 
     // Out-of-bounds collision
@@ -119,7 +121,7 @@ const handleGameTick = async () => {
     // Snake A collisions with other snakes
     socketIds.forEach(idB => {
       if (deadSnakes.has(idA)) return; // Already flagged as dead
-      const snakeB = snakes[idB];
+      const snakeB = sandboxSnakes[idB];
 
       // Tête-à-tête (Head-to-head) collision
       if (idA !== idB) {
@@ -149,7 +151,6 @@ const handleGameTick = async () => {
       if (idA === idB && socketIds.length > 5) return; // Self collision is ignored if > 5 players
       const startSegmentIndex = (idA === idB) ? 3 : 0; // Prevent colliding with own neck
       for (let i = startSegmentIndex; i < snakeB.segments.length; i++) {
-        // Skip check if target is invincible or self is invincible
         if (snakeA.isInvincible || snakeB.isInvincible) continue;
 
         const segment = snakeB.segments[i];
@@ -168,17 +169,17 @@ const handleGameTick = async () => {
 
   // 3. Process dead snakes
   for (const deadId of deadSnakes) {
-    const snake = snakes[deadId];
+    const snake = sandboxSnakes[deadId];
     if (snake) {
       console.log(`Ketmesye: Snake owned by ${snake.email} died.`);
       
-      // Delete from memory IMMEDIATELY to prevent concurrent ticks from processing this snake again
-      delete snakes[deadId];
+      // Delete from memory IMMEDIATELY
+      delete sandboxSnakes[deadId];
 
       // Notify killer if any
       const killInfo = collisionKills.find(k => k.deadId === deadId);
       if (killInfo) {
-        const killer = snakes[killInfo.killerId];
+        const killer = sandboxSnakes[killInfo.killerId];
         if (killer) {
           killer.eliminations += 1;
           const killerSocket = io.sockets.sockets.get(killInfo.killerId);
@@ -189,14 +190,13 @@ const handleGameTick = async () => {
       }
 
       // Spawn cash pellets from the dead body
-      // We distribute 50% of the snake's accumulated value along its segments (platform keeps 50%)
       const segmentCount = snake.segments.length;
       const totalValueToDrop = snake.value * 0.5;
       const valuePerDrop = parseFloat((totalValueToDrop / segmentCount).toFixed(4));
 
       // Drop a yellow cash pellet at every segment
       snake.segments.forEach(segment => {
-        pellets.push({
+        sandboxPellets.push({
           id: Math.random().toString(36).substring(2, 9),
           x: segment.x + (Math.random() * 10 - 5),
           y: segment.y + (Math.random() * 10 - 5),
@@ -206,7 +206,7 @@ const handleGameTick = async () => {
         });
       });
 
-      // Update bet row to lost in database (it was inserted as is_won = false, so this completes the round)
+      // Update bet row to lost in database
       try {
         await query(
           "UPDATE bets SET payout_amount = 0.00, is_won = false WHERE id = $1",
@@ -222,33 +222,33 @@ const handleGameTick = async () => {
         socket.emit('ketmesye_death', {
           timeSurvived: Math.floor((Date.now() - snake.spawnTime) / 1000),
           eliminations: snake.eliminations,
-          valueLost: snake.value
+          valueLost: snake.value,
+          currency: snake.currency
         });
       }
 
       activePlayersStore.losePlayer(snake.userId, 'ketmesye', 'dead');
-      activePlayersStore.notify(`Le serpent de ${snake.email.split('@')[0]} est mort et a perdu ${snake.value.toFixed(0)} HTG !`, 'danger');
+      activePlayersStore.notify(`Le serpent de ${snake.email.split('@')[0]} est mort et a perdu ${snake.value.toFixed(0)} ${currency} !`, 'danger');
     }
   }
 
   // 4. Food eating
-  Object.keys(snakes).forEach(id => {
-    const snake = snakes[id];
+  Object.keys(sandboxSnakes).forEach(id => {
+    const snake = sandboxSnakes[id];
     const head = snake.segments[0];
 
-    for (let i = pellets.length - 1; i >= 0; i--) {
-      const pellet = pellets[i];
+    for (let i = sandboxPellets.length - 1; i >= 0; i--) {
+      const pellet = sandboxPellets[i];
       const dist = Math.hypot(head.x - pellet.x, head.y - pellet.y);
 
       if (dist < 20) { // Consumption threshold
-        // Eat pellet
         snake.value = parseFloat((snake.value + pellet.value).toFixed(2));
         
-        // Consumption logic: grow 1 segment per 10.0 HTG value gained (normal pellet worth 0.10 HTG adds 0.01 segment)
         snake.growthPoints = (snake.growthPoints || 0) + pellet.value;
-        const segmentsToAdd = Math.floor(snake.growthPoints / 10.0);
+        const growthStep = currency === 'KET' ? 80.0 : 10.0; // grow 1 segment per 80 KET or 10 HTG
+        const segmentsToAdd = Math.floor(snake.growthPoints / growthStep);
         if (segmentsToAdd > 0) {
-          snake.growthPoints -= segmentsToAdd * 10.0;
+          snake.growthPoints -= segmentsToAdd * growthStep;
           for (let g = 0; g < segmentsToAdd; g++) {
             const lastSegment = snake.segments[snake.segments.length - 1];
             snake.segments.push({ ...lastSegment });
@@ -256,26 +256,25 @@ const handleGameTick = async () => {
         }
 
         // Remove pellet
-        pellets.splice(i, 1);
+        sandboxPellets.splice(i, 1);
 
-        // Respawn a new normal pellet if a normal one was eaten
+        // Respawn normal pellet
         if (!pellet.isCashDrop) {
-          spawnNormalPellets(1);
+          spawnNormalPellets(currency, 1);
         }
       }
     }
   });
 
-  // 5. Broadcast game state to everyone in lobby
-  // Build clean broadcast payload
+  // 5. Broadcast game state to everyone in this currency's sandbox
   const broadcastPayload = {
-    snakes: Object.keys(snakes).reduce((acc, id) => {
-      const s = snakes[id];
+    snakes: Object.keys(sandboxSnakes).reduce((acc, id) => {
+      const s = sandboxSnakes[id];
       acc[id] = {
         id: s.id,
-        email: s.email.split('@')[0], // mask email
+        email: s.email.split('@')[0],
         value: s.value,
-        segments: s.segments.map(seg => ({ x: Math.round(seg.x), y: Math.round(seg.y) })), // compress coordinates
+        segments: s.segments.map(seg => ({ x: Math.round(seg.x), y: Math.round(seg.y) })),
         angle: s.angle,
         color: s.color,
         eliminations: s.eliminations,
@@ -284,7 +283,7 @@ const handleGameTick = async () => {
       };
       return acc;
     }, {}),
-    pellets: pellets.map(p => ({
+    pellets: sandboxPellets.map(p => ({
       id: p.id,
       x: Math.round(p.x),
       y: Math.round(p.y),
@@ -292,13 +291,19 @@ const handleGameTick = async () => {
       color: p.color,
       isCashDrop: p.isCashDrop
     })),
-    leaderboard: Object.values(snakes)
+    leaderboard: Object.values(sandboxSnakes)
       .map(s => ({ email: s.email.split('@')[0], value: s.value }))
       .sort((a, b) => b.value - a.value)
       .slice(0, 5)
   };
 
-  io.emit('ketmesye_tick', broadcastPayload);
+  io.to(`ketmesye_sandbox_${currency}`).emit('ketmesye_tick', broadcastPayload);
+};
+
+// Main Game tick interval
+const handleGameTick = async () => {
+  await tickSandbox('HTG');
+  await tickSandbox('KET');
 };
 
 // Broadcast the list of pending duels to anyone listening
@@ -329,7 +334,7 @@ const spawnDuelPellets = (duel, count) => {
   }
 };
 
-const setupKetmesyeDuel = (duelId, playerA_id, playerB_id, betAmount) => {
+const setupKetmesyeDuel = (duelId, playerA_id, playerB_id, betAmount, currency) => {
   const roomId = `ketmesye_duel_${duelId}`;
   activeDuels[duelId] = {
     id: duelId,
@@ -342,13 +347,14 @@ const setupKetmesyeDuel = (duelId, playerA_id, playerB_id, betAmount) => {
     pellets: [],
     timeLeft: GAME_DURATION_MS,
     startedAt: null,
-    timer: null
+    timer: null,
+    currency
   };
 
   spawnDuelPellets(activeDuels[duelId], 60);
 
   // Notify players to claim their spots
-  io.emit('ketmesye_duel_starting', { duelId, playerA_id, playerB_id });
+  io.emit('ketmesye_duel_starting', { duelId, playerA_id, playerB_id, currency });
 
   // Start the game loop after 5 seconds
   setTimeout(() => {
@@ -554,9 +560,10 @@ const handleDuelTick = async (duelId) => {
         snake.value = parseFloat((snake.value + pellet.value).toFixed(2));
         
         snake.growthPoints = (snake.growthPoints || 0) + pellet.value;
-        const segmentsToAdd = Math.floor(snake.growthPoints / 10.0);
+        const growthStep = duel.currency === 'KET' ? 80.0 : 10.0;
+        const segmentsToAdd = Math.floor(snake.growthPoints / growthStep);
         if (segmentsToAdd > 0) {
-          snake.growthPoints -= segmentsToAdd * 10.0;
+          snake.growthPoints -= segmentsToAdd * growthStep;
           for (let g = 0; g < segmentsToAdd; g++) {
             const lastSegment = snake.segments[snake.segments.length - 1];
             snake.segments.push({ ...lastSegment });
@@ -665,13 +672,18 @@ const resolveDuel = async (duelId, disconnectWinnerId = null) => {
 
   const pot = duel.betAmount * 2;
   const payout = pot * 0.90;
+  const activeCurrency = duel.currency || 'HTG';
 
   try {
     await query('BEGIN');
 
     if (isTie) {
       // Refund both
-      await query('UPDATE users SET balance = balance + $1 WHERE id IN ($2, $3)', [duel.betAmount, duel.playerA_id, duel.playerB_id]);
+      if (activeCurrency === 'KET') {
+        await query('UPDATE users SET ket_balance = ket_balance + $1 WHERE id IN ($2, $3)', [duel.betAmount, duel.playerA_id, duel.playerB_id]);
+      } else {
+        await query('UPDATE users SET balance = balance + $1 WHERE id IN ($2, $3)', [duel.betAmount, duel.playerA_id, duel.playerB_id]);
+      }
       await query(`UPDATE duels SET status = 'finished' WHERE id = $1`, [duelId]);
       
       // Log audit
@@ -684,13 +696,17 @@ const resolveDuel = async (duelId, disconnectWinnerId = null) => {
         [duel.playerB_id, duelId, duel.betAmount]
       );
 
-      io.to(duel.roomId).emit('ketmesye_duel_over', { reason: 'tie', message: 'Égalité parfaite ! Les mises sont remboursées.' });
+      io.to(duel.roomId).emit('ketmesye_duel_over', { reason: 'tie', message: 'Égalité parfaite ! Les mises sont remboursées.', currency: activeCurrency });
       activePlayersStore.removePlayer(duel.playerA_id, 'snake_duel');
       activePlayersStore.removePlayer(duel.playerB_id, 'snake_duel');
       activePlayersStore.notify(`Le duel de serpent s'est terminé par une égalité !`, 'info');
     } else {
       // Pay winner
-      await query('UPDATE users SET balance = balance + $1 WHERE id = $2', [payout, winnerId]);
+      if (activeCurrency === 'KET') {
+        await query('UPDATE users SET ket_balance = ket_balance + $1 WHERE id = $2', [payout, winnerId]);
+      } else {
+        await query('UPDATE users SET balance = balance + $1 WHERE id = $2', [payout, winnerId]);
+      }
       await query(`UPDATE duels SET status = 'finished', winner_id = $1, player_a_score = $2, player_b_score = $3 WHERE id = $4`, [
         winnerId, pA ? pA.value : 0, pB ? pB.value : 0, duelId
       ]);
@@ -707,17 +723,17 @@ const resolveDuel = async (duelId, disconnectWinnerId = null) => {
 
       // Insert winning bet and losing bet records
       await query(
-        `INSERT INTO bets (user_id, game_id, bet_amount, cashout_multiplier, payout_amount, is_won) 
-         VALUES ($1, null, $2, $3, $4, true)`,
-        [winnerId, duel.betAmount, 1.80, payout]
+        `INSERT INTO bets (user_id, game_id, bet_amount, cashout_multiplier, payout_amount, is_won, currency) 
+         VALUES ($1, null, $2, $3, $4, true, $5)`,
+        [winnerId, duel.betAmount, 1.80, payout, activeCurrency]
       );
       await query(
-        `INSERT INTO bets (user_id, game_id, bet_amount, cashout_multiplier, payout_amount, is_won) 
-         VALUES ($1, null, $2, 0.00, 0.00, false)`,
-        [loserId, duel.betAmount]
+        `INSERT INTO bets (user_id, game_id, bet_amount, cashout_multiplier, payout_amount, is_won, currency) 
+         VALUES ($1, null, $2, 0.00, 0.00, false, $3)`,
+        [loserId, duel.betAmount, activeCurrency]
       );
 
-      io.to(duel.roomId).emit('ketmesye_duel_over', { reason, winnerId, payoutAmount: payout });
+      io.to(duel.roomId).emit('ketmesye_duel_over', { reason, winnerId, payoutAmount: payout, currency: activeCurrency });
       activePlayersStore.cashoutPlayer(winnerId, 'snake_duel', payout, 1.80);
       activePlayersStore.losePlayer(loserId, 'snake_duel', 'eliminated');
     }
@@ -741,11 +757,20 @@ const cancelDuel = async (duelId, reason = 'Jeu annulé.') => {
 
   if (duel.timer) clearInterval(duel.timer);
 
+  const activeCurrency = duel.currency || 'HTG';
+
   try {
     await query('BEGIN');
-    await query('UPDATE users SET balance = balance + $1 WHERE id = $2', [duel.betAmount, duel.playerA_id]);
-    if (duel.playerB_id) {
-      await query('UPDATE users SET balance = balance + $1 WHERE id = $2', [duel.betAmount, duel.playerB_id]);
+    if (activeCurrency === 'KET') {
+      await query('UPDATE users SET ket_balance = ket_balance + $1 WHERE id = $2', [duel.betAmount, duel.playerA_id]);
+      if (duel.playerB_id) {
+        await query('UPDATE users SET ket_balance = ket_balance + $1 WHERE id = $2', [duel.betAmount, duel.playerB_id]);
+      }
+    } else {
+      await query('UPDATE users SET balance = balance + $1 WHERE id = $2', [duel.betAmount, duel.playerA_id]);
+      if (duel.playerB_id) {
+        await query('UPDATE users SET balance = balance + $1 WHERE id = $2', [duel.betAmount, duel.playerB_id]);
+      }
     }
     await query(`UPDATE duels SET status = 'cancelled' WHERE id = $1`, [duelId]);
     await query('COMMIT');
@@ -769,9 +794,15 @@ const cancelPendingDuel = async (duelId, reason = 'Jeu annulé.') => {
   const pending = pendingDuels[duelId];
   if (!pending) return;
 
+  const activeCurrency = pending.currency || 'HTG';
+
   try {
     await query('BEGIN');
-    await query('UPDATE users SET balance = balance + $1 WHERE id = $2', [pending.betAmount, pending.playerAId]);
+    if (activeCurrency === 'KET') {
+      await query('UPDATE users SET ket_balance = ket_balance + $1 WHERE id = $2', [pending.betAmount, pending.playerAId]);
+    } else {
+      await query('UPDATE users SET balance = balance + $1 WHERE id = $2', [pending.betAmount, pending.playerAId]);
+    }
     await query(`UPDATE duels SET status = 'cancelled' WHERE id = $1`, [duelId]);
     await query(
       `INSERT INTO audit_logs (user_id, game_id, game_type, amount, action) VALUES ($1, $2, 'snake_duel', $3, 'escrow_refund')`,
@@ -808,20 +839,15 @@ const initKetmesyeEngine = (socketIoInstance) => {
     socket.on('ketmesye_join', async (data) => {
       const { userId, email, wager } = data;
 
-      if (snakes[socket.id]) {
+      if (snakes.HTG[socket.id] || snakes.KET[socket.id]) {
         return socket.emit('ketmesye_error', { message: 'Vous êtes déjà dans la partie.' });
-      }
-
-      const entryWager = parseFloat(wager);
-      if (isNaN(entryWager) || entryWager < 125) {
-        return socket.emit('ketmesye_error', { message: 'La mise minimale pour spawn est de 125 HTG.' });
       }
 
       try {
         await query('BEGIN');
 
         // Check user details
-        const userRes = await query('SELECT balance, is_suspended FROM users WHERE id = $1 FOR UPDATE', [userId]);
+        const userRes = await query('SELECT balance, ket_balance, active_currency, is_suspended FROM users WHERE id = $1 FOR UPDATE', [userId]);
         if (userRes.rows.length === 0) {
           await query('ROLLBACK');
           return socket.emit('ketmesye_error', { message: 'Utilisateur introuvable.' });
@@ -833,7 +859,16 @@ const initKetmesyeEngine = (socketIoInstance) => {
           return socket.emit('ketmesye_error', { message: 'Compte suspendu.' });
         }
 
-        const balance = parseFloat(user.balance);
+        const activeCurrency = user.active_currency || 'HTG';
+        const entryWager = parseFloat(wager);
+        const minWager = activeCurrency === 'KET' ? 1000 : 125;
+
+        if (isNaN(entryWager) || entryWager < minWager) {
+          await query('ROLLBACK');
+          return socket.emit('ketmesye_error', { message: `La mise minimale pour spawn est de ${minWager} ${activeCurrency}.` });
+        }
+
+        const balance = parseFloat(activeCurrency === 'KET' ? (user.ket_balance || 0) : user.balance);
         if (balance < entryWager) {
           await query('ROLLBACK');
           return socket.emit('ketmesye_error', { message: 'Solde insuffisant.' });
@@ -841,13 +876,17 @@ const initKetmesyeEngine = (socketIoInstance) => {
 
         // Deduct entry fee
         const newBalance = balance - entryWager;
-        await query('UPDATE users SET balance = $1 WHERE id = $2', [newBalance, userId]);
+        if (activeCurrency === 'KET') {
+          await query('UPDATE users SET ket_balance = $1 WHERE id = $2', [newBalance, userId]);
+        } else {
+          await query('UPDATE users SET balance = $1 WHERE id = $2', [newBalance, userId]);
+        }
 
         // Insert bet row into DB (is_won = false initially)
         const betRes = await query(
-          `INSERT INTO bets (user_id, game_id, bet_amount, cashout_multiplier, payout_amount, is_won) 
-           VALUES ($1, null, $2, null, 0.00, false) RETURNING id`,
-          [userId, entryWager]
+          `INSERT INTO bets (user_id, game_id, bet_amount, cashout_multiplier, payout_amount, is_won, currency) 
+           VALUES ($1, null, $2, null, 0.00, false, $3) RETURNING id`,
+          [userId, entryWager, activeCurrency]
         );
         const betId = betRes.rows[0].id;
 
@@ -872,8 +911,8 @@ const initKetmesyeEngine = (socketIoInstance) => {
         // Commission is 10%, so starting value is 90% of wager
         const initialValue = parseFloat((entryWager * 0.90).toFixed(2));
 
-        // Register snake in memory
-        snakes[socket.id] = {
+        // Register snake in memory under correct currency partition
+        snakes[activeCurrency][socket.id] = {
           id: socket.id,
           userId,
           email,
@@ -889,18 +928,23 @@ const initKetmesyeEngine = (socketIoInstance) => {
           spawnTime: Date.now(),
           betId,
           isBoosting: false,
-          energy: 100
+          energy: 100,
+          currency: activeCurrency
         };
+
+        // Join room specific to this sandbox currency
+        socket.join(`ketmesye_sandbox_${activeCurrency}`);
 
         socket.emit('ketmesye_join_success', {
           wager: entryWager,
           initialValue,
-          newBalance
+          newBalance,
+          currency: activeCurrency
         });
 
-        console.log(`Ketmesye: ${email} joined with ${entryWager} HTG wager.`);
+        console.log(`Ketmesye: ${email} joined with ${entryWager} ${activeCurrency} wager.`);
         activePlayersStore.addPlayer(userId, email, 'ketmesye', entryWager);
-        activePlayersStore.notify(`${email.split('@')[0]} a rejoint l'arène de KetMesye avec ${entryWager} HTG !`, 'info');
+        activePlayersStore.notify(`${email.split('@')[0]} a rejoint l'arène de KetMesye avec ${entryWager} ${activeCurrency} !`, 'info');
 
       } catch (err) {
         await query('ROLLBACK');
@@ -919,7 +963,7 @@ const initKetmesyeEngine = (socketIoInstance) => {
           snake.angle = angle;
         }
       } else {
-        const snake = snakes[socket.id];
+        const snake = snakes.HTG[socket.id] || snakes.KET[socket.id];
         if (snake && typeof angle === 'number') {
           snake.angle = angle;
         }
@@ -935,7 +979,7 @@ const initKetmesyeEngine = (socketIoInstance) => {
           snake.isBoosting = !!data.isBoosting;
         }
       } else {
-        const snake = snakes[socket.id];
+        const snake = snakes.HTG[socket.id] || snakes.KET[socket.id];
         if (snake) {
           snake.isBoosting = !!data.isBoosting;
         }
@@ -944,21 +988,29 @@ const initKetmesyeEngine = (socketIoInstance) => {
 
     // 3. Cash out event
     socket.on('ketmesye_cashout', async () => {
-      const snake = snakes[socket.id];
+      const snake = snakes.HTG[socket.id] || snakes.KET[socket.id];
       if (!snake) {
         return socket.emit('ketmesye_error', { message: 'Aucun serpent actif à encaisser.' });
       }
 
       const payout = snake.value;
+      const currency = snake.currency || 'HTG';
 
       try {
         await query('BEGIN');
 
         // Credit user balance
-        await query(
-          "UPDATE users SET balance = balance + $1 WHERE id = $2",
-          [payout, snake.userId]
-        );
+        if (currency === 'KET') {
+          await query(
+            "UPDATE users SET ket_balance = ket_balance + $1 WHERE id = $2",
+            [payout, snake.userId]
+          );
+        } else {
+          await query(
+            "UPDATE users SET balance = balance + $1 WHERE id = $2",
+            [payout, snake.userId]
+          );
+        }
 
         // Update bet record as won with calculated payout multiplier
         const multiplier = parseFloat((payout / snake.wager).toFixed(2));
@@ -970,32 +1022,39 @@ const initKetmesyeEngine = (socketIoInstance) => {
         );
 
         // Fetch new balance
-        const balanceRes = await query('SELECT balance FROM users WHERE id = $1', [snake.userId]);
-        const newBalance = parseFloat(balanceRes.rows[0].balance);
+        const balanceRes = await query(
+          currency === 'KET' ? 'SELECT ket_balance FROM users WHERE id = $1' : 'SELECT balance FROM users WHERE id = $1',
+          [snake.userId]
+        );
+        const newBalance = parseFloat(currency === 'KET' ? balanceRes.rows[0].ket_balance : balanceRes.rows[0].balance);
 
         await query('COMMIT');
+
+        socket.leave(`ketmesye_sandbox_${currency}`);
 
         // Notify user of cashout success
         socket.emit('ketmesye_cashout_success', {
           payout,
           multiplier,
           newBalance,
+          currency,
           timeSurvived: Math.floor((Date.now() - snake.spawnTime) / 1000),
           eliminations: snake.eliminations
         });
 
-        // Broadcast to others
-        io.emit('ketmesye_player_cashed_out', {
+        // Broadcast to others in the same currency sandbox
+        io.to(`ketmesye_sandbox_${currency}`).emit('ketmesye_player_cashed_out', {
           email: snake.email.split('@')[0],
-          payout
+          payout,
+          currency
         });
 
-        console.log(`Ketmesye: ${snake.email} cashed out +${payout} HTG.`);
+        console.log(`Ketmesye: ${snake.email} cashed out +${payout} ${currency}.`);
         activePlayersStore.cashoutPlayer(snake.userId, 'ketmesye', payout, multiplier);
-        activePlayersStore.notify(`${snake.email.split('@')[0]} a encaissé +${payout.toFixed(0)} HTG de l'arène KetMesye !`, 'success');
+        activePlayersStore.notify(`${snake.email.split('@')[0]} a encaissé +${payout.toFixed(0)} ${currency} de l'arène KetMesye !`, 'success');
 
         // Remove from memory
-        delete snakes[socket.id];
+        delete snakes[currency][socket.id];
 
       } catch (err) {
         await query('ROLLBACK');
@@ -1012,19 +1071,32 @@ const initKetmesyeEngine = (socketIoInstance) => {
       }
       try {
         await query('BEGIN');
-        const userRes = await query('SELECT balance, email FROM users WHERE id = $1 FOR UPDATE', [userId]);
+        const userRes = await query('SELECT balance, ket_balance, active_currency, email, is_suspended FROM users WHERE id = $1 FOR UPDATE', [userId]);
         if (userRes.rows.length === 0) throw new Error('Utilisateur introuvable.');
+        
         const user = userRes.rows[0];
-        const balance = parseFloat(user.balance);
+        if (user.is_suspended) throw new Error('Votre compte est suspendu.');
+        
+        const activeCurrency = user.active_currency || 'HTG';
+        const minWager = activeCurrency === 'KET' ? 1000 : 150;
+        if (betAmount < minWager) {
+          throw new Error(`La mise minimale est de ${minWager} ${activeCurrency}.`);
+        }
+
+        const balance = parseFloat(activeCurrency === 'KET' ? (user.ket_balance || 0) : user.balance);
         if (balance < betAmount) throw new Error('Solde insuffisant.');
 
         // Deduct
-        await query('UPDATE users SET balance = balance - $1 WHERE id = $2', [betAmount, userId]);
+        if (activeCurrency === 'KET') {
+          await query('UPDATE users SET ket_balance = ket_balance - $1 WHERE id = $2', [betAmount, userId]);
+        } else {
+          await query('UPDATE users SET balance = balance - $1 WHERE id = $2', [betAmount, userId]);
+        }
         
         // Insert duel row
         const duelRes = await query(
-          `INSERT INTO duels (player_a_id, bet_amount, status) VALUES ($1, $2, 'pending') RETURNING id`,
-          [userId, betAmount]
+          `INSERT INTO duels (player_a_id, bet_amount, status, currency) VALUES ($1, $2, 'pending', $3) RETURNING id`,
+          [userId, betAmount, activeCurrency]
         );
         const duelId = duelRes.rows[0].id;
 
@@ -1041,7 +1113,8 @@ const initKetmesyeEngine = (socketIoInstance) => {
           betAmount,
           creatorEmail: user.email,
           playerAId: userId,
-          socketId: socket.id
+          socketId: socket.id,
+          currency: activeCurrency
         };
 
         socket.emit('ketmesye_duel_created', { duelId, betAmount });
@@ -1059,19 +1132,33 @@ const initKetmesyeEngine = (socketIoInstance) => {
       if (!pending) {
         return socket.emit('ketmesye_error', { message: 'Ce duel n est plus disponible.' });
       }
-      if (pending.playerAId === userId) {
-        return socket.emit('ketmesye_error', { message: 'Vous ne pouvez pas rejoindre votre propre duel.' });
-      }
 
       try {
         await query('BEGIN');
-        const userRes = await query('SELECT balance FROM users WHERE id = $1 FOR UPDATE', [userId]);
+        const userRes = await query('SELECT balance, ket_balance, active_currency, is_suspended FROM users WHERE id = $1 FOR UPDATE', [userId]);
         if (userRes.rows.length === 0) throw new Error('Utilisateur introuvable.');
-        const balance = parseFloat(userRes.rows[0].balance);
+        
+        const user = userRes.rows[0];
+        if (user.is_suspended) throw new Error('Compte suspendu.');
+        
+        const activeCurrency = user.active_currency || 'HTG';
+        if (pending.currency !== activeCurrency) {
+          throw new Error('Devise incompatible.');
+        }
+
+        if (pending.playerAId === userId) {
+          throw new Error('Vous ne pouvez pas rejoindre votre propre duel.');
+        }
+
+        const balance = parseFloat(activeCurrency === 'KET' ? (user.ket_balance || 0) : user.balance);
         if (balance < pending.betAmount) throw new Error('Solde insuffisant.');
 
         // Deduct
-        await query('UPDATE users SET balance = balance - $1 WHERE id = $2', [pending.betAmount, userId]);
+        if (activeCurrency === 'KET') {
+          await query('UPDATE users SET ket_balance = ket_balance - $1 WHERE id = $2', [pending.betAmount, userId]);
+        } else {
+          await query('UPDATE users SET balance = balance - $1 WHERE id = $2', [pending.betAmount, userId]);
+        }
 
         // Update duel row
         await query(`UPDATE duels SET player_b_id = $1, status = 'active' WHERE id = $2`, [userId, duelId]);
@@ -1087,7 +1174,7 @@ const initKetmesyeEngine = (socketIoInstance) => {
         delete pendingDuels[duelId];
 
         // Setup activeDuel state
-        setupKetmesyeDuel(duelId, pending.playerAId, userId, pending.betAmount);
+        setupKetmesyeDuel(duelId, pending.playerAId, userId, pending.betAmount, activeCurrency);
         broadcastPendingDuels();
       } catch (err) {
         await query('ROLLBACK');
@@ -1144,7 +1231,7 @@ const initKetmesyeEngine = (socketIoInstance) => {
           const email = res.rows[0].email;
           duel.snakes[socket.id].email = email;
           activePlayersStore.addPlayer(userId, email, 'snake_duel', duel.betAmount);
-          activePlayersStore.notify(`${email.split('@')[0]} a rejoint le duel de serpent (${duel.betAmount} HTG) !`, 'info');
+          activePlayersStore.notify(`${email.split('@')[0]} a rejoint le duel de serpent (${duel.betAmount} ${duel.currency || 'HTG'}) !`, 'info');
         }
       }).catch(err => console.error(err));
 
@@ -1192,8 +1279,9 @@ const initKetmesyeEngine = (socketIoInstance) => {
         delete activeDuelPlayers[socket.id];
       }
 
-      const snake = snakes[socket.id];
+      const snake = snakes.HTG[socket.id] || snakes.KET[socket.id];
       if (snake) {
+        const currency = snake.currency || 'HTG';
         console.log(`Ketmesye: Player ${snake.email} disconnected. Cleaning up.`);
         
         // Spawn pellets along dead body path
@@ -1201,7 +1289,7 @@ const initKetmesyeEngine = (socketIoInstance) => {
         const valuePerDrop = parseFloat(((snake.value * 0.5) / segmentCount).toFixed(4));
 
         snake.segments.forEach(segment => {
-          pellets.push({
+          pellets[currency].push({
             id: Math.random().toString(36).substring(2, 9),
             x: segment.x + (Math.random() * 10 - 5),
             y: segment.y + (Math.random() * 10 - 5),
@@ -1212,9 +1300,9 @@ const initKetmesyeEngine = (socketIoInstance) => {
         });
 
         activePlayersStore.losePlayer(snake.userId, 'ketmesye', 'dead');
-        activePlayersStore.notify(`Le serpent de ${snake.email.split('@')[0]} s'est déconnecté et a perdu ${snake.value.toFixed(0)} HTG !`, 'danger');
+        activePlayersStore.notify(`Le serpent de ${snake.email.split('@')[0]} s'est déconnecté et a perdu ${snake.value.toFixed(0)} ${currency} !`, 'danger');
 
-        delete snakes[socket.id];
+        delete snakes[currency][socket.id];
       }
     });
   });

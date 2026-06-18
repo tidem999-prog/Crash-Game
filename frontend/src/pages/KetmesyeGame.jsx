@@ -16,12 +16,23 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
   const [gameMode, setGameMode] = useState(initialMode || null); // null, 'classic', 'duel'
   const [duelState, setDuelState] = useState('lobby'); // lobby, waiting, playing, finished
   const [pendingDuels, setPendingDuels] = useState([]);
-  const [duelWager, setDuelWager] = useState('150');
+  const activeCurrency = user?.active_currency || 'HTG';
+  const [duelWager, setDuelWager] = useState(activeCurrency === 'KET' ? '1000' : '150');
   const [duelData, setDuelData] = useState(null);
   const [duelResult, setDuelResult] = useState(null);
   const [currentDuelId, setCurrentDuelId] = useState(null);
 
-  const [wager, setWager] = useState(125);
+  const [wager, setWager] = useState(activeCurrency === 'KET' ? 1000 : 125);
+
+  useEffect(() => {
+    if (activeCurrency === 'KET') {
+      setWager(1000);
+      setDuelWager('1000');
+    } else {
+      setWager(125);
+      setDuelWager('150');
+    }
+  }, [activeCurrency]);
   const [isPlaying, setIsPlaying] = useState(false);
   const [mySnake, setMySnake] = useState(null); // Local copy of player snake stats
   const [leaderboard, setLeaderboard] = useState([]);
@@ -120,8 +131,8 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
         length: 5,
         energy: 100
       });
-      updateBalance(data.newBalance);
-      addNotification(`Vous avez rejoint l'arène avec ${data.wager} HTG !`, 'success');
+      updateBalance(data.newBalance, data.currency || activeCurrency);
+      addNotification(`Vous avez rejoint l'arène avec ${data.wager} ${data.currency || activeCurrency} !`, 'success');
     });
 
     socket.on('ketmesye_death', (data) => {
@@ -129,12 +140,13 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
       setDeathStats({
         timeSurvived: data.timeSurvived,
         eliminations: data.eliminations,
-        valueLost: data.valueLost
+        valueLost: data.valueLost,
+        currency: data.currency || activeCurrency
       });
       mySnakeIdRef.current = null;
       setMySnake(null);
       refreshBalance();
-      addNotification(`Votre serpent a été éliminé ! Perte : ${data.valueLost.toFixed(2)} HTG.`, 'danger');
+      addNotification(`Votre serpent a été éliminé ! Perte : ${data.valueLost.toFixed(2)} ${data.currency || activeCurrency}.`, 'danger');
     });
 
     socket.on('ketmesye_cashout_success', (data) => {
@@ -143,12 +155,13 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
         payout: data.payout,
         multiplier: data.multiplier,
         timeSurvived: data.timeSurvived,
-        eliminations: data.eliminations
+        eliminations: data.eliminations,
+        currency: data.currency || activeCurrency
       });
       mySnakeIdRef.current = null;
       setMySnake(null);
-      updateBalance(data.newBalance);
-      addNotification(`Retrait réussi ! +${data.payout.toFixed(2)} HTG`, 'success');
+      updateBalance(data.newBalance, data.currency || activeCurrency);
+      addNotification(`Retrait réussi ! +${data.payout.toFixed(2)} ${data.currency || activeCurrency}`, 'success');
     });
 
     socket.on('ketmesye_kill', (data) => {
@@ -156,7 +169,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
     });
 
     socket.on('ketmesye_player_cashed_out', (data) => {
-      addNotification(`${data.email} a encaissé ${data.payout.toFixed(2)} HTG !`, 'info');
+      addNotification(`${data.email} a encaissé ${data.payout.toFixed(2)} ${data.currency || activeCurrency} !`, 'info');
     });
 
     // 1v1 Duel Listeners
@@ -415,10 +428,11 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
   };
 
   const handleLocalJoin = () => {
-    if (wager > user.balance) {
+    const currentBalance = activeCurrency === 'KET' ? parseFloat(user.ket_balance || 0) : parseFloat(user.balance);
+    if (wager > currentBalance) {
       return addNotification("Solde insuffisant.", "danger");
     }
-    updateBalance(user.balance - wager);
+    updateBalance(currentBalance - wager, activeCurrency);
 
     const spawnX = Math.floor(Math.random() * (MAP_WIDTH - 200)) + 100;
     const spawnY = Math.floor(Math.random() * (MAP_HEIGHT - 200)) + 100;
@@ -494,7 +508,8 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
     if (!me) return;
 
     const payout = me.value;
-    updateBalance(user.balance + payout);
+    const currentBalance = activeCurrency === 'KET' ? parseFloat(user.ket_balance || 0) : parseFloat(user.balance);
+    updateBalance(currentBalance + payout, activeCurrency);
 
     setCashoutStats({
       payout,
@@ -848,11 +863,13 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
 
   // Spawn Request Classic
   const handleSpawn = () => {
-    if (wager < 125) {
-      return addNotification("La mise minimale est de 125 HTG.", "danger");
+    const minWager = activeCurrency === 'KET' ? 1000 : 125;
+    if (wager < minWager) {
+      return addNotification(`La mise minimale est de ${minWager} ${activeCurrency}.`, "danger");
     }
 
-    if (wager > user.balance) {
+    const currentBalance = activeCurrency === 'KET' ? parseFloat(user.ket_balance || 0) : parseFloat(user.balance);
+    if (wager > currentBalance) {
       return addNotification("Solde insuffisant pour cette mise.", "danger");
     }
 
@@ -886,10 +903,12 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
 
   // 1v1 Duel Matchmaking requests
   const handleCreateDuel = () => {
-    if (parseFloat(duelWager) < 150) {
-      return addNotification("La mise minimale pour un duel est de 150 HTG.", "danger");
+    const minWager = activeCurrency === 'KET' ? 1000 : 150;
+    if (parseFloat(duelWager) < minWager) {
+      return addNotification(`La mise minimale pour un duel est de ${minWager} ${activeCurrency}.`, "danger");
     }
-    if (parseFloat(duelWager) > user.balance) {
+    const currentBalance = activeCurrency === 'KET' ? parseFloat(user.ket_balance || 0) : parseFloat(user.balance);
+    if (parseFloat(duelWager) > currentBalance) {
       return addNotification("Solde insuffisant.", "danger");
     }
     socket.emit('ketmesye_create_duel', { userId: user.id, betAmount: parseFloat(duelWager) });
@@ -974,7 +993,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
               </span>
             </h2>
             <p className="text-[8px] sm:text-[10px] text-slate-500 font-medium line-clamp-1">
-              {gameMode === 'duel' ? 'Survivez et surpassez votre adversaire pendant 2 minutes.' : 'Battez vos adversaires et encaissez les HTG en temps réel.'}
+              {gameMode === 'duel' ? 'Survivez et surpassez votre adversaire pendant 2 minutes.' : `Battez vos adversaires et encaissez les ${activeCurrency} en temps réel.`}
             </p>
           </div>
         </div>
@@ -1042,7 +1061,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
                     <div className="flex items-center space-x-2 text-[9px] font-bold text-slate-400 mt-0.5">
                       <span className="flex items-center text-rose-500"><Skull className="w-3 h-3 mr-0.5" /> {Object.values(duelData.snakes).find(s => s.color === '#06b6d4')?.deaths || 0}</span>
                       <span>|</span>
-                      <span>{Object.values(duelData.snakes).find(s => s.color === '#06b6d4')?.value?.toFixed(1) || 0} G</span>
+                      <span>{Object.values(duelData.snakes).find(s => s.color === '#06b6d4')?.value?.toFixed(0)} {duelData.currency || activeCurrency}</span>
                     </div>
                   </div>
                 </div>
@@ -1063,7 +1082,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
                       {Object.values(duelData.snakes).find(s => s.email && s.color === '#a855f7')?.email?.split('@')[0] || 'B'}
                     </span>
                     <div className="flex items-center space-x-2 text-[9px] font-bold text-slate-400 mt-0.5 justify-end">
-                      <span>{Object.values(duelData.snakes).find(s => s.color === '#a855f7')?.value?.toFixed(1) || 0} G</span>
+                      <span>{Object.values(duelData.snakes).find(s => s.color === '#a855f7')?.value?.toFixed(0)} {duelData.currency || activeCurrency}</span>
                       <span>|</span>
                       <span className="flex items-center text-rose-500">{Object.values(duelData.snakes).find(s => s.color === '#a855f7')?.deaths || 0} <Skull className="w-3 h-3 ml-0.5" /></span>
                     </div>
@@ -1128,7 +1147,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
               <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-slate-950/90 backdrop-blur-md border border-slate-800 p-3 rounded-2xl flex items-center space-x-4 shadow-2xl z-20 w-[92%] sm:w-auto sm:min-w-[280px]">
                 <div className="flex flex-col shrink-0 w-24">
                   <span className="text-[9px] text-slate-500 uppercase font-bold tracking-wider">Solde Arena</span>
-                  <span className="font-mono text-base sm:text-lg font-black text-emerald-400">{mySnake.value.toFixed(2)} G</span>
+                  <span className="font-mono text-base sm:text-lg font-black text-emerald-400">{mySnake.value.toFixed(2)} {activeCurrency}</span>
                   <div className="flex justify-between items-center mb-1">
                     <span className="text-[8px] text-slate-400">{mySnake.eliminations} kills</span>
                   </div>
@@ -1168,7 +1187,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
                   CHOISISSEZ VOTRE MODE DE JEU
                 </h3>
                 <p className="text-xs sm:text-sm text-slate-400 mb-8 max-w-lg mx-auto">
-                  Entrez dans l'arène de serpent KetMesye sous deux formes différentes. Misez du HTG et survivez !
+                  Entrez dans l'arène de serpent KetMesye sous deux formes différentes. Misez et survivez !
                 </p>
 
                 <div className="grid sm:grid-cols-2 gap-6">
@@ -1223,13 +1242,13 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
                 </div>
                 
                 <h3 className="font-display font-black text-xl text-slate-200 mb-2">REJOINDRE L'ARÈNE</h3>
-                <p className="text-xs text-slate-400 mb-6">Misez vos HTG, mangez les orbes et les autres joueurs pour gonfler votre valeur, et retirez votre cash avant de vous faire percuter !</p>
+                <p className="text-xs text-slate-400 mb-6">Misez vos {activeCurrency}, mangez les orbes et les autres joueurs pour gonfler votre valeur, et retirez votre cash avant de vous faire percuter !</p>
 
                 <div className="flex flex-col space-y-4 text-left mb-6">
                   <div>
-                    <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Mise d'entrée (Min: 125 HTG)</label>
+                    <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Mise d'entrée (Min: {activeCurrency === 'KET' ? '1000' : '125'} {activeCurrency})</label>
                     <div className="flex border border-slate-800 bg-slate-950 rounded-xl overflow-hidden mt-1.5">
-                      <span className="bg-slate-900 px-3 py-2 text-xs font-bold text-slate-500 flex items-center border-r border-slate-800">HTG</span>
+                      <span className="bg-slate-900 px-3 py-2 text-xs font-bold text-slate-500 flex items-center border-r border-slate-800">{activeCurrency}</span>
                       <input
                         type="number"
                         value={wager}
@@ -1238,7 +1257,8 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
                           setWager(val === '' ? '' : parseInt(val) || 0);
                         }}
                         onBlur={() => {
-                          if (!wager || wager < 125) setWager(125);
+                          const minWager = activeCurrency === 'KET' ? 1000 : 125;
+                          if (!wager || wager < minWager) setWager(minWager);
                         }}
                         className="block w-full px-3 py-2 bg-transparent text-slate-200 text-sm font-bold font-mono focus:outline-none"
                       />
@@ -1246,7 +1266,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
                   </div>
 
                   <div className="grid grid-cols-4 gap-2">
-                    {[125, 250, 625, 1250].map(val => (
+                    {(activeCurrency === 'KET' ? [1000, 2000, 5000, 10000] : [125, 250, 625, 1250]).map(val => (
                       <button
                         key={val}
                         onClick={() => setWager(val)}
@@ -1254,7 +1274,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
                           wager === val ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-slate-200'
                         }`}
                       >
-                        {val} G
+                        {val}
                       </button>
                     ))}
                   </div>
@@ -1287,9 +1307,9 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
 
                     <div className="flex flex-col space-y-4 mb-6">
                       <div>
-                        <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Mise du duel (Min: 150 HTG)</label>
+                        <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Mise du duel (Min: {activeCurrency === 'KET' ? '1000' : '150'} {activeCurrency})</label>
                         <div className="flex border border-slate-800 bg-slate-950 rounded-xl overflow-hidden mt-1.5">
-                          <span className="bg-slate-900 px-3 py-2 text-xs font-bold text-slate-500 flex items-center border-r border-slate-800">HTG</span>
+                          <span className="bg-slate-900 px-3 py-2 text-xs font-bold text-slate-500 flex items-center border-r border-slate-800">{activeCurrency}</span>
                           <input
                             type="number"
                             value={duelWager}
@@ -1300,7 +1320,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
                       </div>
 
                       <div className="grid grid-cols-3 gap-2">
-                        {[150, 300, 750].map(val => (
+                        {(activeCurrency === 'KET' ? [1000, 2000, 5000] : [150, 300, 750]).map(val => (
                           <button
                             key={val}
                             onClick={() => setDuelWager(val.toString())}
@@ -1308,7 +1328,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
                               duelWager === val.toString() ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-950 text-slate-400 border-slate-800 hover:text-slate-200'
                             }`}
                           >
-                            {val} G
+                            {val}
                           </button>
                         ))}
                       </div>
@@ -1336,7 +1356,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
                     <span>DÉFIS EN ATTENTE</span>
                   </h3>
 
-                  {pendingDuels.length === 0 ? (
+                  {pendingDuels.filter(duel => (duel.currency || 'HTG') === activeCurrency).length === 0 ? (
                     <div className="flex-grow flex flex-col items-center justify-center text-center p-8 border border-slate-800/40 border-dashed rounded-2xl">
                       <Skull className="w-10 h-10 text-slate-700 mb-3" />
                       <p className="text-slate-400 font-bold text-xs">Aucun duel en attente.</p>
@@ -1344,7 +1364,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
                     </div>
                   ) : (
                     <div className="grid sm:grid-cols-2 gap-4 overflow-y-auto max-h-[300px]">
-                      {pendingDuels.map((duel) => (
+                      {pendingDuels.filter(duel => (duel.currency || 'HTG') === activeCurrency).map((duel) => (
                         <div key={duel.id} className="bg-slate-900/80 p-4 border border-slate-800 hover:border-indigo-500/20 rounded-2xl flex flex-col justify-between transition-all group">
                           <div className="flex justify-between items-start mb-4">
                             <div>
@@ -1353,7 +1373,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
                             </div>
                             <div className="text-right">
                               <span className="text-[9px] font-bold text-slate-500 uppercase block tracking-wider">Mise</span>
-                              <span className="text-xs font-black text-emerald-400 font-mono">{parseFloat(duel.betAmount).toFixed(1)} HTG</span>
+                              <span className="text-xs font-black text-emerald-400 font-mono">{parseFloat(duel.betAmount).toFixed(0)} {duel.currency || 'HTG'}</span>
                             </div>
                           </div>
 
@@ -1419,7 +1439,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
                     <p className="text-slate-300 text-xs mt-1 mb-6">Vous avez surpassé votre adversaire.</p>
                     <div className="bg-slate-950/80 p-4 rounded-2xl border border-slate-900 mb-6 flex justify-between items-center text-xs">
                       <span className="text-slate-500">Mise Gagnée</span>
-                      <span className="font-mono font-bold text-emerald-400">+{duelResult.payoutAmount.toFixed(1)} HTG</span>
+                      <span className="font-mono font-bold text-emerald-400">+{duelResult.payoutAmount.toFixed(0)} {duelResult.currency || activeCurrency}</span>
                     </div>
                   </>
                 ) : (
@@ -1460,7 +1480,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
                 <div className="bg-slate-950/80 border border-slate-900 rounded-2xl p-4 space-y-3 mb-6 text-left">
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-slate-500">Montant Reçu</span>
-                    <span className="font-mono font-bold text-emerald-400">{cashoutStats.payout.toFixed(2)} HTG</span>
+                    <span className="font-mono font-bold text-emerald-400">{cashoutStats.payout.toFixed(2)} {cashoutStats.currency || activeCurrency}</span>
                   </div>
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-slate-500">Multiplicateur</span>
@@ -1500,7 +1520,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
                 <div className="bg-slate-950/80 border border-slate-900 rounded-2xl p-4 space-y-3 mb-6 text-left">
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-slate-500">Mise Perdue</span>
-                    <span className="font-mono font-bold text-red-400">{deathStats.valueLost.toFixed(2)} HTG</span>
+                    <span className="font-mono font-bold text-red-400">{deathStats.valueLost.toFixed(2)} {deathStats.currency || activeCurrency}</span>
                   </div>
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-slate-500">Temps survécu</span>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Users, Coins, Skull, ArrowLeft, DoorOpen, ShieldAlert, Award, Clock } from 'lucide-react';
 
 const KothGame = ({ socket, user, balance, setSelectedGame }) => {
+  const activeCurrency = user?.active_currency || 'HTG';
   const [gameState, setGameState] = useState('lobby'); // lobby, waiting, playing, finished
   const [lobbies, setLobbies] = useState([]);
   const [roomData, setRoomData] = useState(null); // roomId, potTotal, playersCount, timeLeft
@@ -116,11 +117,11 @@ const KothGame = ({ socket, user, balance, setSelectedGame }) => {
         <div className="p-4 bg-slate-950 rounded-xl mb-6 border border-slate-800/50">
           <div className="flex justify-between items-center mb-2">
             <span className="text-slate-400 text-sm font-bold uppercase tracking-wider">Frais d'entrée</span>
-            <span className="text-white font-black text-lg">150 HTG</span>
+            <span className="text-white font-black text-lg">{activeCurrency === 'KET' ? '1000 KET' : '150 HTG'}</span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Ajout au Pot</span>
-            <span className="text-emerald-400 font-bold">135 HTG</span>
+            <span className="text-emerald-400 font-bold">{activeCurrency === 'KET' ? '900 KET' : '135 HTG'}</span>
           </div>
         </div>
 
@@ -138,7 +139,7 @@ const KothGame = ({ socket, user, balance, setSelectedGame }) => {
           <span>Tournois en attente</span>
         </h2>
         
-        {lobbies.length === 0 ? (
+        {lobbies.filter(lobby => (lobby.currency || 'HTG') === activeCurrency).length === 0 ? (
           <div className="bg-slate-900/30 border border-slate-800/50 border-dashed rounded-2xl p-12 flex flex-col items-center justify-center text-center">
             <Users className="w-12 h-12 text-slate-600 mb-4" />
             <p className="text-slate-400 font-medium">Aucun tournoi disponible.</p>
@@ -146,7 +147,7 @@ const KothGame = ({ socket, user, balance, setSelectedGame }) => {
           </div>
         ) : (
           <div className="grid sm:grid-cols-2 gap-4">
-            {lobbies.map(lobby => (
+            {lobbies.filter(lobby => (lobby.currency || 'HTG') === activeCurrency).map(lobby => (
               <div key={lobby.id} className="bg-slate-900/60 p-5 rounded-2xl border border-slate-800 hover:border-indigo-500/30 transition-all flex flex-col">
                 <div className="flex justify-between items-center mb-4">
                   <div className="flex items-center space-x-2 text-slate-300">
@@ -155,14 +156,14 @@ const KothGame = ({ socket, user, balance, setSelectedGame }) => {
                   </div>
                   <div className="text-right">
                     <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mb-1">Pot Actuel</p>
-                    <p className="text-emerald-400 font-black">{parseFloat(lobby.potTotal).toFixed(2)} HTG</p>
+                    <p className="text-emerald-400 font-black">{parseFloat(lobby.potTotal).toFixed(0)} {lobby.currency || 'HTG'}</p>
                   </div>
                 </div>
                 <button 
                   onClick={() => handleJoinRoom(lobby.id)}
                   className="mt-auto w-full py-3 bg-slate-800 hover:bg-indigo-600 text-white font-black rounded-xl transition-all"
                 >
-                  REJOINDRE (150 HTG)
+                  REJOINDRE ({lobby.entryFee || (lobby.currency === 'KET' ? 1000 : 150)} {lobby.currency || 'HTG'})
                 </button>
               </div>
             ))}
@@ -232,7 +233,7 @@ const KothGame = ({ socket, user, balance, setSelectedGame }) => {
               <div className="bg-slate-900 p-4 rounded-2xl border border-emerald-900/30">
                 <Coins className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
                 <p className="text-slate-400 text-xs font-bold uppercase mb-1">Pot Actuel</p>
-                <p className="text-2xl font-black text-emerald-400">{parseFloat(roomData.potTotal).toFixed(0)} HTG</p>
+                <p className="text-2xl font-black text-emerald-400">{parseFloat(roomData.potTotal).toFixed(0)} {roomData.currency || activeCurrency}</p>
               </div>
             </div>
           </div>
@@ -268,7 +269,7 @@ const KothGame = ({ socket, user, balance, setSelectedGame }) => {
 
               <div className="text-right">
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Pot Total</p>
-                <p className="text-2xl font-black text-emerald-400">{parseFloat(roomData?.potTotal).toFixed(0)} HTG</p>
+                <p className="text-2xl font-black text-emerald-400">{parseFloat(roomData?.potTotal).toFixed(0)} {roomData?.currency || activeCurrency}</p>
               </div>
             </div>
 
@@ -357,7 +358,7 @@ const KothGame = ({ socket, user, balance, setSelectedGame }) => {
                 </p>
                 <div className="inline-block mt-4 py-3 px-8 bg-slate-950 border border-slate-800 rounded-2xl">
                   <p className="text-slate-400 text-sm font-bold uppercase tracking-wider mb-1">Pot Remporté</p>
-                  <p className="text-3xl font-black text-emerald-400">{parseFloat(gameOverData.potTotal).toFixed(2)} HTG</p>
+                  <p className="text-3xl font-black text-emerald-400">{parseFloat(gameOverData.potTotal).toFixed(2)} {gameOverData.currency || activeCurrency}</p>
                 </div>
               </>
             ) : (

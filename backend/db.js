@@ -57,7 +57,7 @@ const initializeDatabase = async () => {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS active_currency VARCHAR(10) DEFAULT 'HTG';
     `);
 
-    // Ensure currency column exists for bets, bloodmoney_bets, mines_games
+    // Ensure currency column exists for bets, bloodmoney_bets, mines_games, duels, koth_rooms
     await query(`
       ALTER TABLE bets ADD COLUMN IF NOT EXISTS currency VARCHAR(10) DEFAULT 'HTG';
     `);
@@ -66,6 +66,12 @@ const initializeDatabase = async () => {
     `);
     await query(`
       ALTER TABLE mines_games ADD COLUMN IF NOT EXISTS currency VARCHAR(10) DEFAULT 'HTG';
+    `);
+    await query(`
+      ALTER TABLE duels ADD COLUMN IF NOT EXISTS currency VARCHAR(10) DEFAULT 'HTG';
+    `);
+    await query(`
+      ALTER TABLE koth_rooms ADD COLUMN IF NOT EXISTS currency VARCHAR(10) DEFAULT 'HTG';
     `);
     
     // Backfill referral codes for existing users

@@ -49,25 +49,35 @@ const initKothEngine = (socketIo) => {
         await query('BEGIN');
         
         // Check balance
-        const userRes = await query('SELECT balance FROM users WHERE id = $1 FOR UPDATE', [userId]);
+        const userRes = await query('SELECT balance, ket_balance, active_currency, is_suspended FROM users WHERE id = $1 FOR UPDATE', [userId]);
         if (userRes.rows.length === 0) throw new Error('Utilisateur introuvable.');
         
-        let balance = parseFloat(userRes.rows[0].balance);
-        if (balance < KOTH_ENTRY_FEE) throw new Error('Solde insuffisant (150 HTG requis).');
+        const user = userRes.rows[0];
+        if (user.is_suspended) throw new Error('Votre compte est suspendu.');
+
+        const activeCurrency = user.active_currency || 'HTG';
+        const entryFee = activeCurrency === 'KET' ? 1000.00 : 150.00;
+        const balance = parseFloat(activeCurrency === 'KET' ? (user.ket_balance || 0) : user.balance);
+
+        if (balance < entryFee) throw new Error(`Solde insuffisant (${entryFee} ${activeCurrency} requis).`);
 
         // Escrow deduction
-        await query('UPDATE users SET balance = balance - $1 WHERE id = $2', [KOTH_ENTRY_FEE, userId]);
+        if (activeCurrency === 'KET') {
+          await query('UPDATE users SET ket_balance = ket_balance - $1 WHERE id = $2', [entryFee, userId]);
+        } else {
+          await query('UPDATE users SET balance = balance - $1 WHERE id = $2', [entryFee, userId]);
+        }
         
-        const potContribution = KOTH_ENTRY_FEE * (1 - PLATFORM_FEE_PCT); // 135 HTG
+        const potContribution = entryFee * (1 - PLATFORM_FEE_PCT);
         
         // Insert Room
         const roomRes = await query(
-          `INSERT INTO koth_rooms (status, entry_fee, pot_total) VALUES ('pending', $1, $2) RETURNING id`,
-          [KOTH_ENTRY_FEE, potContribution]
+          `INSERT INTO koth_rooms (status, entry_fee, pot_total, currency) VALUES ('pending', $1, $2, $3) RETURNING id`,
+          [entryFee, potContribution, activeCurrency]
         );
         const roomId = roomRes.rows[0].id;
         
-        await logAudit(userId, roomId, KOTH_ENTRY_FEE, 'JOIN_ESCROW_DEDUCTION');
+        await logAudit(userId, roomId, entryFee, 'JOIN_ESCROW_DEDUCTION');
         
         await query('COMMIT');
 
@@ -82,14 +92,16 @@ const initKothEngine = (socketIo) => {
           },
           doors: [],
           timer: null,
-          timeLeft: LOBBY_WAIT_MS / 1000
+          timeLeft: LOBBY_WAIT_MS / 1000,
+          currency: activeCurrency,
+          entryFee
         };
         activePlayers[socket.id] = roomId;
         socket.join(`koth_${roomId}`);
 
-        socket.emit('koth_room_joined', { roomId, potTotal: potContribution });
+        socket.emit('koth_room_joined', { roomId, potTotal: potContribution, currency: activeCurrency });
         broadcastLobbies();
-        activePlayersStore.addPlayer(userId, email, 'koth', KOTH_ENTRY_FEE);
+        activePlayersStore.addPlayer(userId, email, 'koth', entryFee);
         activePlayersStore.notify(`${email.split('@')[0]} a rejoint la partie King of the Hill !`, 'info');
 
         // Start Lobby Timer
@@ -121,19 +133,33 @@ const initKothEngine = (socketIo) => {
       try {
         await query('BEGIN');
         
-        const userRes = await query('SELECT balance FROM users WHERE id = $1 FOR UPDATE', [userId]);
+        const userRes = await query('SELECT balance, ket_balance, active_currency, is_suspended FROM users WHERE id = $1 FOR UPDATE', [userId]);
         if (userRes.rows.length === 0) throw new Error('Utilisateur introuvable.');
         
-        let balance = parseFloat(userRes.rows[0].balance);
-        if (balance < KOTH_ENTRY_FEE) throw new Error('Solde insuffisant (150 HTG requis).');
+        const user = userRes.rows[0];
+        if (user.is_suspended) throw new Error('Compte suspendu.');
 
-        await query('UPDATE users SET balance = balance - $1 WHERE id = $2', [KOTH_ENTRY_FEE, userId]);
+        const activeCurrency = user.active_currency || 'HTG';
+        if (room.currency !== activeCurrency) {
+          throw new Error('Devise incompatible avec ce tournoi.');
+        }
+
+        const entryFee = room.entryFee || (room.currency === 'KET' ? 1000.00 : 150.00);
+        const balance = parseFloat(activeCurrency === 'KET' ? (user.ket_balance || 0) : user.balance);
+
+        if (balance < entryFee) throw new Error(`Solde insuffisant (${entryFee} ${activeCurrency} requis).`);
+
+        if (activeCurrency === 'KET') {
+          await query('UPDATE users SET ket_balance = ket_balance - $1 WHERE id = $2', [entryFee, userId]);
+        } else {
+          await query('UPDATE users SET balance = balance - $1 WHERE id = $2', [entryFee, userId]);
+        }
         
-        const potContribution = KOTH_ENTRY_FEE * (1 - PLATFORM_FEE_PCT); // 135 HTG
+        const potContribution = entryFee * (1 - PLATFORM_FEE_PCT);
         
         await query(`UPDATE koth_rooms SET pot_total = pot_total + $1 WHERE id = $2`, [potContribution, roomId]);
         
-        await logAudit(userId, roomId, KOTH_ENTRY_FEE, 'JOIN_ESCROW_DEDUCTION');
+        await logAudit(userId, roomId, entryFee, 'JOIN_ESCROW_DEDUCTION');
         
         await query('COMMIT');
 
@@ -143,11 +169,11 @@ const initKothEngine = (socketIo) => {
         activePlayers[socket.id] = roomId;
         
         socket.join(`koth_${roomId}`);
-        socket.emit('koth_room_joined', { roomId, potTotal: room.potTotal });
+        socket.emit('koth_room_joined', { roomId, potTotal: room.potTotal, currency: room.currency });
         
         io.to(`koth_${roomId}`).emit('koth_lobby_update', getLobbyUpdate(room));
         broadcastLobbies();
-        activePlayersStore.addPlayer(userId, email, 'koth', KOTH_ENTRY_FEE);
+        activePlayersStore.addPlayer(userId, email, 'koth', entryFee);
         activePlayersStore.notify(`${email.split('@')[0]} a rejoint la partie King of the Hill !`, 'info');
 
       } catch (err) {
@@ -202,14 +228,26 @@ const getLobbyUpdate = (room) => {
 const broadcastLobbies = () => {
   const lobbies = Object.values(activeRooms)
     .filter(r => r.status === 'lobby')
-    .map(r => ({ id: r.id, playersCount: Object.keys(r.players).length, potTotal: r.potTotal }));
+    .map(r => ({ 
+      id: r.id, 
+      playersCount: Object.keys(r.players).length, 
+      potTotal: r.potTotal,
+      currency: r.currency || 'HTG',
+      entryFee: r.entryFee || 150
+    }));
   io.emit('koth_lobbies', lobbies);
 };
 
 const sendLobbiesToSocket = (socket) => {
   const lobbies = Object.values(activeRooms)
     .filter(r => r.status === 'lobby')
-    .map(r => ({ id: r.id, playersCount: Object.keys(r.players).length, potTotal: r.potTotal }));
+    .map(r => ({ 
+      id: r.id, 
+      playersCount: Object.keys(r.players).length, 
+      potTotal: r.potTotal,
+      currency: r.currency || 'HTG',
+      entryFee: r.entryFee || 150
+    }));
   socket.emit('koth_lobbies', lobbies);
 };
 
@@ -364,11 +402,18 @@ const endGameWinner = async (roomId, winnerPlayer) => {
   const room = activeRooms[roomId];
   if (!room) return;
 
+  const activeCurrency = room.currency || 'HTG';
+  const entryFee = room.entryFee || (activeCurrency === 'KET' ? 1000 : 150);
+
   try {
     await query('BEGIN');
     
     // Pay winner atomically
-    await query('UPDATE users SET balance = balance + $1 WHERE id = $2', [room.potTotal, winnerPlayer.id]);
+    if (activeCurrency === 'KET') {
+      await query('UPDATE users SET ket_balance = ket_balance + $1 WHERE id = $2', [room.potTotal, winnerPlayer.id]);
+    } else {
+      await query('UPDATE users SET balance = balance + $1 WHERE id = $2', [room.potTotal, winnerPlayer.id]);
+    }
     await query(`UPDATE koth_rooms SET status = 'finished', winner_id = $1 WHERE id = $2`, [winnerPlayer.id, roomId]);
     
     await logAudit(winnerPlayer.id, roomId, room.potTotal, 'WIN_POT_DISTRIBUTION');
@@ -377,11 +422,12 @@ const endGameWinner = async (roomId, winnerPlayer) => {
     
     io.to(`koth_${roomId}`).emit('koth_game_over', {
       winner: winnerPlayer,
-      potTotal: room.potTotal
+      potTotal: room.potTotal,
+      currency: activeCurrency
     });
-    const winMult = parseFloat((room.potTotal / KOTH_ENTRY_FEE).toFixed(2));
+    const winMult = parseFloat((room.potTotal / entryFee).toFixed(2));
     activePlayersStore.cashoutPlayer(winnerPlayer.id, 'koth', room.potTotal, winMult);
-    activePlayersStore.notify(`${winnerPlayer.email.split('@')[0]} est le King of the Hill et remporte la cagnotte de +${room.potTotal.toFixed(0)} HTG !`, 'success');
+    activePlayersStore.notify(`${winnerPlayer.email.split('@')[0]} est le King of the Hill et remporte la cagnotte de +${room.potTotal.toFixed(0)} ${activeCurrency} !`, 'success');
   } catch (err) {
     await query('ROLLBACK');
     console.error('KOTH Final Payout Error:', err);
@@ -445,14 +491,21 @@ const cancelRoom = async (roomId, reason) => {
   const room = activeRooms[roomId];
   if (!room) return;
 
+  const activeCurrency = room.currency || 'HTG';
+  const entryFee = room.entryFee || (activeCurrency === 'KET' ? 1000 : 150);
+
   try {
     await query('BEGIN');
     
     // Refund everyone
     const players = Object.values(room.players);
     for (const p of players) {
-      await query('UPDATE users SET balance = balance + $1 WHERE id = $2', [KOTH_ENTRY_FEE, p.id]);
-      await logAudit(p.id, roomId, KOTH_ENTRY_FEE, 'REFUND_CANCELLED_ROOM');
+      if (activeCurrency === 'KET') {
+        await query('UPDATE users SET ket_balance = ket_balance + $1 WHERE id = $2', [entryFee, p.id]);
+      } else {
+        await query('UPDATE users SET balance = balance + $1 WHERE id = $2', [entryFee, p.id]);
+      }
+      await logAudit(p.id, roomId, entryFee, 'REFUND_CANCELLED_ROOM');
     }
 
     await query(`UPDATE koth_rooms SET status = 'cancelled' WHERE id = $1`, [roomId]);

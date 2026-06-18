@@ -315,7 +315,7 @@ const Navbar = () => {
 
         <nav className="sidebar-nav">
           <div className="nav-section-label">Navigation</div>
-          <button className="sidebar-nav-item" onClick={() => navigateTo('/')}>
+          <button className="sidebar-nav-item" onClick={() => navigateTo('/dashboard?tab=play')}>
             <span className="nav-item-icon"><Gamepad2 className="h-5 w-5" /></span>
             <span className="nav-item-label">Jeu</span>
           </button>

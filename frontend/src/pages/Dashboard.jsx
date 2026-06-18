@@ -24,6 +24,9 @@ export default function Dashboard() {
     const tab = params.get('tab');
     if (tab) {
       setActiveTab(tab);
+      if (tab === 'play') {
+        setSelectedGame(null);
+      }
     }
   }, [location]);
   

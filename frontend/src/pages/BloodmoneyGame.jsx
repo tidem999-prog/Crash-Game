@@ -127,6 +127,13 @@ export default function BloodmoneyGame({ socket, setSelectedGame }) {
         setMyBet(prev => prev ? { ...prev, status: 'cashed_out', payout: data.payout, multiplier: data.multiplier } : null);
         setCashoutResult({ payout: data.payout, multiplier: data.multiplier });
         updateBalance(data.newBalance);
+      } else if (data.status === 'lost') {
+        setMyBet(prev => prev ? { ...prev, status: 'lost' } : null);
+        setBetError(data.message || 'Vous avez été arrêté.');
+      } else if (data.status === 'refunded') {
+        setMyBet(prev => prev ? { ...prev, status: 'refunded', refundAmount: data.refundAmount } : null);
+        updateBalance(data.newBalance);
+        setBetError(`Remboursement partiel (Tunnel) : +${data.refundAmount} HTG`);
       }
     });
 
@@ -188,7 +195,7 @@ export default function BloodmoneyGame({ socket, setSelectedGame }) {
     const resizeCanvas = () => {
       if (!canvas || !canvas.parentElement) return;
       canvas.width = canvas.parentElement.clientWidth;
-      canvas.height = window.innerWidth < 768 ? 300 : 340;
+      canvas.height = window.innerWidth < 768 ? 240 : 340;
     };
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
@@ -279,17 +286,17 @@ export default function BloodmoneyGame({ socket, setSelectedGame }) {
       const polY = streetY - 26;
 
       if (gameState === 'running' || gameState === 'crashed') {
-        // Draw Police car (Cruiser styling: black body with white door to stand out from road)
-        ctx.fillStyle = '#1e293b'; // slate/dark body (stands out from #0f172a road)
+        // Draw Police car (Cruiser styling: black body with white door to stand out from road, facing right)
+        ctx.fillStyle = '#1e293b'; // slate/dark body
         ctx.fillRect(polX, polY, 70, 20);
-        ctx.fillStyle = '#f8fafc'; // white door panel
-        ctx.fillRect(polX + 15, polY, 20, 20);
-        ctx.fillStyle = '#38bdf8'; // glass cabin
+        ctx.fillStyle = '#f8fafc'; // white door panel (mirrored to front door)
+        ctx.fillRect(polX + 35, polY, 20, 20);
+        ctx.fillStyle = '#38bdf8'; // glass cabin (mirrored to face right)
         ctx.beginPath();
-        ctx.moveTo(polX + 20, polY);
+        ctx.moveTo(polX + 10, polY);
+        ctx.lineTo(polX + 15, polY - 12);
         ctx.lineTo(polX + 35, polY - 12);
-        ctx.lineTo(polX + 55, polY - 12);
-        ctx.lineTo(polX + 60, polY);
+        ctx.lineTo(polX + 50, polY);
         ctx.closePath();
         ctx.fill();
 
@@ -306,7 +313,7 @@ export default function BloodmoneyGame({ socket, setSelectedGame }) {
         ctx.shadowColor = ctx.fillStyle;
         ctx.shadowBlur = 15;
         ctx.beginPath();
-        ctx.arc(polX + 38, polY - 14, 6, 0, Math.PI * 2);
+        ctx.arc(polX + 32, polY - 14, 6, 0, Math.PI * 2);
         ctx.fill();
         ctx.shadowBlur = 0;
       }
@@ -426,6 +433,14 @@ export default function BloodmoneyGame({ socket, setSelectedGame }) {
     };
   }, [gameState, multiplier]);
 
+  const getRouteMultiplier = (baseMult, route) => {
+    if (route === 'rooftop') return 1.0 + (baseMult - 1.0) * 1.3;
+    if (route === 'tunnel') return 1.0 + (baseMult - 1.0) * 0.75;
+    return baseMult;
+  };
+  const routeMult = getRouteMultiplier(multiplier, selectedRoute);
+  const estimatedPayout = (parseFloat(betAmount) * routeMult).toFixed(2);
+
   return (
     <div className="space-y-6">
       
@@ -510,10 +525,14 @@ export default function BloodmoneyGame({ socket, setSelectedGame }) {
         )}
 
         {/* Interactive Game Canvas */}
-        <canvas ref={canvasRef} className="block w-full h-[300px] md:h-[340px]" />
+        <canvas ref={canvasRef} className="block w-full h-[240px] md:h-[340px]" />
 
-        {/* HUD control bar (Overlay at the bottom of the visual screen container) */}
-        <div className="absolute bottom-3 left-3 right-3 grid grid-cols-1 md:grid-cols-2 gap-3 z-20 bg-slate-950/90 backdrop-blur-md p-3 rounded-2xl border border-slate-800 shadow-xl">
+      </div>
+
+      {/* Control panel below visual screen container */}
+      <div className="glass-panel p-4 sm:p-5 rounded-3xl space-y-4">
+        {/* HUD input bar */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-slate-950/90 p-3 rounded-2xl border border-slate-800 shadow-inner">
           {/* Bet input */}
           <div className="flex flex-col justify-center">
             <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Mise (HTG)</label>
@@ -561,17 +580,14 @@ export default function BloodmoneyGame({ socket, setSelectedGame }) {
           </div>
         </div>
 
-      </div>
-
-      {/* Strategic Route Selection Bar */}
-      <div className="glass-panel p-5 rounded-3xl space-y-4">
+        {/* Strategic Route Selection Bar */}
         <div>
           <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Choisir votre Route Strategique</label>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             {[
-              { id: 'alley', name: 'Alley', desc: 'Risque moyen, chemin court' },
-              { id: 'rooftop', name: 'Rooftop', desc: 'Risque élevé, vue dégagée' },
-              { id: 'tunnel', name: 'Tunnel', desc: 'Risque faible, bien caché' }
+              { id: 'alley', name: 'Alley', desc: 'Risque moyen, gain standard (1.0x)' },
+              { id: 'rooftop', name: 'Rooftop', desc: 'Risque élevé, gain accéléré (1.3x), arrestation à 85% du crash' },
+              { id: 'tunnel', name: 'Tunnel', desc: 'Risque faible, gain réduit (0.75x), 30% remboursé si arrêté' }
             ].map((route) => (
               <button
                 key={route.id}
@@ -580,12 +596,12 @@ export default function BloodmoneyGame({ socket, setSelectedGame }) {
                 onClick={() => setSelectedRoute(route.id)}
                 className={`p-3 rounded-xl border text-left transition-all flex flex-col justify-between cursor-pointer ${
                   selectedRoute === route.id 
-                    ? 'border-indigo-500 bg-indigo-500/10 text-indigo-400' 
+                    ? 'border-indigo-500 bg-indigo-500/10 text-indigo-400 shadow-[0_0_10px_rgba(99,102,241,0.15)]' 
                     : 'border-slate-800 bg-slate-950/40 text-slate-400 hover:border-slate-700'
                 } disabled:opacity-70 disabled:cursor-not-allowed`}
               >
                 <span className="font-bold text-xs">{route.name}</span>
-                <span className="text-[9px] text-slate-500 mt-1 font-semibold leading-none">{route.desc}</span>
+                <span className="text-[9px] text-slate-500 mt-1 font-semibold leading-relaxed">{route.desc}</span>
               </button>
             ))}
           </div>
@@ -596,17 +612,17 @@ export default function BloodmoneyGame({ socket, setSelectedGame }) {
           {myBet && myBet.status === 'placed' && gameState === 'running' ? (
             <button
               onClick={handleCashout}
-              className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-lg tracking-wider transition-all transform active:scale-98 glow-emerald cursor-pointer"
+              className="w-full py-3.5 sm:py-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-base sm:text-lg tracking-wider transition-all transform active:scale-98 glow-emerald cursor-pointer"
             >
               ÉCHAPPER À LA POLICE (CASH OUT)
               <span className="block text-xs font-mono font-bold text-slate-900/70 mt-0.5">
-                {(betAmount * multiplier).toFixed(2)} HTG
+                {estimatedPayout} HTG ({routeMult.toFixed(2)}x)
               </span>
             </button>
           ) : myBet && myBet.status === 'placed' ? (
             <button
               disabled
-              className="w-full py-4 bg-emerald-600 text-slate-950 font-black rounded-xl font-bold text-sm select-none border border-emerald-500 glow-emerald"
+              className="w-full py-3.5 sm:py-4 bg-emerald-600 text-slate-950 font-black rounded-xl font-bold text-sm select-none border border-emerald-500 glow-emerald"
             >
               PRÊT À L'ACTION
               <span className="block text-[10px] font-bold text-slate-900/80 mt-0.5">
@@ -617,7 +633,7 @@ export default function BloodmoneyGame({ socket, setSelectedGame }) {
             <button
               onClick={handlePlaceBet}
               disabled={gameState !== 'waiting'}
-              className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed glow-indigo cursor-pointer"
+              className="w-full py-3.5 sm:py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed glow-indigo cursor-pointer"
             >
               COMMENCER LA COURSE (PLACER LE PARI)
               <span className="block text-xs font-mono font-normal text-indigo-200 mt-0.5">
@@ -630,16 +646,6 @@ export default function BloodmoneyGame({ socket, setSelectedGame }) {
             <p className="text-red-500 text-xs mt-2 text-center font-bold animate-shake">{betError}</p>
           )}
         </div>
-      </div>
-
-      {/* Provably Fair hash details */}
-      <div className="glass-panel p-4 rounded-xl space-y-2 bg-gradient-to-br from-slate-950/40 to-slate-900/20 border border-slate-900 text-[10px] text-slate-450 font-mono">
-        <div className="flex justify-between items-center text-slate-300 font-bold border-b border-slate-900 pb-1">
-          <span>PROVABLY FAIR</span>
-          <span className="text-emerald-400 text-[9px] font-semibold font-sans">SÉCURISÉ SHA-256</span>
-        </div>
-        <p className="leading-relaxed"><strong>Server Hash :</strong> {seedHash || 'Lobby inactif'}</p>
-        {revealedSeed && <p className="leading-relaxed text-slate-300"><strong>Server Seed (Révélé) :</strong> {revealedSeed}</p>}
       </div>
 
     </div>

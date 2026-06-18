@@ -145,23 +145,48 @@ const startRunningPhase = async () => {
   }
 };
 
+const getRouteMultiplier = (baseMult, route) => {
+  if (route === 'rooftop') return 1.0 + (baseMult - 1.0) * 1.3;
+  if (route === 'tunnel') return 1.0 + (baseMult - 1.0) * 0.75;
+  return baseMult;
+};
+
 const checkAutoCashouts = async (currentMultiplier) => {
   for (const userId of Object.keys(activeBets)) {
     const bet = activeBets[userId];
-    if (!bet.cashedOut && bet.autoCashout && currentMultiplier >= bet.autoCashout) {
-      await processCashout(userId, bet.autoCashout);
+    if (!bet.cashedOut && (!bet.status || bet.status === 'placed')) {
+      // Early bust condition for Rooftop (arrested at 85% of target crash point)
+      if (bet.route === 'rooftop' && currentMultiplier >= targetCrashMultiplier * 0.85) {
+        bet.cashedOut = true;
+        bet.status = 'lost';
+        const socket = io.sockets.sockets.get(bet.socketId);
+        if (socket) {
+          socket.emit('bet:result', {
+            status: 'lost',
+            message: 'Vous avez été arrêté sur le toit ! (Arrestation anticipée à 85% du crash)'
+          });
+        }
+        continue;
+      }
+
+      // Check auto cashout based on route multiplier
+      const personalMult = getRouteMultiplier(currentMultiplier, bet.route);
+      if (bet.autoCashout && personalMult >= bet.autoCashout) {
+        await processCashout(userId, currentMultiplier);
+      }
     }
   }
 };
 
-const processCashout = async (userId, multiplier) => {
+const processCashout = async (userId, baseMultiplier) => {
   const bet = activeBets[userId];
   if (!bet || bet.cashedOut || bet.processingCashout || gameState.status !== 'running') return null;
 
   bet.processingCashout = true;
 
   try {
-    const payout = parseFloat((bet.betAmount * multiplier).toFixed(2));
+    const routeMult = getRouteMultiplier(baseMultiplier, bet.route);
+    const payout = parseFloat((bet.betAmount * routeMult).toFixed(2));
     
     await query('BEGIN');
     
@@ -172,16 +197,17 @@ const processCashout = async (userId, multiplier) => {
     await query(
       `INSERT INTO bloodmoney_bets (user_id, game_id, bet_amount, route, cashout_multiplier, payout_amount, is_won) 
        VALUES ($1, $2, $3, $4, $5, $6, true)`,
-      [userId, gameState.gameId, bet.betAmount, bet.route, multiplier, payout]
+      [userId, gameState.gameId, bet.betAmount, bet.route, routeMult, payout]
     );
 
     await query('COMMIT');
 
     bet.cashedOut = true;
-    bet.cashoutMultiplier = multiplier;
+    bet.cashoutMultiplier = routeMult;
     bet.payoutAmount = payout;
+    bet.status = 'cashed_out';
 
-    console.log(`BloodMoney: User ${bet.email} cashed out +${payout} HTG (${multiplier}x)`);
+    console.log(`BloodMoney: User ${bet.email} cashed out +${payout} HTG (${routeMult}x via ${bet.route})`);
 
     // Notify client
     if (io) {
@@ -190,20 +216,20 @@ const processCashout = async (userId, multiplier) => {
         const balanceRes = await query('SELECT balance FROM users WHERE id = $1', [userId]);
         socket.emit('bet:result', {
           status: 'won',
-          multiplier,
+          multiplier: routeMult,
           payout,
           newBalance: parseFloat(balanceRes.rows[0].balance)
         });
       }
       
       const displayName = bet.email.split('@')[0];
-      activePlayersStore.cashoutPlayer(userId, 'bloodmoney', payout, multiplier);
-      activePlayersStore.notify(`${displayName} a échappé à la police avec +${payout.toFixed(0)} HTG (${multiplier.toFixed(2)}x) !`, 'success');
+      activePlayersStore.cashoutPlayer(userId, 'bloodmoney', payout, routeMult);
+      activePlayersStore.notify(`${displayName} a échappé à la police avec +${payout.toFixed(0)} HTG (${routeMult.toFixed(2)}x) !`, 'success');
       
       broadcastState();
     }
 
-    return { payout, multiplier };
+    return { payout, multiplier: routeMult };
   } catch (err) {
     await query('ROLLBACK');
     bet.processingCashout = false;
@@ -227,6 +253,41 @@ const handleCrashPhase = async () => {
     for (const userId of Object.keys(activeBets)) {
       const bet = activeBets[userId];
       if (!bet.cashedOut) {
+        if (bet.route === 'tunnel') {
+          // Refund 30% of the bet amount for Tunnel route
+          const refundAmount = parseFloat((bet.betAmount * 0.3).toFixed(2));
+          await query("UPDATE users SET balance = balance + $1 WHERE id = $2", [refundAmount, userId]);
+          await query(
+            `INSERT INTO bloodmoney_bets (user_id, game_id, bet_amount, route, cashout_multiplier, payout_amount, is_won) 
+             VALUES ($1, $2, $3, $4, 0.3, $5, false)`,
+            [userId, gameState.gameId, bet.betAmount, bet.route, refundAmount]
+          );
+          
+          bet.cashedOut = true;
+          bet.status = 'refunded';
+          bet.payoutAmount = refundAmount;
+
+          const socket = io.sockets.sockets.get(bet.socketId);
+          if (socket) {
+            const balanceRes = await query('SELECT balance FROM users WHERE id = $1', [userId]);
+            socket.emit('bet:result', {
+              status: 'refunded',
+              refundAmount,
+              newBalance: parseFloat(balanceRes.rows[0].balance)
+            });
+          }
+          activePlayersStore.losePlayer(userId, 'bloodmoney', 'lost');
+        } else {
+          // Normal loss (Alley, Rooftop)
+          await query(
+            `INSERT INTO bloodmoney_bets (user_id, game_id, bet_amount, route, cashout_multiplier, payout_amount, is_won) 
+             VALUES ($1, $2, $3, $4, null, 0.00, false)`,
+            [userId, gameState.gameId, bet.betAmount, bet.route]
+          );
+          activePlayersStore.losePlayer(userId, 'bloodmoney', 'lost');
+        }
+      } else if (bet.status === 'lost') {
+        // If they were already busted early (e.g. rooftop at 85%)
         await query(
           `INSERT INTO bloodmoney_bets (user_id, game_id, bet_amount, route, cashout_multiplier, payout_amount, is_won) 
            VALUES ($1, $2, $3, $4, null, 0.00, false)`,

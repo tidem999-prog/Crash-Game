@@ -370,7 +370,7 @@ export default function Dashboard() {
     // Make canvas responsive
     const resizeCanvas = () => {
       canvas.width = canvas.parentElement.clientWidth;
-      canvas.height = 350;
+      canvas.height = window.innerWidth < 640 ? 240 : 350;
     };
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
@@ -1071,9 +1071,12 @@ export default function Dashboard() {
                   <p className="text-emerald-300 text-xs mt-1">Encaissé à {cashoutSuccess.multiplier}x</p>
                 </div>
               )}
+            </div>
 
-              {/* Horizontal Inputs Bar (Overlay at the bottom of the visual screen container) */}
-              <div className="absolute bottom-3 left-3 right-3 grid grid-cols-2 gap-3 z-30 bg-slate-950/85 backdrop-blur-md p-3 rounded-2xl border border-slate-800/80 shadow-lg">
+            {/* Wagering Control Panel */}
+            <div className="glass-panel p-4 sm:p-5 rounded-3xl mt-4 max-w-xl mx-auto w-full space-y-4">
+              {/* Inputs Bar */}
+              <div className="grid grid-cols-2 gap-3 bg-slate-950/40 p-3 rounded-2xl border border-slate-900 shadow-inner">
                 {/* Bet Amount Control */}
                 <div className="flex flex-col justify-center">
                   <label className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Montant (Min: 10 HTG)</label>
@@ -1129,17 +1132,14 @@ export default function Dashboard() {
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Wagering Control Panel */}
-            <div className="glass-panel p-5 rounded-3xl mt-4 max-w-xl mx-auto w-full">
               {/* Bet Action Button */}
               <div className="w-full flex flex-col justify-center">
                 {myBet && myBet.status === 'placed' && gameStatus === 'flying' ? (
                   // Live cashout button
                   <button
                     onClick={handleCashout}
-                    className="w-full py-4 px-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-lg tracking-wider transition-all duration-150 transform active:scale-95 glow-emerald hover:brightness-105"
+                    className="w-full py-3.5 sm:py-4 px-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-base sm:text-lg tracking-wider transition-all duration-150 transform active:scale-95 glow-emerald hover:brightness-105"
                   >
                     CASH OUT
                     <span className="block text-xs font-mono font-bold text-slate-900/70 mt-0.5">
@@ -1150,7 +1150,7 @@ export default function Dashboard() {
                   // Placed but waiting for round start
                   <button
                     disabled
-                    className="w-full py-4 px-4 bg-emerald-600 text-slate-950 font-black rounded-xl font-bold text-sm select-none border border-emerald-500 glow-emerald shadow-lg shadow-emerald-500/20"
+                    className="w-full py-3.5 sm:py-4 px-4 bg-emerald-600 text-slate-950 font-black rounded-xl font-bold text-sm select-none border border-emerald-500 glow-emerald shadow-lg shadow-emerald-500/20"
                   >
                     PARI ENREGISTRÉ
                     <span className="block text-[10px] font-bold text-slate-900/80 mt-0.5">
@@ -1162,7 +1162,7 @@ export default function Dashboard() {
                   <button
                     onClick={handlePlaceBet}
                     disabled={gameStatus !== 'waiting'}
-                    className="w-full py-4 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed glow-indigo"
+                    className="w-full py-3.5 sm:py-4 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed glow-indigo"
                   >
                     PLACER LE PARI
                     <span className="block text-xs font-mono font-normal text-indigo-200 mt-0.5">

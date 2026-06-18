@@ -92,10 +92,13 @@ export default function BloodmoneyGame({ socket, setSelectedGame }) {
 
       // Trigger heavy shake & explosion particles
       animationStateRef.current.shakeIntensity = 12.0;
+      const canvas = canvasRef.current;
+      const rx = canvas ? canvas.width * 0.65 : 380;
+      const ry = canvas ? (canvas.height - 140) - 30 : 170;
       for (let i = 0; i < 35; i++) {
         animationStateRef.current.particles.push({
-          x: 200 + (Math.random() - 0.5) * 50,
-          y: 260 + (Math.random() - 0.5) * 50,
+          x: rx + (Math.random() - 0.5) * 50,
+          y: ry + (Math.random() - 0.5) * 50,
           vx: (Math.random() - 0.5) * 12,
           vy: (Math.random() - 0.7) * 12,
           size: Math.random() * 8 + 3,
@@ -183,8 +186,9 @@ export default function BloodmoneyGame({ socket, setSelectedGame }) {
     const ctx = canvas.getContext('2d');
     
     const resizeCanvas = () => {
+      if (!canvas || !canvas.parentElement) return;
       canvas.width = canvas.parentElement.clientWidth;
-      canvas.height = 340;
+      canvas.height = window.innerWidth < 768 ? 300 : 340;
     };
     resizeCanvas();
     window.addEventListener('resize', resizeCanvas);
@@ -228,9 +232,9 @@ export default function BloodmoneyGame({ socket, setSelectedGame }) {
       ctx.fillStyle = '#111827';
       for (let i = 0; i < 4; i++) {
         const sx = state.skylineX + i * 200;
-        ctx.fillRect(sx, h - 220, 80, 140);
-        ctx.fillRect(sx + 80, h - 180, 60, 100);
-        ctx.fillRect(sx + 140, h - 250, 40, 170);
+        ctx.fillRect(sx, h - 260, 80, 140);
+        ctx.fillRect(sx + 80, h - 220, 60, 100);
+        ctx.fillRect(sx + 140, h - 290, 40, 170);
       }
 
       // 3. PARALLAX BUILDINGS (Layer 2 - medium)
@@ -238,24 +242,24 @@ export default function BloodmoneyGame({ socket, setSelectedGame }) {
       for (let i = 0; i < 5; i++) {
         const bx = state.bgX + i * 240;
         ctx.fillStyle = '#1e1b4b'; // Dark violet building outline
-        ctx.fillRect(bx, h - 160, 140, 95);
-        ctx.fillRect(bx + 140, h - 140, 80, 75);
+        ctx.fillRect(bx, h - 235, 140, 100);
+        ctx.fillRect(bx + 140, h - 215, 80, 80);
 
         // Neon signs
         if (i % 2 === 0) {
           ctx.fillStyle = i === 2 ? '#a855f7' : '#ec4899'; // Purple / Pink
           ctx.shadowBlur = 8;
           ctx.shadowColor = ctx.fillStyle;
-          ctx.fillRect(bx + 40, h - 130, 8, 40);
-          ctx.fillRect(bx + 60, h - 130, 8, 40);
+          ctx.fillRect(bx + 40, h - 205, 8, 40);
+          ctx.fillRect(bx + 60, h - 205, 8, 40);
           ctx.shadowBlur = 0; // reset
         }
       }
 
       // 4. STREET (Layer 3 - fast)
-      const streetY = h - 65;
+      const streetY = h - 140; // Shifted upwards so street & cars are fully visible above HUD overlay
       ctx.fillStyle = '#0f172a'; // Road base
-      ctx.fillRect(0, streetY, w, 65);
+      ctx.fillRect(0, streetY, w, 80);
 
       // Sidewalk edge
       ctx.fillStyle = '#334155';
@@ -265,21 +269,22 @@ export default function BloodmoneyGame({ socket, setSelectedGame }) {
       state.streetX = (state.streetX - speedCoeff * 5) % 120;
       ctx.fillStyle = '#fbbf24'; // Yellow road markers
       for (let i = -1; i < (w / 120) + 2; i++) {
-        ctx.fillRect(state.streetX + i * 120, streetY + 25, 45, 6);
+        ctx.fillRect(state.streetX + i * 120, streetY + 30, 45, 6);
       }
 
       // 5. ROAD BLOCKS & NEON POLES
       // Left side police car
-      const polX = 80 + state.policeProgress * 200; // Police car moves closer to runner
+      const runX = w * 0.65; // Make runner position relative to width
+      const polX = w * 0.15 + state.policeProgress * (runX - w * 0.15 - 90); // Police car moves closer to runner, relative to width
       const polY = streetY - 26;
 
       if (gameState === 'running' || gameState === 'crashed') {
-        // Draw Police car
-        ctx.fillStyle = '#0f172a'; // dark metal
+        // Draw Police car (Cruiser styling: black body with white door to stand out from road)
+        ctx.fillStyle = '#1e293b'; // slate/dark body (stands out from #0f172a road)
         ctx.fillRect(polX, polY, 70, 20);
-        ctx.fillStyle = '#ffffff'; // white doors
+        ctx.fillStyle = '#f8fafc'; // white door panel
         ctx.fillRect(polX + 15, polY, 20, 20);
-        ctx.fillStyle = '#1e3a8a'; // glass cabin
+        ctx.fillStyle = '#38bdf8'; // glass cabin
         ctx.beginPath();
         ctx.moveTo(polX + 20, polY);
         ctx.lineTo(polX + 35, polY - 12);
@@ -308,7 +313,6 @@ export default function BloodmoneyGame({ socket, setSelectedGame }) {
 
       // 6. RUNNER CHARACTER
       if (gameState === 'running' || gameState === 'waiting') {
-        const runX = 380;
         const runY = streetY - 30;
 
         // Running arm/leg physics
@@ -506,7 +510,7 @@ export default function BloodmoneyGame({ socket, setSelectedGame }) {
         )}
 
         {/* Interactive Game Canvas */}
-        <canvas ref={canvasRef} className="block w-full max-h-[340px]" />
+        <canvas ref={canvasRef} className="block w-full h-[300px] md:h-[340px]" />
 
         {/* HUD control bar (Overlay at the bottom of the visual screen container) */}
         <div className="absolute bottom-3 left-3 right-3 grid grid-cols-1 md:grid-cols-2 gap-3 z-20 bg-slate-950/90 backdrop-blur-md p-3 rounded-2xl border border-slate-800 shadow-xl">

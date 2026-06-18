@@ -178,7 +178,7 @@ const Navbar = () => {
               <Gamepad2 className="h-4 w-4 sm:h-5 sm:w-5" />
             </div>
             <span className="font-display font-black text-sm sm:text-base tracking-tight uppercase">
-              <span className="text-white">KET</span><span className="text-[#c8ff00]">ARENA</span>
+              <span className="text-white">KET</span><span className="text-yellow-500">ARENA</span>
             </span>
           </Link>
 

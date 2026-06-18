@@ -857,7 +857,7 @@ export default function Dashboard() {
         
         {/* Navigation Tabs Header */}
         {(!isKetmesyePlaying && !isDominoPlaying) && (
-          <div className="flex bg-slate-900/60 p-1.5 rounded-2xl border border-slate-800">
+          <div className="hidden lg:flex bg-slate-900/60 p-1.5 rounded-2xl border border-slate-800">
             <button
               onClick={() => setActiveTab('play')}
             className={`flex-1 py-2 px-1 sm:py-3 sm:px-4 rounded-xl text-[10px] sm:text-sm font-bold transition-all flex flex-col sm:flex-row items-center justify-center space-y-1 sm:space-y-0 sm:space-x-2 ${

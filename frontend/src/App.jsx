@@ -147,9 +147,19 @@ const Navbar = () => {
           </svg>
         </button>
 
-        <div className="header-center" onClick={() => navigateTo('/')} style={{ cursor: 'pointer' }}>
-          <span className="header-brand">
-            <span className="brand-k">KET</span><span className="brand-a">ARENA</span>
+        <div 
+          onClick={() => navigateTo('/')} 
+          style={{ 
+            cursor: 'pointer', 
+            marginRight: 'auto', 
+            marginLeft: '6px', 
+            display: 'flex', 
+            alignItems: 'center' 
+          }}
+        >
+          <span className="header-brand" style={{ fontSize: '15px', fontWeight: '900', letterSpacing: '0.2px' }}>
+            <span className="brand-k" style={{ color: '#ffffff' }}>KET</span>
+            <span className="brand-a" style={{ color: '#eab308', marginLeft: '1px' }}>ARENA</span>
           </span>
         </div>
 
@@ -163,11 +173,22 @@ const Navbar = () => {
               console.error('Failed to change currency:', err);
             }
           }}
+          style={
+            user.active_currency === 'KET' 
+              ? { backgroundColor: 'rgba(236, 72, 153, 0.08)', borderColor: 'rgba(236, 72, 153, 0.2)' }
+              : { backgroundColor: 'rgba(16, 185, 129, 0.08)', borderColor: 'rgba(16, 185, 129, 0.2)' }
+          }
         >
           {user.active_currency === 'KET' ? (
-             <span className="bal-amount">{Math.round(user.ket_balance || 0).toLocaleString('en-US')} <span className="bal-currency">KET</span></span>
+             <span className="bal-amount" style={{ color: '#f472b6' }}>
+               {Math.round(user.ket_balance || 0).toLocaleString('en-US')}{' '}
+               <span className="bal-currency" style={{ color: 'rgba(236, 72, 153, 0.7)' }}>KET</span>
+             </span>
           ) : (
-             <span className="bal-amount">{user.balance.toLocaleString('en-US', { minimumFractionDigits: 2 })} <span className="bal-currency">G</span></span>
+             <span className="bal-amount" style={{ color: '#34d399' }}>
+               {user.balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}{' '}
+               <span className="bal-currency" style={{ color: 'rgba(16, 185, 129, 0.7)' }}>G</span>
+             </span>
           )}
           <button 
             className="bal-refresh" 
@@ -177,7 +198,9 @@ const Navbar = () => {
               refreshBalance();
             }}
           >
-            <RefreshCw className="h-3 w-3 text-emerald-400" />
+            <RefreshCw 
+              className={`h-3 w-3 ${user.active_currency === 'KET' ? 'text-pink-400' : 'text-emerald-400'}`} 
+            />
           </button>
         </div>
 

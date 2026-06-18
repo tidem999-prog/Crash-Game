@@ -149,7 +149,8 @@ html, body {
 .header-center {
   flex: 1;
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
+  margin-left: 12px;
   min-width: 0;
 }
 

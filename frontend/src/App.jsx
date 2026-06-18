@@ -153,13 +153,30 @@ const Navbar = () => {
           </span>
         </div>
 
-        <div className="header-balance" onClick={refreshBalance}>
+        <div 
+          className="header-balance" 
+          onClick={async () => {
+            const nextCurrency = user.active_currency === 'KET' ? 'HTG' : 'KET';
+            try {
+              await changeCurrency(nextCurrency);
+            } catch (err) {
+              console.error('Failed to change currency:', err);
+            }
+          }}
+        >
           {user.active_currency === 'KET' ? (
              <span className="bal-amount">{Math.round(user.ket_balance || 0).toLocaleString('en-US')} <span className="bal-currency">KET</span></span>
           ) : (
              <span className="bal-amount">{user.balance.toLocaleString('en-US', { minimumFractionDigits: 2 })} <span className="bal-currency">G</span></span>
           )}
-          <button className="bal-refresh" aria-label="Refresh">
+          <button 
+            className="bal-refresh" 
+            aria-label="Refresh"
+            onClick={(e) => {
+              e.stopPropagation();
+              refreshBalance();
+            }}
+          >
             <RefreshCw className="h-3 w-3 text-emerald-400" />
           </button>
         </div>
@@ -291,6 +308,10 @@ const Navbar = () => {
             <span className="nav-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></span>
             <span className="nav-item-label">Historique</span>
           </button>
+          <button className="sidebar-nav-item" onClick={() => navigateTo('/dashboard?tab=referrals')}>
+            <span className="nav-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"></path></svg></span>
+            <span className="nav-item-label">Parrainage</span>
+          </button>
         </nav>
 
         <div className="sidebar-footer">
@@ -337,7 +358,7 @@ const Navbar = () => {
             <span className="nav-item-label">Balance KET</span>
             <span className="nav-item-value">{Math.round(user.ket_balance || 0).toLocaleString('fr-FR')} KET</span>
           </button>
-          <button className="sidebar-nav-item" onClick={() => navigateTo('/dashboard?tab=affiliate')}>
+          <button className="sidebar-nav-item" onClick={() => navigateTo('/dashboard?tab=referrals')}>
             <span className="nav-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"></path></svg></span>
             <span className="nav-item-label">Parrainage</span>
           </button>

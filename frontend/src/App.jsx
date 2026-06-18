@@ -38,9 +38,35 @@ const AdminRoute = ({ children }) => {
   return children;
 };
 
+const KetTokenIcon = ({ className }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10" fill="url(#ketGrad)" stroke="currentColor" />
+    <path d="M8 7v10M8 12h4l4-5M12 12l4 5" stroke="#ffffff" strokeWidth="3" />
+    <defs>
+      <linearGradient id="ketGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#8b5cf6" />
+        <stop offset="100%" stopColor="#ec4899" />
+      </linearGradient>
+    </defs>
+  </svg>
+);
+
+const HtgTokenIcon = ({ className }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="10" fill="url(#htgGrad)" stroke="currentColor" />
+    <path d="M12 6v12M17 9H9.5a3.5 3.5 0 0 0 0 7H15" stroke="#ffffff" strokeWidth="3" />
+    <defs>
+      <linearGradient id="htgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#10b981" />
+        <stop offset="100%" stopColor="#059669" />
+      </linearGradient>
+    </defs>
+  </svg>
+);
+
 // Navigation Bar
 const Navbar = () => {
-  const { user, logout, refreshBalance } = useAuth();
+  const { user, logout, refreshBalance, changeCurrency } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [hasUnreadSupport, setHasUnreadSupport] = useState(false);
@@ -110,17 +136,46 @@ const Navbar = () => {
         <div className="flex items-center space-x-2 sm:space-x-4">
           
           {/* Balance Widget */}
-          <div className="flex items-center space-x-1 sm:space-x-2 bg-slate-950/60 border border-slate-800 px-1.5 py-0.5 sm:px-3 sm:py-1 rounded-full shadow-inner">
-            <Landmark className="h-3.5 w-3.5 text-emerald-400 hidden sm:block" />
-            <span className="font-mono font-bold text-[10px] sm:text-sm text-emerald-400">
-              {user.balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}<span className="text-[8px] sm:text-xs ml-0.5 text-emerald-500/80">G</span>
-            </span>
+          <div className="flex items-center space-x-1 sm:space-x-2 bg-slate-950/60 border border-slate-800 p-0.5 pl-1.5 sm:pl-3 pr-0.5 rounded-full shadow-inner select-none shrink-0">
+            {user.active_currency === 'KET' ? (
+              <>
+                <KetTokenIcon className="h-4 w-4 sm:h-5 sm:w-5 text-pink-400 shrink-0" />
+                <span className="font-mono font-bold text-[10px] sm:text-sm text-pink-400">
+                  {Math.round(user.ket_balance || 0).toLocaleString('en-US')}<span className="text-[8px] sm:text-[10px] ml-0.5 text-pink-500/80">KET</span>
+                </span>
+              </>
+            ) : (
+              <>
+                <HtgTokenIcon className="h-4 w-4 sm:h-5 sm:w-5 text-emerald-400 shrink-0" />
+                <span className="font-mono font-bold text-[10px] sm:text-sm text-emerald-400">
+                  {user.balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}<span className="text-[8px] sm:text-[10px] ml-0.5 text-emerald-500/80">G</span>
+                </span>
+              </>
+            )}
             <button 
               onClick={refreshBalance} 
-              className="p-0.5 text-slate-400 hover:text-indigo-400 rounded-full hover:bg-slate-800 transition-all duration-200"
+              className="p-1 text-slate-400 hover:text-indigo-400 rounded-full hover:bg-slate-800 transition-all duration-200"
               title="Actualiser le solde"
             >
               <RefreshCw className="h-2.5 w-2.5 sm:h-3.5 sm:w-3.5" />
+            </button>
+            <button
+              onClick={async () => {
+                const nextCurrency = user.active_currency === 'KET' ? 'HTG' : 'KET';
+                try {
+                  await changeCurrency(nextCurrency);
+                } catch (err) {
+                  console.error('Failed to change currency:', err);
+                }
+              }}
+              className={`text-[9px] sm:text-xs font-bold px-2 py-0.5 sm:py-1 rounded-full transition-all duration-300 ml-1 shadow-md ${
+                user.active_currency === 'KET' 
+                  ? 'bg-pink-600 text-white shadow-pink-600/20 hover:bg-pink-500' 
+                  : 'bg-emerald-600 text-white shadow-emerald-600/20 hover:bg-emerald-500'
+              }`}
+              title="Changer de devise"
+            >
+              {user.active_currency === 'KET' ? '→ HTG' : '→ KET'}
             </button>
           </div>
 

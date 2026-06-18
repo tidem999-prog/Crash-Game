@@ -53,6 +53,18 @@ const generateMines = (serverSeed, clientSeed, minesCount) => {
   return allTiles.slice(0, minesCount);
 };
 
+const getUserBalances = async (userId) => {
+  const res = await query('SELECT balance, ket_balance, active_currency FROM users WHERE id = $1', [userId]);
+  if (res.rows.length > 0) {
+    return {
+      balance: parseFloat(res.rows[0].balance),
+      ket_balance: parseFloat(res.rows[0].ket_balance || 0),
+      activeCurrency: res.rows[0].active_currency || 'HTG'
+    };
+  }
+  return { balance: 0, ket_balance: 0, activeCurrency: 'HTG' };
+};
+
 // Start Game
 const handleMinesStart = async (socket, payload) => {
   const { userId, betAmount, minesCount } = payload;
@@ -71,19 +83,56 @@ const handleMinesStart = async (socket, payload) => {
       return socket.emit('mines_error', 'Vous avez déjà une partie de Mines en cours. Veuillez la terminer ou l\'actualiser.');
     }
 
-    // 2. Validate balance and deduct bet amount atomically
-    const userRes = await query(
-      'UPDATE users SET balance = balance - $1 WHERE id = $2 AND balance >= $1 RETURNING balance, email',
-      [betAmount, userId]
-    );
-
-    if (userRes.rows.length === 0) {
+    // 2. Query user fields
+    const userQuery = await query('SELECT balance, ket_balance, active_currency, is_suspended, email FROM users WHERE id = $1 FOR UPDATE', [userId]);
+    if (userQuery.rows.length === 0) {
       await query('ROLLBACK');
-      return socket.emit('mines_error', 'Solde insuffisant ou utilisateur introuvable.');
+      return socket.emit('mines_error', 'Utilisateur introuvable.');
     }
 
-    const newBalance = parseFloat(userRes.rows[0].balance);
-    const email = userRes.rows[0].email;
+    const user = userQuery.rows[0];
+    if (user.is_suspended) {
+      await query('ROLLBACK');
+      return socket.emit('mines_error', 'Votre compte est suspendu.');
+    }
+
+    const activeCurrency = user.active_currency || 'HTG';
+    let newBalance = parseFloat(user.balance);
+    let newKetBalance = parseFloat(user.ket_balance || 0);
+
+    if (activeCurrency === 'KET') {
+      if (betAmount < 1000) {
+        await query('ROLLBACK');
+        return socket.emit('mines_error', 'La mise minimale en KET est de 1 000 KET.');
+      }
+      if (newKetBalance < betAmount) {
+        await query('ROLLBACK');
+        return socket.emit('mines_error', 'Solde de KET insuffisant.');
+      }
+      // Deduct KET
+      await query('UPDATE users SET ket_balance = ket_balance - $1 WHERE id = $2', [betAmount, userId]);
+      newKetBalance -= betAmount;
+    } else {
+      // HTG currency
+      if (betAmount < 10) {
+        await query('ROLLBACK');
+        return socket.emit('mines_error', 'La mise minimale est de 10 HTG.');
+      }
+      if (newBalance < betAmount) {
+        await query('ROLLBACK');
+        return socket.emit('mines_error', 'Solde insuffisant.');
+      }
+      // Deduct HTG and credit KET (10 HTG = 10,000 KET => 1 HTG = 1,000 KET)
+      const earnedKet = betAmount * 1000;
+      await query(
+        'UPDATE users SET balance = balance - $1, ket_balance = ket_balance + $2 WHERE id = $3',
+        [betAmount, earnedKet, userId]
+      );
+      newBalance -= betAmount;
+      newKetBalance += earnedKet;
+    }
+
+    const email = user.email;
 
     // 4. Calculate Net Stake
     const fee = betAmount * (RAKE_PERCENT / 100);
@@ -92,24 +141,24 @@ const handleMinesStart = async (socket, payload) => {
     // 5. Provably Fair Generation
     const serverSeed = crypto.randomBytes(32).toString('hex');
     const serverSeedHash = crypto.createHash('sha256').update(serverSeed).digest('hex');
-    const clientSeed = crypto.randomBytes(16).toString('hex'); // Auto-generated for user
+    const clientSeed = crypto.randomBytes(16).toString('hex');
 
     const gridMines = generateMines(serverSeed, clientSeed, minesCount);
 
     // 6. Insert into DB
     const insertRes = await query(
       `INSERT INTO mines_games 
-       (user_id, bet_amount, net_stake, mines_count, server_seed, client_seed, grid_mines) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-      [userId, betAmount, netStake, minesCount, serverSeed, clientSeed, JSON.stringify(gridMines)]
+       (user_id, bet_amount, net_stake, currency, mines_count, server_seed, client_seed, grid_mines) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+      [userId, betAmount, netStake, activeCurrency, minesCount, serverSeed, clientSeed, JSON.stringify(gridMines)]
     );
 
     const gameId = insertRes.rows[0].id;
 
     await query('COMMIT');
 
-    // Send updated balance to user globally
-    io.emit('balance_update', { userId, newBalance });
+    // Send updated balances globally
+    io.emit('balance_update', { userId, newBalance, newKetBalance });
 
     activePlayersStore.addPlayer(userId, email, 'mines', betAmount);
 
@@ -118,8 +167,9 @@ const handleMinesStart = async (socket, payload) => {
       netStake,
       minesCount,
       clientSeed,
-      serverSeedHash, // Client can verify later
-      currentMultiplier: 1.00
+      serverSeedHash,
+      currentMultiplier: 1.00,
+      currency: activeCurrency
     });
 
     startMinesTimer(socket, userId, gameId);
@@ -197,17 +247,19 @@ const handleMinesReveal = async (socket, payload) => {
       // Auto cashout!
       const payoutAmount = parseFloat(game.net_stake) * currentMultiplier;
       
-      const userRes = await query(
-        'UPDATE users SET balance = balance + $1 WHERE id = $2 RETURNING balance',
-        [payoutAmount, userId]
-      );
-
-      if (userRes.rows.length === 0) {
-        await query('ROLLBACK');
-        return socket.emit('mines_error', 'Utilisateur introuvable.');
+      if (game.currency === 'KET') {
+        await query(
+          'UPDATE users SET ket_balance = ket_balance + $1 WHERE id = $2',
+          [payoutAmount, userId]
+        );
+      } else {
+        await query(
+          'UPDATE users SET balance = balance + $1 WHERE id = $2',
+          [payoutAmount, userId]
+        );
       }
 
-      const newBalance = parseFloat(userRes.rows[0].balance);
+      const balances = await getUserBalances(userId);
 
       await query(
         `UPDATE mines_games SET status = 'cashed_out', current_multiplier = $1, payout_amount = $2, revealed_tiles = $3 WHERE id = $4`,
@@ -216,20 +268,21 @@ const handleMinesReveal = async (socket, payload) => {
 
       await query('COMMIT');
 
-      io.emit('balance_update', { userId, newBalance });
+      io.emit('balance_update', { userId, newBalance: balances.balance, newKetBalance: balances.ket_balance });
 
       const emailRes = await query('SELECT email FROM users WHERE id = $1', [userId]);
       const email = emailRes.rows[0]?.email || 'Joueur';
       const displayName = email.split('@')[0];
       activePlayersStore.cashoutPlayer(userId, 'mines', payoutAmount, currentMultiplier);
-      activePlayersStore.notify(`${displayName} a gagné +${payoutAmount.toFixed(0)} HTG à Mines (${currentMultiplier.toFixed(2)}x) !`, 'success');
+      activePlayersStore.notify(`${displayName} a gagné +${payoutAmount.toFixed(0)} ${game.currency || 'HTG'} à Mines (${currentMultiplier.toFixed(2)}x) !`, 'success');
 
       return socket.emit('mines_game_over', {
         status: 'won', // special status for clearing the board
         payoutAmount,
         currentMultiplier,
         gridMines,
-        serverSeed: game.server_seed
+        serverSeed: game.server_seed,
+        currency: game.currency || 'HTG'
       });
     }
 
@@ -284,17 +337,19 @@ const handleMinesCashout = async (socket, payload) => {
     const payoutAmount = parseFloat(game.net_stake) * parseFloat(game.current_multiplier);
 
     // Update User Balance atomically
-    const userRes = await query(
-      'UPDATE users SET balance = balance + $1 WHERE id = $2 RETURNING balance',
-      [payoutAmount, userId]
-    );
-
-    if (userRes.rows.length === 0) {
-      await query('ROLLBACK');
-      return socket.emit('mines_error', 'Utilisateur introuvable.');
+    if (game.currency === 'KET') {
+      await query(
+        'UPDATE users SET ket_balance = ket_balance + $1 WHERE id = $2',
+        [payoutAmount, userId]
+      );
+    } else {
+      await query(
+        'UPDATE users SET balance = balance + $1 WHERE id = $2',
+        [payoutAmount, userId]
+      );
     }
 
-    const newBalance = parseFloat(userRes.rows[0].balance);
+    const balances = await getUserBalances(userId);
 
     // Update Game
     await query(
@@ -304,7 +359,7 @@ const handleMinesCashout = async (socket, payload) => {
 
     await query('COMMIT');
 
-    io.emit('balance_update', { userId, newBalance });
+    io.emit('balance_update', { userId, newBalance: balances.balance, newKetBalance: balances.ket_balance });
 
     const emailRes = await query('SELECT email FROM users WHERE id = $1', [userId]);
     const email = emailRes.rows[0]?.email || 'Joueur';
@@ -346,7 +401,8 @@ const handleMinesRecovery = async (socket, payload) => {
         serverSeedHash,
         currentMultiplier: game.current_multiplier,
         revealedTiles: game.revealed_tiles,
-        nextMultiplier: calculateNextMultiplier(game.mines_count, game.revealed_tiles.length + 1) * HOUSE_EDGE
+        nextMultiplier: calculateNextMultiplier(game.mines_count, game.revealed_tiles.length + 1) * HOUSE_EDGE,
+        currency: game.currency || 'HTG'
       });
     } else {
       socket.emit('mines_no_active_game');

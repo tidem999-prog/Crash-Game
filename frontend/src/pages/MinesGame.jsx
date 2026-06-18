@@ -103,10 +103,24 @@ const MinesGame = ({ socket, user, balance, setSelectedGame }) => {
     }
   }, [socket, user]);
 
+  useEffect(() => {
+    if (user) {
+      if (user.active_currency === 'KET') {
+        setBetAmount('1000');
+      } else {
+        setBetAmount('10');
+      }
+    }
+  }, [user?.active_currency]);
+
   const handleStart = () => {
     if (!user) return;
     const bet = parseFloat(betAmount);
-    if (isNaN(bet) || bet <= 0) return setError('Mise invalide');
+    const isKet = user?.active_currency === 'KET';
+    const minBet = isKet ? 1000 : 10;
+    const currencyLabel = isKet ? 'KET' : 'HTG';
+
+    if (isNaN(bet) || bet < minBet) return setError(`La mise minimale est de ${minBet} ${currencyLabel}.`);
     if (bet > balance) return setError('Solde insuffisant');
     
     socket.emit('mines_start', {
@@ -193,7 +207,7 @@ const MinesGame = ({ socket, user, balance, setSelectedGame }) => {
             {/* Bet Input */}
             <div className="space-y-2 mb-6">
               <div className="flex justify-between items-center">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Mise (HTG)</label>
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Mise ({user?.active_currency || 'HTG'})</label>
                 {gameState === 'idle' && (
                   <span className="text-[10px] text-cyan-500/70 font-semibold bg-cyan-500/10 px-2 py-0.5 rounded-full">Frais 10%</span>
                 )}
@@ -209,7 +223,7 @@ const MinesGame = ({ socket, user, balance, setSelectedGame }) => {
               </div>
               {gameState === 'idle' && (
                  <div className="grid grid-cols-4 gap-2 mt-2">
-                   {[50, 100, 200, 500].map(amt => (
+                   {(user?.active_currency === 'KET' ? [1000, 2000, 5000, 10000] : [50, 100, 200, 500]).map(amt => (
                      <button
                        key={amt}
                        onClick={() => setBetAmount(amt.toString())}
@@ -258,7 +272,7 @@ const MinesGame = ({ socket, user, balance, setSelectedGame }) => {
               >
                 <span className="text-sm">CASH OUT</span>
                 {revealedTiles.length > 0 && (
-                  <span className="text-xl tracking-wide">{currentPayout} HTG</span>
+                  <span className="text-xl tracking-wide">{currentPayout} {gameData?.currency || user?.active_currency || 'HTG'}</span>
                 )}
               </button>
             )}
@@ -293,7 +307,7 @@ const MinesGame = ({ socket, user, balance, setSelectedGame }) => {
             {gameState === 'cashed_out' && (
               <div className="animate-fade-in">
                 <p className="text-emerald-400 font-display font-black text-3xl drop-shadow-[0_0_10px_rgba(16,185,129,0.5)] mb-1">
-                  +{currentPayout} HTG
+                  +{currentPayout} {gameData?.currency || user?.active_currency || 'HTG'}
                 </p>
                 <p className="text-emerald-500/80 text-sm font-bold uppercase tracking-wider">Encaissé à {Number(currentMultiplier).toFixed(2)}x</p>
               </div>
@@ -301,7 +315,7 @@ const MinesGame = ({ socket, user, balance, setSelectedGame }) => {
              {gameState === 'won' && (
               <div className="animate-fade-in">
                 <p className="text-emerald-400 font-display font-black text-3xl drop-shadow-[0_0_10px_rgba(16,185,129,0.5)] mb-1">
-                  +{currentPayout} HTG
+                  +{currentPayout} {gameData?.currency || user?.active_currency || 'HTG'}
                 </p>
                 <p className="text-emerald-500/80 text-sm font-bold uppercase tracking-wider">Plateau nettoyé à {Number(currentMultiplier).toFixed(2)}x !</p>
               </div>
@@ -386,7 +400,7 @@ const MinesGame = ({ socket, user, balance, setSelectedGame }) => {
           <div className="block lg:hidden w-full max-w-md mt-6">
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mise (HTG)</label>
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mise ({user?.active_currency || 'HTG'})</label>
                 <input 
                   type="number" 
                   value={betAmount}
@@ -412,7 +426,7 @@ const MinesGame = ({ socket, user, balance, setSelectedGame }) => {
 
             {gameState === 'idle' && (
               <div className="grid grid-cols-4 gap-2 mb-4">
-                {[50, 100, 200, 500].map(amt => (
+                {(user?.active_currency === 'KET' ? [1000, 2000, 5000, 10000] : [50, 100, 200, 500]).map(amt => (
                   <button
                     key={amt}
                     onClick={() => setBetAmount(amt.toString())}
@@ -444,7 +458,7 @@ const MinesGame = ({ socket, user, balance, setSelectedGame }) => {
               >
                 <span className="text-xs">CASH OUT</span>
                 {revealedTiles.length > 0 && (
-                  <span className="text-lg tracking-wide">{currentPayout} HTG</span>
+                  <span className="text-lg tracking-wide">{currentPayout} {gameData?.currency || user?.active_currency || 'HTG'}</span>
                 )}
               </button>
             )}

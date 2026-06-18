@@ -5,7 +5,7 @@ import { useAuth, apiRequest } from '../context/AuthContext';
 import { 
   Plane, Landmark, ArrowUpRight, ArrowDownRight, History, 
   Wallet, ShieldAlert, Award, Clock, Coins, Upload, Send, HelpCircle, Gamepad2, ArrowLeft, Users, Gem,
-  Copy, Check, Flame
+  Copy, Check, Flame, User
 } from 'lucide-react';
 import KetmesyeGame from './KetmesyeGame';
 import DominoGame from './DominoGame';
@@ -14,9 +14,16 @@ import KothGame from './KothGame';
 import BloodmoneyGame from './BloodmoneyGame';
 
 export default function Dashboard() {
-  const { user, refreshBalance, updateBalance } = useAuth();
-  const [activeTab, setActiveTab] = useState('play'); // 'play', 'deposit', 'withdraw', 'history'
+  const { user, refreshBalance, updateBalance, updateProfile, convertKet } = useAuth();
+  const [activeTab, setActiveTab] = useState('play'); // 'play', 'deposit', 'withdraw', 'history', 'profile'
   const [selectedGame, setSelectedGame] = useState(null); // null, 'crash', 'ketmesye', 'domino', 'mines'
+  
+  // Profile & KET conversion states
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [convertAmount, setConvertAmount] = useState('');
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [convertLoading, setConvertLoading] = useState(false);
   
   // Game state
   const [socket, setSocket] = useState(null);
@@ -79,8 +86,21 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (user) {
-      userBalanceRef.current = user.balance;
+      userBalanceRef.current = user.active_currency === 'KET' ? user.ket_balance : user.balance;
       userIdRef.current = user.id;
+      setFirstName(user.first_name || '');
+      setLastName(user.last_name || '');
+      
+      // Adjust default betAmount when currency toggles
+      if (user.active_currency === 'KET') {
+        if (betAmount < 1000) {
+          setBetAmount(1000);
+        }
+      } else {
+        if (betAmount >= 1000) {
+          setBetAmount(10);
+        }
+      }
     }
   }, [user]);
 
@@ -140,8 +160,10 @@ export default function Dashboard() {
       if (bet && bet.status === 'placed' && bet.autoCashout && currentMultiplier >= bet.autoCashout) {
         const autoMult = bet.autoCashout;
         const payout = parseFloat((bet.amount * autoMult).toFixed(2));
-        const newBal = userBalanceRef.current + payout;
-        updateBalance(newBal);
+        const isKet = bet.currency === 'KET';
+        const currentBal = isKet ? (user?.ket_balance || 0) : (user?.balance || 0);
+        const newBal = currentBal + payout;
+        updateBalance(newBal, isKet ? 'KET' : 'HTG');
 
         const cashedOutBet = {
           ...bet,
@@ -152,7 +174,7 @@ export default function Dashboard() {
         setMyBet(cashedOutBet);
         localBetRef.current = cashedOutBet;
         setCashoutSuccess({ payout, multiplier: autoMult });
-        addNotification(`Gagné (Auto) ! +${payout} HTG (${autoMult.toFixed(2)}x)`, 'success');
+        addNotification(`Gagné (Auto) ! +${payout} ${isKet ? 'KET' : 'HTG'} (${autoMult.toFixed(2)}x)`, 'success');
       }
 
       // Check crash
@@ -606,27 +628,33 @@ export default function Dashboard() {
   const handlePlaceBet = () => {
     setBetError('');
     
-    if (betAmount < 10) {
-      addNotification('La mise minimale est de 10 HTG.', 'danger');
-      return setBetError('La mise minimale est de 10 HTG.');
+    const isKet = user?.active_currency === 'KET';
+    const minBet = isKet ? 1000 : 10;
+    const currentBalance = isKet ? (user?.ket_balance || 0) : (user?.balance || 0);
+    const currencyLabel = isKet ? 'KET' : 'HTG';
+
+    if (betAmount < minBet) {
+      addNotification(`La mise minimale est de ${minBet} ${currencyLabel}.`, 'danger');
+      return setBetError(`La mise minimale est de ${minBet} ${currencyLabel}.`);
     }
 
-    if (betAmount > user.balance) {
+    if (betAmount > currentBalance) {
       addNotification('Solde insuffisant sur votre compte.', 'danger');
       return setBetError('Solde insuffisant sur votre compte.');
     }
 
     if (isLocalSim) {
-      const newBal = user.balance - betAmount;
-      updateBalance(newBal);
+      const newBal = currentBalance - betAmount;
+      updateBalance(newBal, isKet ? 'KET' : 'HTG');
       const placedBet = {
         amount: parseFloat(betAmount),
+        currency: currencyLabel,
         autoCashout: autoCashout ? parseFloat(autoCashout) : null,
         status: 'placed'
       };
       setMyBet(placedBet);
       localBetRef.current = placedBet;
-      addNotification(`Pari de ${betAmount} HTG enregistré !`, 'success');
+      addNotification(`Pari de ${betAmount} ${currencyLabel} enregistré !`, 'success');
     } else {
       if (!socket) return;
       socket.emit('place_bet', {
@@ -646,8 +674,10 @@ export default function Dashboard() {
       
       const currentMultiplier = multiplier;
       const payout = parseFloat((bet.amount * currentMultiplier).toFixed(2));
-      const newBal = userBalanceRef.current + payout;
-      updateBalance(newBal);
+      const isKet = bet.currency === 'KET';
+      const currentBal = isKet ? (user?.ket_balance || 0) : (user?.balance || 0);
+      const newBal = currentBal + payout;
+      updateBalance(newBal, isKet ? 'KET' : 'HTG');
       
       const cashedOutBet = {
         ...bet,
@@ -756,6 +786,44 @@ export default function Dashboard() {
     }
   };
 
+  const handleUpdateProfile = async () => {
+    if (!firstName.trim() || !lastName.trim()) {
+      addNotification('Veuillez remplir tous les champs.', 'danger');
+      return;
+    }
+    setProfileLoading(true);
+    try {
+      await updateProfile(firstName.trim(), lastName.trim());
+      addNotification('Profil mis à jour avec succès.', 'success');
+    } catch (err) {
+      addNotification(err.message || 'Échec de la mise à jour.', 'danger');
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  const handleConvertKetSubmit = async () => {
+    const amt = parseFloat(convertAmount);
+    if (isNaN(amt) || amt < 200000) {
+      addNotification('Le montant de conversion minimal est de 200 000 KET.', 'danger');
+      return;
+    }
+    if (amt > (user?.ket_balance || 0)) {
+      addNotification('Solde KET insuffisant.', 'danger');
+      return;
+    }
+    setConvertLoading(true);
+    try {
+      await convertKet(amt);
+      addNotification('Conversion réussie ! Votre solde HTG a été crédité.', 'success');
+      setConvertAmount('');
+    } catch (err) {
+      addNotification(err.message || 'Échec de la conversion.', 'danger');
+    } finally {
+      setConvertLoading(false);
+    }
+  };
+
   return (
     <div className={`max-w-7xl mx-auto w-full px-4 py-6 sm:px-6 lg:px-8 grid grid-cols-1 ${selectedGame === 'ketmesye' && activeTab === 'play' ? '' : 'lg:grid-cols-4'} gap-6 relative`}>
       
@@ -829,6 +897,16 @@ export default function Dashboard() {
           >
             <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             <span>Parrainage</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('profile')}
+            className={`flex-1 py-2 px-1 sm:py-3 sm:px-4 rounded-xl text-[10px] sm:text-sm font-bold transition-all flex flex-col sm:flex-row items-center justify-center space-y-1 sm:space-y-0 sm:space-x-2 ${
+              activeTab === 'profile' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/10' : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <User className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span>Profil</span>
           </button>
         </div>
         )}
@@ -1080,9 +1158,13 @@ export default function Dashboard() {
               <div className="grid grid-cols-2 gap-3 bg-slate-950/40 p-3 rounded-2xl border border-slate-900 shadow-inner">
                 {/* Bet Amount Control */}
                 <div className="flex flex-col justify-center">
-                  <label className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Montant (Min: 10 HTG)</label>
+                  <label className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
+                    {user?.active_currency === 'KET' ? 'Montant (Min: 1000 KET)' : 'Montant (Min: 10 HTG)'}
+                  </label>
                   <div className="relative rounded-xl overflow-hidden flex border border-slate-800 bg-slate-900/40">
-                    <span className="bg-slate-900 px-2 sm:px-3 py-1 sm:py-2 text-slate-500 text-xs sm:text-sm font-bold flex items-center">HTG</span>
+                    <span className="bg-slate-900 px-2 sm:px-3 py-1 sm:py-2 text-slate-500 text-xs sm:text-sm font-bold flex items-center">
+                      {user?.active_currency || 'HTG'}
+                    </span>
                     <input
                       type="number"
                       value={betAmount}
@@ -1091,13 +1173,17 @@ export default function Dashboard() {
                         setBetAmount(val === '' ? '' : parseInt(val) || 0);
                       }}
                       onBlur={() => {
-                        if (!betAmount || betAmount < 10) setBetAmount(10);
+                        const minVal = user?.active_currency === 'KET' ? 1000 : 10;
+                        if (!betAmount || betAmount < minVal) setBetAmount(minVal);
                       }}
                       disabled={myBet && myBet.status === 'placed'}
                       className="block w-full px-2 py-1 sm:px-3 sm:py-2 bg-transparent text-slate-200 focus:outline-none text-xs sm:text-sm font-bold"
                     />
                     <button 
-                      onClick={() => setBetAmount(prev => Math.max(10, Math.round((parseInt(prev) || 0) / 2)))}
+                      onClick={() => {
+                        const minVal = user?.active_currency === 'KET' ? 1000 : 10;
+                        setBetAmount(prev => Math.max(minVal, Math.round((parseInt(prev) || 0) / 2)));
+                      }}
                       disabled={myBet && myBet.status === 'placed'}
                       className="bg-slate-900 hover:bg-slate-800 border-l border-slate-800 px-2 text-[10px] sm:text-xs font-bold text-slate-400"
                     >
@@ -1144,7 +1230,7 @@ export default function Dashboard() {
                   >
                     CASH OUT
                     <span className="block text-xs font-mono font-bold text-slate-900/70 mt-0.5">
-                      {(betAmount * multiplier).toFixed(2)} HTG
+                      {(betAmount * multiplier).toFixed(2)} {myBet.currency || user?.active_currency || 'HTG'}
                     </span>
                   </button>
                 ) : myBet && myBet.status === 'placed' ? (
@@ -1167,7 +1253,7 @@ export default function Dashboard() {
                   >
                     PLACER LE PARI
                     <span className="block text-xs font-mono font-normal text-indigo-200 mt-0.5">
-                      Mise: {betAmount} HTG {autoCashout ? `@ ${autoCashout}x` : ''}
+                      Mise: {betAmount} {user?.active_currency || 'HTG'} {autoCashout ? `@ ${autoCashout}x` : ''}
                     </span>
                   </button>
                 )}
@@ -1866,6 +1952,145 @@ export default function Dashboard() {
                   </table>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Tab content 6: PROFILE & KET TOKEN */}
+        {activeTab === 'profile' && (
+          <div className="space-y-6 animate-fade-in">
+            {/* Header info / summary card */}
+            <div className="p-6 bg-slate-900/40 border border-slate-800 rounded-3xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xl">
+              <div className="flex items-center space-x-4">
+                <div className="bg-indigo-600/10 p-4 rounded-2xl text-indigo-400 border border-indigo-500/15">
+                  <User className="h-8 w-8" />
+                </div>
+                <div>
+                  <h4 className="font-display font-black text-xl text-white">
+                    {user?.first_name || user?.last_name ? `${user.first_name} ${user.last_name}` : 'Utilisateur'}
+                  </h4>
+                  <p className="text-xs text-slate-400">{user?.email}</p>
+                  <p className="text-[10px] text-slate-500 mt-1 uppercase tracking-wider font-semibold">
+                    Devise Active: <span className={user?.active_currency === 'KET' ? 'text-pink-400' : 'text-emerald-400'}>{user?.active_currency || 'HTG'}</span>
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex flex-col items-start md:items-end md:text-right">
+                <span className="text-xs text-slate-400">Solde KET Accumulé</span>
+                <span className="font-mono font-black text-2xl text-pink-400 mt-0.5">
+                  {Math.round(user?.ket_balance || 0).toLocaleString('en-US')} KET
+                </span>
+                <span className="text-[10px] text-slate-500 mt-1">
+                  Équivaut à {((user?.ket_balance || 0) / 1000).toFixed(2)} HTG
+                </span>
+              </div>
+            </div>
+
+            {/* Profile update and KET conversion cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              
+              {/* Profile info form */}
+              <div className="glass-panel p-6 rounded-3xl space-y-4">
+                <h3 className="font-display font-black text-lg text-white flex items-center space-x-2">
+                  <User className="h-5 w-5 text-indigo-400" />
+                  <span>Informations du Profil</span>
+                </h3>
+                <p className="text-xs text-slate-400">Mettez à jour votre nom et prénom associés à votre compte.</p>
+                
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs text-slate-400 mb-1.5 font-bold uppercase tracking-wider">Prénom</label>
+                    <input
+                      type="text"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      placeholder="Prénom"
+                      className="block w-full px-4 py-3 bg-slate-950/70 border border-slate-800 rounded-xl text-sm text-slate-300 placeholder-slate-600 focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-xs text-slate-400 mb-1.5 font-bold uppercase tracking-wider">Nom</label>
+                    <input
+                      type="text"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      placeholder="Nom de famille"
+                      className="block w-full px-4 py-3 bg-slate-950/70 border border-slate-800 rounded-xl text-sm text-slate-300 placeholder-slate-600 focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                  
+                  <button
+                    onClick={handleUpdateProfile}
+                    disabled={profileLoading}
+                    className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold rounded-xl text-sm transition-all"
+                  >
+                    {profileLoading ? 'Mise à jour...' : 'Mettre à jour le Profil'}
+                  </button>
+                </div>
+              </div>
+
+              {/* KET Conversion Card */}
+              <div className="glass-panel p-6 rounded-3xl space-y-4">
+                <h3 className="font-display font-black text-lg text-white flex items-center space-x-2">
+                  <Coins className="h-5 w-5 text-pink-400" />
+                  <span>Convertir Jeton KET</span>
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Échangez vos KET accumulés contre du solde réel HTG. Le taux est de <strong className="text-white">1 000 KET = 1 HTG</strong>.
+                </p>
+                <div className="bg-slate-950/50 border border-slate-900 rounded-2xl p-4 space-y-2 text-xs text-slate-400">
+                  <div className="flex justify-between">
+                    <span>Mise minimale requise :</span>
+                    <span className="font-semibold text-slate-200">10 HTG (génère 10 000 KET)</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Conversion minimale :</span>
+                    <span className="font-semibold text-slate-200">200 000 KET (= 200 HTG)</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Retrait de KET :</span>
+                    <span className="font-semibold text-red-400 font-bold">Interdit (Conversion en HTG obligatoire)</span>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs text-slate-400 mb-1.5 font-bold uppercase tracking-wider">Montant en KET à convertir</label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        step="1000"
+                        min="200000"
+                        value={convertAmount}
+                        onChange={(e) => setConvertAmount(e.target.value)}
+                        placeholder="Ex: 200000"
+                        className="block w-full pl-4 pr-16 py-3 bg-slate-950/70 border border-slate-800 rounded-xl text-sm font-mono text-slate-300 placeholder-slate-600 focus:outline-none focus:border-pink-500"
+                      />
+                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-pink-400">KET</span>
+                    </div>
+                  </div>
+
+                  {convertAmount && !isNaN(parseFloat(convertAmount)) && (
+                    <div className="flex justify-between items-center text-xs bg-pink-500/10 border border-pink-500/15 p-3.5 rounded-xl animate-fade-in">
+                      <span className="text-pink-300 font-semibold">Montant converti estimé:</span>
+                      <span className="font-mono font-bold text-white">
+                        +{(parseFloat(convertAmount) / 1000).toFixed(2)} HTG
+                      </span>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={handleConvertKetSubmit}
+                    disabled={convertLoading || !convertAmount || parseFloat(convertAmount) < 200000 || parseFloat(convertAmount) > (user?.ket_balance || 0)}
+                    className="w-full py-3 bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 disabled:opacity-50 text-white font-bold rounded-xl text-sm transition-all shadow-md shadow-pink-600/10"
+                  >
+                    {convertLoading ? 'Conversion...' : 'Convertir en HTG'}
+                  </button>
+                </div>
+              </div>
+
             </div>
           </div>
         )}

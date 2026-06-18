@@ -43,6 +43,31 @@ const initializeDatabase = async () => {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code VARCHAR(100) UNIQUE;
     `);
     
+    // Ensure first_name, last_name, ket_balance, active_currency columns exist
+    await query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name VARCHAR(255);
+    `);
+    await query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name VARCHAR(255);
+    `);
+    await query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS ket_balance DECIMAL(15, 2) DEFAULT 0.00;
+    `);
+    await query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS active_currency VARCHAR(10) DEFAULT 'HTG';
+    `);
+
+    // Ensure currency column exists for bets, bloodmoney_bets, mines_games
+    await query(`
+      ALTER TABLE bets ADD COLUMN IF NOT EXISTS currency VARCHAR(10) DEFAULT 'HTG';
+    `);
+    await query(`
+      ALTER TABLE bloodmoney_bets ADD COLUMN IF NOT EXISTS currency VARCHAR(10) DEFAULT 'HTG';
+    `);
+    await query(`
+      ALTER TABLE mines_games ADD COLUMN IF NOT EXISTS currency VARCHAR(10) DEFAULT 'HTG';
+    `);
+    
     // Backfill referral codes for existing users
     const usersWithoutCode = await query("SELECT id FROM users WHERE referral_code IS NULL");
     for (const row of usersWithoutCode.rows) {

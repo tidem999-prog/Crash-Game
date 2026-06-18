@@ -173,16 +173,23 @@ const processCashout = async (userId, multiplier) => {
     await query('BEGIN');
     
     // 1. Credit the user's balance
-    await query(
-      "UPDATE users SET balance = balance + $1 WHERE id = $2",
-      [payout, userId]
-    );
+    if (bet.currency === 'KET') {
+      await query(
+        "UPDATE users SET ket_balance = ket_balance + $1 WHERE id = $2",
+        [payout, userId]
+      );
+    } else {
+      await query(
+        "UPDATE users SET balance = balance + $1 WHERE id = $2",
+        [payout, userId]
+      );
+    }
 
     // 2. Insert or update the bet row in DB
     await query(
-      `INSERT INTO bets (user_id, game_id, bet_amount, cashout_multiplier, payout_amount, is_won) 
-       VALUES ($1, $2, $3, $4, $5, true)`,
-      [userId, gameState.gameId, bet.betAmount, multiplier, payout]
+      `INSERT INTO bets (user_id, game_id, bet_amount, currency, cashout_multiplier, payout_amount, is_won) 
+       VALUES ($1, $2, $3, $4, $5, $6, true)`,
+      [userId, gameState.gameId, bet.betAmount, bet.currency || 'HTG', multiplier, payout]
     );
 
     await query('COMMIT');
@@ -194,7 +201,10 @@ const processCashout = async (userId, multiplier) => {
     
     activePlayersStore.cashoutPlayer(userId, 'crash', payout, multiplier);
 
-    console.log(`Game: User ${bet.email} cashed out successfully: +${payout} HTG`);
+    console.log(`Game: User ${bet.email} cashed out successfully: +${payout} ${bet.currency || 'HTG'}`);
+
+    // Fetch updated balances
+    const balances = await getUserBalances(userId);
 
     // Notify user of cashout success
     if (io) {
@@ -203,14 +213,25 @@ const processCashout = async (userId, multiplier) => {
         io.to(userSocketId).emit('cashout_success', {
           payout,
           multiplier,
-          newBalance: await getUserBalance(userId)
+          newBalance: bet.currency === 'KET' ? balances.ket_balance : balances.balance,
+          newKetBalance: balances.ket_balance,
+          currency: bet.currency || 'HTG'
         });
       }
       io.emit('player_cashed_out', {
         email: bet.email.split('@')[0],
         multiplier,
-        payout
+        payout,
+        currency: bet.currency || 'HTG'
       });
+      
+      // Emit global balance update
+      io.emit('balance_update', {
+        userId,
+        newBalance: balances.balance,
+        newKetBalance: balances.ket_balance
+      });
+
       // Update global active bets list
       broadcastState();
     }
@@ -241,9 +262,9 @@ const handleCrashPhase = async () => {
       if (!bet.cashedOut) {
         // Save lost bet to DB
         await query(
-          `INSERT INTO bets (user_id, game_id, bet_amount, cashout_multiplier, payout_amount, is_won) 
-           VALUES ($1, $2, $3, null, 0.00, false)`,
-          [userId, gameState.gameId, bet.betAmount]
+          `INSERT INTO bets (user_id, game_id, bet_amount, currency, cashout_multiplier, payout_amount, is_won) 
+           VALUES ($1, $2, $3, $4, null, 0.00, false)`,
+          [userId, gameState.gameId, bet.betAmount, bet.currency || 'HTG']
         );
         activePlayersStore.losePlayer(userId, 'crash', 'crashed');
       }
@@ -270,9 +291,16 @@ const handleCrashPhase = async () => {
   }
 };
 
-const getUserBalance = async (userId) => {
-  const res = await query('SELECT balance FROM users WHERE id = $1', [userId]);
-  return res.rows.length > 0 ? parseFloat(res.rows[0].balance) : 0;
+const getUserBalances = async (userId) => {
+  const res = await query('SELECT balance, ket_balance, active_currency FROM users WHERE id = $1', [userId]);
+  if (res.rows.length > 0) {
+    return {
+      balance: parseFloat(res.rows[0].balance),
+      ket_balance: parseFloat(res.rows[0].ket_balance || 0),
+      activeCurrency: res.rows[0].active_currency || 'HTG'
+    };
+  }
+  return { balance: 0, ket_balance: 0, activeCurrency: 'HTG' };
 };
 
 // Initialize Socket.io listeners
@@ -304,8 +332,8 @@ const initGameEngine = (socketIoInstance) => {
         return socket.emit('bet_error', { message: 'Les paris ne sont ouverts que pendant la phase de préparation.' });
       }
 
-      if (!userId || !betAmount || betAmount < 10) {
-        return socket.emit('bet_error', { message: 'La mise minimale est de 10 HTG.' });
+      if (!userId || !betAmount || betAmount <= 0) {
+        return socket.emit('bet_error', { message: 'Mise invalide.' });
       }
 
       if (activeBets[userId]) {
@@ -313,8 +341,8 @@ const initGameEngine = (socketIoInstance) => {
       }
 
       try {
-        // Double-check balance on DB
-        const userRes = await query('SELECT balance, is_suspended FROM users WHERE id = $1', [userId]);
+        // Double-check balance, active currency, and KET balance on DB
+        const userRes = await query('SELECT balance, ket_balance, active_currency, is_suspended FROM users WHERE id = $1', [userId]);
         if (userRes.rows.length === 0) {
           return socket.emit('bet_error', { message: 'Utilisateur introuvable.' });
         }
@@ -324,20 +352,44 @@ const initGameEngine = (socketIoInstance) => {
           return socket.emit('bet_error', { message: 'Votre compte est suspendu. Vous ne pouvez pas jouer.' });
         }
 
-        const currentBalance = parseFloat(user.balance);
-        if (currentBalance < betAmount) {
-          return socket.emit('bet_error', { message: 'Solde insuffisant pour placer ce pari.' });
-        }
+        const activeCurrency = user.active_currency || 'HTG';
+        let newBalance = parseFloat(user.balance);
+        let newKetBalance = parseFloat(user.ket_balance || 0);
 
-        // Deduct balance
-        await query('UPDATE users SET balance = balance - $1 WHERE id = $2', [betAmount, userId]);
-        const newBalance = currentBalance - betAmount;
+        if (activeCurrency === 'KET') {
+          if (betAmount < 1000) {
+            return socket.emit('bet_error', { message: 'La mise minimale en KET est de 1 000 KET.' });
+          }
+          if (newKetBalance < betAmount) {
+            return socket.emit('bet_error', { message: 'Solde de KET insuffisant pour placer ce pari.' });
+          }
+          // Deduct KET balance
+          await query('UPDATE users SET ket_balance = ket_balance - $1 WHERE id = $2', [betAmount, userId]);
+          newKetBalance -= betAmount;
+        } else {
+          // HTG currency
+          if (betAmount < 10) {
+            return socket.emit('bet_error', { message: 'La mise minimale est de 10 HTG.' });
+          }
+          if (newBalance < betAmount) {
+            return socket.emit('bet_error', { message: 'Solde insuffisant pour placer ce pari.' });
+          }
+          // Deduct HTG and earn KET (10 HTG = 10,000 KET => 1 HTG = 1,000 KET)
+          const earnedKet = betAmount * 1000;
+          await query(
+            'UPDATE users SET balance = balance - $1, ket_balance = ket_balance + $2 WHERE id = $3',
+            [betAmount, earnedKet, userId]
+          );
+          newBalance -= betAmount;
+          newKetBalance += earnedKet;
+        }
 
         // Register in memory
         activeBets[userId] = {
           userId,
           email,
           betAmount: parseFloat(betAmount),
+          currency: activeCurrency,
           autoCashout: autoCashout ? parseFloat(autoCashout) : null,
           cashedOut: false,
           processingCashout: false,
@@ -346,14 +398,23 @@ const initGameEngine = (socketIoInstance) => {
           socketId: socket.id
         };
 
-        console.log(`Game: Bet placed by ${email}: ${betAmount} HTG (AutoCashOut: ${autoCashout || 'None'})`);
+        console.log(`Game: Bet placed by ${email}: ${betAmount} ${activeCurrency} (AutoCashOut: ${autoCashout || 'None'})`);
         
         activePlayersStore.addPlayer(userId, email, 'crash', betAmount);
 
         socket.emit('bet_success', {
           betAmount,
           autoCashout,
-          newBalance
+          newBalance: activeCurrency === 'KET' ? newKetBalance : newBalance,
+          newKetBalance,
+          currency: activeCurrency
+        });
+
+        // Emit global balance update
+        io.emit('balance_update', {
+          userId,
+          newBalance,
+          newKetBalance
         });
 
         // Broadcast updated bets list

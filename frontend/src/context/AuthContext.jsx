@@ -108,18 +108,71 @@ export const AuthProvider = ({ children }) => {
     if (!user) return;
     try {
       const data = await apiRequest('/api/auth/me');
-      setUser(prev => ({ ...prev, balance: data.user.balance }));
+      setUser(data.user);
     } catch (err) {
       console.error('Failed to refresh balance:', err);
     }
   };
 
-  const updateBalance = (newBalance) => {
-    setUser(prev => prev ? { ...prev, balance: parseFloat(newBalance) } : null);
+  const updateBalance = (newBalance, currency = 'HTG') => {
+    setUser(prev => {
+      if (!prev) return null;
+      if (currency === 'KET') {
+        return { ...prev, ket_balance: parseFloat(newBalance) };
+      } else {
+        return { ...prev, balance: parseFloat(newBalance) };
+      }
+    });
+  };
+
+  const updateProfile = async (firstName, lastName) => {
+    try {
+      const data = await apiRequest('/api/auth/profile', {
+        method: 'PUT',
+        body: { firstName, lastName }
+      });
+      setUser(prev => prev ? { ...prev, first_name: firstName, last_name: lastName } : null);
+      return data;
+    } catch (err) {
+      console.error('Failed to update profile:', err);
+      throw err;
+    }
+  };
+
+  const changeCurrency = async (currency) => {
+    try {
+      const data = await apiRequest('/api/auth/active-currency', {
+        method: 'PUT',
+        body: { currency }
+      });
+      setUser(prev => prev ? { ...prev, active_currency: currency } : null);
+      return data;
+    } catch (err) {
+      console.error('Failed to update active currency:', err);
+      throw err;
+    }
+  };
+
+  const convertKet = async (amount) => {
+    try {
+      const data = await apiRequest('/api/auth/convert-ket', {
+        method: 'POST',
+        body: { amount }
+      });
+      setUser(prev => prev ? { 
+        ...prev, 
+        balance: data.newBalance, 
+        ket_balance: data.newKetBalance 
+      } : null);
+      return data;
+    } catch (err) {
+      console.error('Failed to convert KET:', err);
+      throw err;
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, error, login, signup, logout, refreshBalance, updateBalance }}>
+    <AuthContext.Provider value={{ user, loading, error, login, signup, logout, refreshBalance, updateBalance, updateProfile, changeCurrency, convertKet }}>
       {children}
     </AuthContext.Provider>
   );

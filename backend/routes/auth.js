@@ -142,6 +142,10 @@ router.post('/login', async (req, res) => {
         email: user.email,
         role: user.role,
         balance: parseFloat(user.balance),
+        ket_balance: parseFloat(user.ket_balance || 0),
+        active_currency: user.active_currency || 'HTG',
+        first_name: user.first_name || '',
+        last_name: user.last_name || '',
         referral_code: user.referral_code
       }
     });
@@ -287,7 +291,10 @@ router.post('/reset-password', async (req, res) => {
 // Get Current User Profile
 router.get('/me', authenticateToken, async (req, res) => {
   try {
-    const result = await query('SELECT id, email, role, balance, is_suspended, referral_code FROM users WHERE id = $1', [req.user.id]);
+    const result = await query(
+      'SELECT id, email, role, balance, ket_balance, active_currency, first_name, last_name, is_suspended, referral_code FROM users WHERE id = $1',
+      [req.user.id]
+    );
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Utilisateur introuvable.' });
     }
@@ -304,6 +311,10 @@ router.get('/me', authenticateToken, async (req, res) => {
         email: user.email,
         role: user.role,
         balance: parseFloat(user.balance),
+        ket_balance: parseFloat(user.ket_balance || 0),
+        active_currency: user.active_currency || 'HTG',
+        first_name: user.first_name || '',
+        last_name: user.last_name || '',
         referral_code: user.referral_code
       }
     });
@@ -311,6 +322,107 @@ router.get('/me', authenticateToken, async (req, res) => {
   } catch (err) {
     console.error('Get profile error:', err);
     res.status(500).json({ error: 'Erreur lors de la récupération du profil.' });
+  }
+});
+
+// Update User Profile
+router.put('/profile', authenticateToken, async (req, res) => {
+  const { firstName, lastName } = req.body;
+  try {
+    const result = await query(
+      "UPDATE users SET first_name = $1, last_name = $2 WHERE id = $3 RETURNING first_name, last_name",
+      [firstName, lastName, req.user.id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Utilisateur introuvable.' });
+    }
+    res.json({
+      message: 'Profil mis à jour avec succès.',
+      profile: {
+        first_name: result.rows[0].first_name,
+        last_name: result.rows[0].last_name
+      }
+    });
+  } catch (err) {
+    console.error('Update profile error:', err);
+    res.status(500).json({ error: 'Erreur lors de la mise à jour du profil.' });
+  }
+});
+
+// Update Active Currency
+router.put('/active-currency', authenticateToken, async (req, res) => {
+  const { currency } = req.body;
+  if (currency !== 'HTG' && currency !== 'KET') {
+    return res.status(400).json({ error: 'Devise invalide.' });
+  }
+  try {
+    const result = await query(
+      "UPDATE users SET active_currency = $1 WHERE id = $2 RETURNING active_currency",
+      [currency, req.user.id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Utilisateur introuvable.' });
+    }
+    res.json({
+      message: 'Devise active mise à jour.',
+      active_currency: result.rows[0].active_currency
+    });
+  } catch (err) {
+    console.error('Update active currency error:', err);
+    res.status(500).json({ error: 'Erreur lors du changement de devise.' });
+  }
+});
+
+// Convert KET to HTG
+router.post('/convert-ket', authenticateToken, async (req, res) => {
+  const { amount } = req.body; // amount is in KET
+  const parsedAmount = parseFloat(amount);
+  if (isNaN(parsedAmount) || parsedAmount < 200000) {
+    return res.status(400).json({ error: 'Le montant minimum pour la conversion est de 200 000 KET.' });
+  }
+
+  try {
+    await query('BEGIN');
+    
+    const userRes = await query('SELECT ket_balance, balance FROM users WHERE id = $1 FOR UPDATE', [req.user.id]);
+    if (userRes.rows.length === 0) {
+      await query('ROLLBACK');
+      return res.status(404).json({ error: 'Utilisateur introuvable.' });
+    }
+
+    const user = userRes.rows[0];
+    const currentKet = parseFloat(user.ket_balance || 0);
+    if (currentKet < parsedAmount) {
+      await query('ROLLBACK');
+      return res.status(400).json({ error: 'Solde de KET insuffisant.' });
+    }
+
+    const htgCredit = parsedAmount / 1000;
+    
+    // Update balances
+    const updateRes = await query(
+      "UPDATE users SET ket_balance = ket_balance - $1, balance = balance + $2 WHERE id = $3 RETURNING balance, ket_balance",
+      [parsedAmount, htgCredit, req.user.id]
+    );
+
+    // Record conversion audit log
+    await query(
+      `INSERT INTO audit_logs (user_id, amount, action) VALUES ($1, $2, $3)`,
+      [req.user.id, htgCredit, `CONVERT_KET_TO_HTG: -${parsedAmount} KET -> +${htgCredit} HTG`]
+    );
+
+    await query('COMMIT');
+
+    res.json({
+      message: 'Conversion réussie !',
+      newBalance: parseFloat(updateRes.rows[0].balance),
+      newKetBalance: parseFloat(updateRes.rows[0].ket_balance)
+    });
+
+  } catch (err) {
+    await query('ROLLBACK').catch(() => {});
+    console.error('Convert KET error:', err);
+    res.status(500).json({ error: 'Erreur lors de la conversion.' });
   }
 });
 

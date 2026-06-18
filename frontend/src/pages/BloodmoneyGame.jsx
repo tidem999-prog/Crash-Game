@@ -118,7 +118,7 @@ export default function BloodmoneyGame({ socket, setSelectedGame }) {
         route: selectedRoute,
         status: 'placed'
       });
-      updateBalance(data.newBalance);
+      updateBalance(data.newBalance, user?.active_currency || 'HTG');
       setBetError('');
     });
 
@@ -126,14 +126,14 @@ export default function BloodmoneyGame({ socket, setSelectedGame }) {
       if (data.status === 'won') {
         setMyBet(prev => prev ? { ...prev, status: 'cashed_out', payout: data.payout, multiplier: data.multiplier } : null);
         setCashoutResult({ payout: data.payout, multiplier: data.multiplier });
-        updateBalance(data.newBalance);
+        updateBalance(data.newBalance, user?.active_currency || 'HTG');
       } else if (data.status === 'lost') {
         setMyBet(prev => prev ? { ...prev, status: 'lost' } : null);
         setBetError(data.message || 'Vous avez été arrêté.');
       } else if (data.status === 'refunded') {
         setMyBet(prev => prev ? { ...prev, status: 'refunded', refundAmount: data.refundAmount } : null);
-        updateBalance(data.newBalance);
-        setBetError(`Remboursement partiel (Tunnel) : +${data.refundAmount} HTG`);
+        updateBalance(data.newBalance, user?.active_currency || 'HTG');
+        setBetError(`Remboursement partiel (Tunnel) : +${data.refundAmount} ${user?.active_currency || 'HTG'}`);
       }
     });
 
@@ -166,11 +166,26 @@ export default function BloodmoneyGame({ socket, setSelectedGame }) {
     };
   }, [socket, selectedRoute, myBet]);
 
+  useEffect(() => {
+    if (user) {
+      if (user.active_currency === 'KET') {
+        setBetAmount(1000);
+      } else {
+        setBetAmount(10);
+      }
+    }
+  }, [user?.active_currency]);
+
   // 2. Betting Handlers
   const handlePlaceBet = () => {
     if (!socket || !socket.connected) return;
-    if (betAmount < 10) return setBetError('La mise minimale est de 10 HTG.');
-    if (betAmount > user.balance) return setBetError('Solde insuffisant.');
+    const isKet = user?.active_currency === 'KET';
+    const minBet = isKet ? 1000 : 10;
+    const currencyLabel = isKet ? 'KET' : 'HTG';
+    const currentBalance = isKet ? (user?.ket_balance || 0) : (user?.balance || 0);
+
+    if (betAmount < minBet) return setBetError(`La mise minimale est de ${minBet} ${currencyLabel}.`);
+    if (betAmount > currentBalance) return setBetError('Solde insuffisant.');
 
     socket.emit('bet:place', {
       userId: user.id,
@@ -496,7 +511,7 @@ export default function BloodmoneyGame({ socket, setSelectedGame }) {
               <Award className="h-8 w-8 animate-bounce" />
             </div>
             <h3 className="font-display font-black text-3xl text-emerald-300">RÉUSSI !</h3>
-            <p className="text-white text-lg font-bold">+{cashoutResult.payout} HTG</p>
+            <p className="text-white text-lg font-bold">+{cashoutResult.payout} {user?.active_currency || 'HTG'}</p>
             <p className="text-emerald-450 text-xs mt-1">Échappé à {cashoutResult.multiplier}x</p>
           </div>
         )}
@@ -535,18 +550,28 @@ export default function BloodmoneyGame({ socket, setSelectedGame }) {
         <div className="grid grid-cols-2 gap-3 bg-slate-950/90 p-3 rounded-2xl border border-slate-800 shadow-inner">
           {/* Bet input */}
           <div className="flex flex-col justify-center">
-            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Mise (HTG)</label>
+            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">
+              Mise ({user?.active_currency || 'HTG'})
+            </label>
             <div className="relative rounded-xl overflow-hidden flex border border-slate-800 bg-slate-900/40">
-              <span className="bg-slate-900 px-2 sm:px-3 py-2 text-slate-500 text-xs font-bold flex items-center">HTG</span>
+              <span className="bg-slate-900 px-2 sm:px-3 py-2 text-slate-500 text-xs font-bold flex items-center">
+                {user?.active_currency || 'HTG'}
+              </span>
               <input
                 type="number"
                 value={betAmount}
-                onChange={(e) => setBetAmount(Math.max(10, parseInt(e.target.value) || 0))}
+                onChange={(e) => {
+                  const limit = user?.active_currency === 'KET' ? 1000 : 10;
+                  setBetAmount(Math.max(limit, parseInt(e.target.value) || 0));
+                }}
                 disabled={myBet && myBet.status === 'placed'}
                 className="block w-full px-2 py-1 sm:px-3 sm:py-2 bg-transparent text-slate-200 focus:outline-none text-xs sm:text-sm font-bold"
               />
               <button 
-                onClick={() => setBetAmount(prev => Math.max(10, Math.round((parseInt(prev) || 0) / 2)))}
+                onClick={() => {
+                  const limit = user?.active_currency === 'KET' ? 1000 : 10;
+                  setBetAmount(prev => Math.max(limit, Math.round((parseInt(prev) || 0) / 2)));
+                }}
                 disabled={myBet && myBet.status === 'placed'}
                 className="bg-slate-900 hover:bg-slate-800 border-l border-slate-800 px-1.5 text-[10px] font-bold text-slate-400 cursor-pointer"
               >
@@ -616,7 +641,7 @@ export default function BloodmoneyGame({ socket, setSelectedGame }) {
             >
               ÉCHAPPER À LA POLICE (CASH OUT)
               <span className="block text-xs font-mono font-bold text-slate-900/70 mt-0.5">
-                {estimatedPayout} HTG ({routeMult.toFixed(2)}x)
+                {estimatedPayout} {user?.active_currency || 'HTG'} ({routeMult.toFixed(2)}x)
               </span>
             </button>
           ) : myBet && myBet.status === 'placed' ? (
@@ -637,7 +662,7 @@ export default function BloodmoneyGame({ socket, setSelectedGame }) {
             >
               COMMENCER LA COURSE (PLACER LE PARI)
               <span className="block text-xs font-mono font-normal text-indigo-200 mt-0.5">
-                Mise: {betAmount} HTG | Route: {selectedRoute.toUpperCase()} {autoCashout ? `@ ${autoCashout}x` : ''}
+                Mise: {betAmount} {user?.active_currency || 'HTG'} | Route: {selectedRoute.toUpperCase()} {autoCashout ? `@ ${autoCashout}x` : ''}
               </span>
             </button>
           )}

@@ -21,15 +21,22 @@ let runningInterval = null;
 let countdownInterval = null;
 let roundStartTime = null;
 
-// Provably Fair generator
+// Provably Fair generator with 20% House Edge
 const generateCrashPoint = (serverSeed, clientSeed, nonce) => {
   const combined = `${serverSeed}-${clientSeed}-${nonce}`;
   const hash = crypto.createHmac('sha256', serverSeed).update(combined).digest('hex');
   const h = parseInt(hash.slice(0, 8), 16);
   const e = Math.pow(2, 32);
-  if (h % 33 === 0) return 1.00; // 3% house edge instant crash
-  const point = Math.floor((100 * e - h) / (e - h)) / 100;
-  return Math.max(1.00, point);
+  
+  // Convert hash to a uniform random value between 0 and 1
+  const random = h / e;
+  
+  // Apply 20% house edge: multiplier = 0.80 / (1 - random)
+  const point = 0.80 / (1 - random);
+  
+  // Format to 2 decimal places and cap at 100.00 (similar to Crash)
+  const finalPoint = Math.min(parseFloat(point.toFixed(2)), 100.00);
+  return Math.max(1.00, finalPoint);
 };
 
 const getRecentHistory = async () => {

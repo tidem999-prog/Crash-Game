@@ -177,8 +177,8 @@ const Navbar = () => {
             <div className="bg-gradient-to-tr from-yellow-500 to-indigo-600 p-1.5 sm:p-2 rounded-lg text-white transform group-hover:scale-105 transition-all duration-300 shadow-md shadow-indigo-500/20">
               <Gamepad2 className="h-4 w-4 sm:h-5 sm:w-5" />
             </div>
-            <span className="font-display font-black text-sm sm:text-base tracking-tight bg-gradient-to-r from-white via-slate-200 to-indigo-400 bg-clip-text text-transparent uppercase">
-              Ket<span className="text-yellow-500">arena</span>
+            <span className="font-display font-black text-sm sm:text-base tracking-tight uppercase">
+              <span className="text-white">KET</span><span className="text-[#c8ff00]">ARENA</span>
             </span>
           </Link>
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import io from 'socket.io-client';
 import { useAuth, apiRequest } from '../context/AuthContext';
 import { 
@@ -15,8 +15,17 @@ import BloodmoneyGame from './BloodmoneyGame';
 
 export default function Dashboard() {
   const { user, refreshBalance, updateBalance, updateProfile, convertKet } = useAuth();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState('play'); // 'play', 'deposit', 'withdraw', 'history', 'profile'
   const [selectedGame, setSelectedGame] = useState(null); // null, 'crash', 'ketmesye', 'domino', 'mines'
+  
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tab = params.get('tab');
+    if (tab) {
+      setActiveTab(tab);
+    }
+  }, [location]);
   
   // Profile & KET conversion states
   const [firstName, setFirstName] = useState('');

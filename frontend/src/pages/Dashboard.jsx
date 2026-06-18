@@ -380,6 +380,7 @@ export default function Dashboard() {
       
       const w = canvas.width;
       const h = canvas.height;
+      const isMobile = w < 640;
       
       // Draw grid
       ctx.strokeStyle = 'rgba(30, 41, 59, 0.5)';
@@ -422,13 +423,13 @@ export default function Dashboard() {
         ctx.stroke();
 
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 36px Outfit';
+        ctx.font = isMobile ? 'bold 26px Outfit' : 'bold 36px Outfit';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(`${countdown}s`, w / 2, h / 2 - 30);
 
         ctx.fillStyle = '#94a3b8';
-        ctx.font = '500 12px Inter';
+        ctx.font = isMobile ? '500 10px Inter' : '500 12px Inter';
         ctx.fillText('PRÉPARATION DU VOL', w / 2, h / 2 + 15);
         ctx.fillText('MISEZ MAINTENANT', w / 2, h / 2 + 35);
         
@@ -515,7 +516,7 @@ export default function Dashboard() {
 
         // Draw big multiplier text in center
         ctx.fillStyle = '#ffffff';
-        ctx.font = '900 64px Outfit';
+        ctx.font = isMobile ? '900 36px Outfit' : '900 64px Outfit';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         
@@ -580,13 +581,13 @@ export default function Dashboard() {
 
         // Big red crash notice
         ctx.fillStyle = '#ef4444';
-        ctx.font = '900 48px Outfit';
+        ctx.font = isMobile ? '900 32px Outfit' : '900 48px Outfit';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText('CRASHED', w / 2, h / 2 - 40);
         
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 36px Outfit';
+        ctx.font = isMobile ? 'bold 24px Outfit' : 'bold 36px Outfit';
         ctx.fillText(`@ ${multiplier.toFixed(2)}x`, w / 2, h / 2 + 10);
       }
 

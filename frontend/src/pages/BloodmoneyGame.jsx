@@ -471,8 +471,8 @@ export default function BloodmoneyGame({ socket, setSelectedGame }) {
 
         {/* Big live multiplier text display */}
         {gameState === 'running' && (
-          <div className="absolute top-28 left-0 right-0 text-center z-20">
-            <h1 className="text-6xl font-black font-display tracking-tight text-white drop-shadow-md select-none animate-pulse-slow">
+          <div className="absolute top-20 sm:top-28 left-0 right-0 text-center z-20">
+            <h1 className="text-3xl sm:text-5xl md:text-6xl font-black font-display tracking-tight text-white drop-shadow-md select-none animate-pulse-slow">
               {multiplier.toFixed(2)}x
             </h1>
           </div>

@@ -469,29 +469,6 @@ export default function BloodmoneyGame({ socket, setSelectedGame }) {
           ))}
         </div>
 
-        {/* Danger Bar (Police Approach) */}
-        {gameState === 'running' && (
-          <div className="absolute top-14 left-3 right-3 z-20 bg-slate-900/60 backdrop-blur-md p-2 rounded-xl border border-slate-800 flex items-center justify-between">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Alerte Police</span>
-            <div className="flex-1 mx-3 h-2 bg-slate-950 rounded-full overflow-hidden relative border border-slate-800">
-              <div 
-                className={`h-full transition-all duration-300 rounded-full ${
-                  animationStateRef.current.policeProgress > 0.8 ? 'bg-red-500 animate-pulse' :
-                  animationStateRef.current.policeProgress > 0.5 ? 'bg-amber-500' : 'bg-emerald-500'
-                }`}
-                style={{ width: `${animationStateRef.current.policeProgress * 100}%` }}
-              ></div>
-            </div>
-            <span className={`text-[10px] font-black ${
-              animationStateRef.current.policeProgress > 0.8 ? 'text-red-500 animate-ping' :
-              animationStateRef.current.policeProgress > 0.5 ? 'text-amber-500' : 'text-emerald-500'
-            }`}>
-              {animationStateRef.current.policeProgress > 0.8 ? 'CRITIQUE' :
-               animationStateRef.current.policeProgress > 0.5 ? 'PROCHE' : 'SÉCURISÉ'}
-            </span>
-          </div>
-        )}
-
         {/* Big live multiplier text display */}
         {gameState === 'running' && (
           <div className="absolute top-28 left-0 right-0 text-center z-20">
@@ -531,31 +508,54 @@ export default function BloodmoneyGame({ socket, setSelectedGame }) {
 
       {/* Control panel below visual screen container */}
       <div className="glass-panel p-4 sm:p-5 rounded-3xl space-y-4">
+        {/* Danger Bar (Police Approach) - Placed below canvas to not overlap runner & car */}
+        {gameState === 'running' && (
+          <div className="bg-slate-900/60 p-2.5 rounded-xl border border-slate-800 flex items-center justify-between animate-fade-in">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Alerte Police</span>
+            <div className="flex-1 mx-3 h-2 bg-slate-950 rounded-full overflow-hidden relative border border-slate-800">
+              <div 
+                className={`h-full transition-all duration-300 rounded-full ${
+                  animationStateRef.current.policeProgress > 0.8 ? 'bg-red-500 animate-pulse' :
+                  animationStateRef.current.policeProgress > 0.5 ? 'bg-amber-500' : 'bg-emerald-500'
+                }`}
+                style={{ width: `${animationStateRef.current.policeProgress * 100}%` }}
+              ></div>
+            </div>
+            <span className={`text-[10px] font-black ${
+              animationStateRef.current.policeProgress > 0.8 ? 'text-red-500 animate-ping' :
+              animationStateRef.current.policeProgress > 0.5 ? 'text-amber-500' : 'text-emerald-500'
+            }`}>
+              {animationStateRef.current.policeProgress > 0.8 ? 'CRITIQUE' :
+               animationStateRef.current.policeProgress > 0.5 ? 'PROCHE' : 'SÉCURISÉ'}
+            </span>
+          </div>
+        )}
+
         {/* HUD input bar */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-slate-950/90 p-3 rounded-2xl border border-slate-800 shadow-inner">
+        <div className="grid grid-cols-2 gap-3 bg-slate-950/90 p-3 rounded-2xl border border-slate-800 shadow-inner">
           {/* Bet input */}
           <div className="flex flex-col justify-center">
             <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Mise (HTG)</label>
             <div className="relative rounded-xl overflow-hidden flex border border-slate-800 bg-slate-900/40">
-              <span className="bg-slate-900 px-3 py-2 text-slate-500 text-xs font-bold flex items-center">HTG</span>
+              <span className="bg-slate-900 px-2 sm:px-3 py-2 text-slate-500 text-xs font-bold flex items-center">HTG</span>
               <input
                 type="number"
                 value={betAmount}
                 onChange={(e) => setBetAmount(Math.max(10, parseInt(e.target.value) || 0))}
                 disabled={myBet && myBet.status === 'placed'}
-                className="block w-full px-3 py-2 bg-transparent text-slate-200 focus:outline-none text-sm font-bold"
+                className="block w-full px-2 py-1 sm:px-3 sm:py-2 bg-transparent text-slate-200 focus:outline-none text-xs sm:text-sm font-bold"
               />
               <button 
                 onClick={() => setBetAmount(prev => Math.max(10, Math.round((parseInt(prev) || 0) / 2)))}
                 disabled={myBet && myBet.status === 'placed'}
-                className="bg-slate-900 hover:bg-slate-800 border-l border-slate-800 px-2 text-xs font-bold text-slate-400 cursor-pointer"
+                className="bg-slate-900 hover:bg-slate-800 border-l border-slate-800 px-1.5 text-[10px] font-bold text-slate-400 cursor-pointer"
               >
                 /2
               </button>
               <button 
                 onClick={() => setBetAmount(prev => (parseInt(prev) || 0) * 2)}
                 disabled={myBet && myBet.status === 'placed'}
-                className="bg-slate-900 hover:bg-slate-800 border-l border-slate-800 px-2 text-xs font-bold text-slate-400 cursor-pointer"
+                className="bg-slate-900 hover:bg-slate-800 border-l border-slate-800 px-1.5 text-[10px] font-bold text-slate-400 cursor-pointer"
               >
                 x2
               </button>
@@ -573,7 +573,7 @@ export default function BloodmoneyGame({ socket, setSelectedGame }) {
                 value={autoCashout}
                 onChange={(e) => setAutoCashout(e.target.value)}
                 disabled={myBet && myBet.status === 'placed'}
-                className="block w-full px-4 py-2 bg-transparent text-slate-200 focus:outline-none text-sm font-bold"
+                className="block w-full px-3 py-2 bg-transparent text-slate-200 focus:outline-none text-xs sm:text-sm font-bold"
               />
               <span className="bg-slate-900 px-3 py-2 text-slate-500 text-xs font-bold flex items-center">x</span>
             </div>
@@ -583,25 +583,25 @@ export default function BloodmoneyGame({ socket, setSelectedGame }) {
         {/* Strategic Route Selection Bar */}
         <div>
           <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Choisir votre Route Strategique</label>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
             {[
               { id: 'alley', name: 'Alley', desc: 'Risque moyen, gain standard (1.0x)' },
-              { id: 'rooftop', name: 'Rooftop', desc: 'Risque élevé, gain accéléré (1.3x), arrestation à 85% du crash' },
-              { id: 'tunnel', name: 'Tunnel', desc: 'Risque faible, gain réduit (0.75x), 30% remboursé si arrêté' }
+              { id: 'rooftop', name: 'Rooftop', desc: 'Risque élevé, gain 1.3x, arrestation 85%' },
+              { id: 'tunnel', name: 'Tunnel', desc: 'Risque faible, gain 0.75x, 30% remboursé' }
             ].map((route) => (
               <button
                 key={route.id}
                 type="button"
                 disabled={myBet && myBet.status === 'placed'}
                 onClick={() => setSelectedRoute(route.id)}
-                className={`p-3 rounded-xl border text-left transition-all flex flex-col justify-between cursor-pointer ${
+                className={`p-2 sm:p-3 rounded-xl border text-left transition-all flex flex-col justify-between cursor-pointer ${
                   selectedRoute === route.id 
                     ? 'border-indigo-500 bg-indigo-500/10 text-indigo-400 shadow-[0_0_10px_rgba(99,102,241,0.15)]' 
                     : 'border-slate-800 bg-slate-950/40 text-slate-400 hover:border-slate-700'
                 } disabled:opacity-70 disabled:cursor-not-allowed`}
               >
-                <span className="font-bold text-xs">{route.name}</span>
-                <span className="text-[9px] text-slate-500 mt-1 font-semibold leading-relaxed">{route.desc}</span>
+                <span className="font-bold text-[10px] sm:text-xs">{route.name}</span>
+                <span className="text-[8px] sm:text-[9px] text-slate-500 mt-1 font-semibold leading-tight line-clamp-2 sm:line-clamp-none">{route.desc}</span>
               </button>
             ))}
           </div>
@@ -647,7 +647,6 @@ export default function BloodmoneyGame({ socket, setSelectedGame }) {
           )}
         </div>
       </div>
-
     </div>
   );
 }

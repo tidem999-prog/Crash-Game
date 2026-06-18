@@ -1,0 +1,643 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { 
+  ShieldAlert, Award, Clock, Coins, User, Compass, History, Trophy, Lock, Play, Flame, HelpCircle
+} from 'lucide-react';
+
+export default function BloodmoneyGame({ socket, setSelectedGame }) {
+  const { user, refreshBalance, updateBalance } = useAuth();
+  
+  // Game states
+  const [gameState, setGameState] = useState('waiting'); // 'waiting', 'running', 'crashed'
+  const [multiplier, setMultiplier] = useState(1.00);
+  const [countdown, setCountdown] = useState(10);
+  const [seedHash, setSeedHash] = useState('');
+  const [revealedSeed, setRevealedSeed] = useState('');
+  const [gameHistory, setGameHistory] = useState([]);
+  const [activeBets, setActiveBets] = useState([]);
+
+  // Betting states
+  const [betAmount, setBetAmount] = useState(10);
+  const [selectedRoute, setSelectedRoute] = useState('alley'); // 'alley', 'rooftop', 'tunnel'
+  const [autoCashout, setAutoCashout] = useState('');
+  const [myBet, setMyBet] = useState(null); // null, { amount, status: 'placed'/'cashed_out'/'lost', route }
+  const [betError, setBetError] = useState('');
+  const [cashoutResult, setCashoutResult] = useState(null); // { payout, multiplier }
+
+  // Canvas Refs
+  const canvasRef = useRef(null);
+  const requestRef = useRef(null);
+  const animationStateRef = useRef({
+    elapsedTime: 0,
+    runnerFrame: 0,
+    bgX: 0,
+    skylineX: 0,
+    streetX: 0,
+    policeProgress: 0,
+    shakeIntensity: 0,
+    particles: []
+  });
+
+  // Keep track of socket id
+  const socketIdRef = useRef(null);
+
+  // 1. WebSocket Subscriptions
+  useEffect(() => {
+    if (!socket) return;
+
+    socketIdRef.current = socket.id;
+
+    socket.on('game:starting', (data) => {
+      setGameState('waiting');
+      setCountdown(data.countdown);
+      setSeedHash(data.seedHash);
+      setRevealedSeed('');
+      setCashoutResult(null);
+      setBetError('');
+      
+      // Reset runner animation
+      animationStateRef.current.policeProgress = 0;
+      animationStateRef.current.shakeIntensity = 0;
+      animationStateRef.current.particles = [];
+      
+      // Reset my bet if new round starts
+      if (data.countdown === 10) {
+        setMyBet(null);
+      }
+    });
+
+    socket.on('game:started', (data) => {
+      setGameState('running');
+      setCountdown(0);
+      setMultiplier(1.00);
+    });
+
+    socket.on('game:tick', (data) => {
+      setMultiplier(data.multiplier);
+      // Map progress to 0-1 based on expected crash values (clamped to 100%)
+      const estimatedMax = 15.00;
+      const progress = Math.min(data.multiplier / estimatedMax, 1.00);
+      animationStateRef.current.policeProgress = progress;
+      
+      if (data.multiplier >= 10) {
+        animationStateRef.current.shakeIntensity = Math.min((data.multiplier - 10) * 0.5, 5.0);
+      }
+    });
+
+    socket.on('game:crashed', (data) => {
+      setGameState('crashed');
+      setMultiplier(data.crashPoint);
+      setRevealedSeed(data.serverSeed);
+      refreshBalance();
+
+      // Trigger heavy shake & explosion particles
+      animationStateRef.current.shakeIntensity = 12.0;
+      for (let i = 0; i < 35; i++) {
+        animationStateRef.current.particles.push({
+          x: 200 + (Math.random() - 0.5) * 50,
+          y: 260 + (Math.random() - 0.5) * 50,
+          vx: (Math.random() - 0.5) * 12,
+          vy: (Math.random() - 0.7) * 12,
+          size: Math.random() * 8 + 3,
+          color: Math.random() > 0.5 ? '#ef4444' : '#f59e0b',
+          alpha: 1.0
+        });
+      }
+
+      if (myBet && myBet.status === 'placed') {
+        setMyBet(prev => prev ? { ...prev, status: 'lost' } : null);
+      }
+    });
+
+    socket.on('bet:success', (data) => {
+      setMyBet({
+        amount: data.betAmount,
+        route: selectedRoute,
+        status: 'placed'
+      });
+      updateBalance(data.newBalance);
+      setBetError('');
+    });
+
+    socket.on('bet:result', (data) => {
+      if (data.status === 'won') {
+        setMyBet(prev => prev ? { ...prev, status: 'cashed_out', payout: data.payout, multiplier: data.multiplier } : null);
+        setCashoutResult({ payout: data.payout, multiplier: data.multiplier });
+        updateBalance(data.newBalance);
+      }
+    });
+
+    socket.on('bet:error', (msg) => {
+      setBetError(msg);
+    });
+
+    socket.on('game:state_update', (data) => {
+      setGameHistory(data.history || []);
+      setActiveBets(data.activeBetsList || []);
+      if (data.status) {
+        setGameState(data.status);
+        setMultiplier(parseFloat(data.multiplier));
+        setCountdown(data.countdown);
+      }
+    });
+
+    // Request initial state sync
+    socket.emit('game:request_state');
+
+    return () => {
+      socket.off('game:starting');
+      socket.off('game:started');
+      socket.off('game:tick');
+      socket.off('game:crashed');
+      socket.off('bet:success');
+      socket.off('bet:result');
+      socket.off('bet:error');
+      socket.off('game:state_update');
+    };
+  }, [socket, selectedRoute, myBet]);
+
+  // 2. Betting Handlers
+  const handlePlaceBet = () => {
+    if (!socket || !socket.connected) return;
+    if (betAmount < 10) return setBetError('La mise minimale est de 10 HTG.');
+    if (betAmount > user.balance) return setBetError('Solde insuffisant.');
+
+    socket.emit('bet:place', {
+      userId: user.id,
+      email: user.email,
+      amount: parseFloat(betAmount),
+      route: selectedRoute,
+      autoCashout: autoCashout ? parseFloat(autoCashout) : null
+    });
+  };
+
+  const handleCashout = () => {
+    if (!socket || !socket.connected || !myBet || myBet.status !== 'placed') return;
+    socket.emit('bet:cashout', { userId: user.id });
+  };
+
+  // 3. Canvas Parallax Animation Loop (60 FPS)
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    
+    const resizeCanvas = () => {
+      canvas.width = canvas.parentElement.clientWidth;
+      canvas.height = 340;
+    };
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    const draw = () => {
+      if (!canvas) return;
+      const w = canvas.width;
+      const h = canvas.height;
+      const state = animationStateRef.current;
+
+      // Camera shake
+      ctx.save();
+      if (state.shakeIntensity > 0) {
+        const dx = (Math.random() - 0.5) * state.shakeIntensity;
+        const dy = (Math.random() - 0.5) * state.shakeIntensity;
+        ctx.translate(dx, dy);
+        state.shakeIntensity = Math.max(0, state.shakeIntensity - 0.2);
+      }
+
+      ctx.clearRect(0, 0, w, h);
+
+      // Speed coefficient based on multiplier
+      const speedCoeff = gameState === 'running' ? Math.min(multiplier * 0.8, 8.0) : gameState === 'waiting' ? 0.3 : 0;
+
+      // 1. SKY / BACKGROUND
+      ctx.fillStyle = '#090d16'; // Deep space dark
+      ctx.fillRect(0, 0, w, h);
+
+      // Draw moon
+      ctx.fillStyle = '#1e293b';
+      ctx.beginPath();
+      ctx.arc(w - 120, 70, 36, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#090d16';
+      ctx.beginPath();
+      ctx.arc(w - 135, 60, 34, 0, Math.PI * 2);
+      ctx.fill();
+
+      // 2. PARALLAX SKYLINE (Layer 1 - slow)
+      state.skylineX = (state.skylineX - speedCoeff * 0.4) % 600;
+      ctx.fillStyle = '#111827';
+      for (let i = 0; i < 4; i++) {
+        const sx = state.skylineX + i * 200;
+        ctx.fillRect(sx, h - 220, 80, 140);
+        ctx.fillRect(sx + 80, h - 180, 60, 100);
+        ctx.fillRect(sx + 140, h - 250, 40, 170);
+      }
+
+      // 3. PARALLAX BUILDINGS (Layer 2 - medium)
+      state.bgX = (state.bgX - speedCoeff * 1.5) % 800;
+      for (let i = 0; i < 5; i++) {
+        const bx = state.bgX + i * 240;
+        ctx.fillStyle = '#1e1b4b'; // Dark violet building outline
+        ctx.fillRect(bx, h - 160, 140, 95);
+        ctx.fillRect(bx + 140, h - 140, 80, 75);
+
+        // Neon signs
+        if (i % 2 === 0) {
+          ctx.fillStyle = i === 2 ? '#a855f7' : '#ec4899'; // Purple / Pink
+          ctx.shadowBlur = 8;
+          ctx.shadowColor = ctx.fillStyle;
+          ctx.fillRect(bx + 40, h - 130, 8, 40);
+          ctx.fillRect(bx + 60, h - 130, 8, 40);
+          ctx.shadowBlur = 0; // reset
+        }
+      }
+
+      // 4. STREET (Layer 3 - fast)
+      const streetY = h - 65;
+      ctx.fillStyle = '#0f172a'; // Road base
+      ctx.fillRect(0, streetY, w, 65);
+
+      // Sidewalk edge
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(0, streetY - 6, w, 6);
+
+      // Dash lines
+      state.streetX = (state.streetX - speedCoeff * 5) % 120;
+      ctx.fillStyle = '#fbbf24'; // Yellow road markers
+      for (let i = -1; i < (w / 120) + 2; i++) {
+        ctx.fillRect(state.streetX + i * 120, streetY + 25, 45, 6);
+      }
+
+      // 5. ROAD BLOCKS & NEON POLES
+      // Left side police car
+      const polX = 80 + state.policeProgress * 200; // Police car moves closer to runner
+      const polY = streetY - 26;
+
+      if (gameState === 'running' || gameState === 'crashed') {
+        // Draw Police car
+        ctx.fillStyle = '#0f172a'; // dark metal
+        ctx.fillRect(polX, polY, 70, 20);
+        ctx.fillStyle = '#ffffff'; // white doors
+        ctx.fillRect(polX + 15, polY, 20, 20);
+        ctx.fillStyle = '#1e3a8a'; // glass cabin
+        ctx.beginPath();
+        ctx.moveTo(polX + 20, polY);
+        ctx.lineTo(polX + 35, polY - 12);
+        ctx.lineTo(polX + 55, polY - 12);
+        ctx.lineTo(polX + 60, polY);
+        ctx.closePath();
+        ctx.fill();
+
+        // Wheels
+        ctx.fillStyle = '#000000';
+        ctx.beginPath();
+        ctx.arc(polX + 15, polY + 20, 9, 0, Math.PI * 2);
+        ctx.arc(polX + 55, polY + 20, 9, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Sirens (Flashing red and blue)
+        const flash = Math.floor(Date.now() / 150) % 2 === 0;
+        ctx.fillStyle = flash ? '#ef4444' : '#3b82f6';
+        ctx.shadowColor = ctx.fillStyle;
+        ctx.shadowBlur = 15;
+        ctx.beginPath();
+        ctx.arc(polX + 38, polY - 14, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+
+      // 6. RUNNER CHARACTER
+      if (gameState === 'running' || gameState === 'waiting') {
+        const runX = 380;
+        const runY = streetY - 30;
+
+        // Running arm/leg physics
+        state.runnerFrame += speedCoeff * 0.15;
+        const phase = state.runnerFrame;
+        const legSwing = Math.sin(phase) * 16;
+        const armSwing = Math.cos(phase) * 14;
+
+        ctx.strokeStyle = '#e2e8f0'; // white body lines
+        ctx.lineWidth = 4;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        // Head
+        ctx.fillStyle = '#e2e8f0';
+        ctx.beginPath();
+        ctx.arc(runX, runY - 26, 7, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Body / Torso
+        ctx.beginPath();
+        ctx.moveTo(runX, runY - 19);
+        ctx.lineTo(runX - 2, runY - 5);
+        ctx.stroke();
+
+        // Leg 1 (Front)
+        ctx.beginPath();
+        ctx.moveTo(runX - 2, runY - 5);
+        ctx.lineTo(runX + legSwing, runY + 8);
+        ctx.lineTo(runX + legSwing + 4, runY + 18);
+        ctx.stroke();
+
+        // Leg 2 (Back)
+        ctx.beginPath();
+        ctx.moveTo(runX - 2, runY - 5);
+        ctx.lineTo(runX - legSwing, runY + 6);
+        ctx.lineTo(runX - legSwing - 2, runY + 18);
+        ctx.stroke();
+
+        // Arm 1 (Front)
+        ctx.beginPath();
+        ctx.moveTo(runX - 1, runY - 18);
+        ctx.lineTo(runX + armSwing + 6, runY - 10);
+        ctx.lineTo(runX + armSwing + 12, runY - 4);
+        ctx.stroke();
+
+        // Arm 2 (Back)
+        ctx.beginPath();
+        ctx.moveTo(runX - 1, runY - 18);
+        ctx.lineTo(runX - armSwing - 6, runY - 12);
+        ctx.lineTo(runX - armSwing - 10, runY - 6);
+        ctx.stroke();
+
+        // Sweat / Steam particles (Stress)
+        if (gameState === 'running' && multiplier > 3.0 && Math.random() < 0.15) {
+          state.particles.push({
+            x: runX - 10,
+            y: runY - 15 - Math.random() * 20,
+            vx: -Math.random() * 3 - 2,
+            vy: -Math.random() * 1.5 - 0.5,
+            size: Math.random() * 2.5 + 1,
+            color: '#a5f3fc', // sweat drops cyan
+            alpha: 0.8
+          });
+        }
+      }
+
+      // 7. PARTICLES DRAWER
+      state.particles.forEach((p, idx) => {
+        ctx.fillStyle = p.color;
+        ctx.globalAlpha = p.alpha;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1.0;
+
+        p.x += p.vx;
+        p.y += p.vy;
+        p.alpha -= 0.025;
+
+        if (p.alpha <= 0) {
+          state.particles.splice(idx, 1);
+        }
+      });
+
+      // 8. BUSTED STAMP (crashed state)
+      if (gameState === 'crashed') {
+        ctx.fillStyle = 'rgba(239, 68, 68, 0.1)'; // Red screen flash
+        ctx.fillRect(0, 0, w, h);
+
+        ctx.save();
+        ctx.fillStyle = '#ef4444';
+        ctx.shadowColor = '#ef4444';
+        ctx.shadowBlur = 20;
+        ctx.font = '900 42px Inter';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('BUSTED !', w / 2, h / 2 - 25);
+        ctx.restore();
+      }
+
+      ctx.restore();
+      requestRef.current = requestAnimationFrame(draw);
+    };
+
+    requestRef.current = requestAnimationFrame(draw);
+
+    return () => {
+      cancelAnimationFrame(requestRef.current);
+      window.removeEventListener('resize', resizeCanvas);
+    };
+  }, [gameState, multiplier]);
+
+  return (
+    <div className="space-y-6">
+      
+      {/* Back button */}
+      <button 
+        onClick={() => setSelectedGame(null)} 
+        className="flex items-center space-x-2 text-slate-400 hover:text-slate-200 text-xs font-bold bg-slate-900 border border-slate-800 px-4 py-2 rounded-xl w-fit transition-colors cursor-pointer"
+      >
+        <span>← Retour au Lobby</span>
+      </button>
+
+      {/* Visual Interactive Screen Container */}
+      <div className="relative glass-panel rounded-3xl overflow-hidden bg-slate-950/80 border border-slate-900 shadow-2xl">
+        
+        {/* History values bar */}
+        <div className="absolute top-3 left-3 right-3 flex items-center space-x-2 overflow-x-auto pb-1.5 z-20">
+          {gameHistory.map((val, idx) => (
+            <span 
+              key={idx} 
+              className={`px-2.5 py-1 rounded-full text-xs font-mono font-bold border ${
+                val >= 2.00 ? 'bg-purple-950/60 border-purple-500/20 text-purple-400' : 'bg-slate-900/60 border-slate-800 text-slate-400'
+              }`}
+            >
+              {val.toFixed(2)}x
+            </span>
+          ))}
+        </div>
+
+        {/* Danger Bar (Police Approach) */}
+        {gameState === 'running' && (
+          <div className="absolute top-14 left-3 right-3 z-20 bg-slate-900/60 backdrop-blur-md p-2 rounded-xl border border-slate-800 flex items-center justify-between">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Alerte Police</span>
+            <div className="flex-1 mx-3 h-2 bg-slate-950 rounded-full overflow-hidden relative border border-slate-800">
+              <div 
+                className={`h-full transition-all duration-300 rounded-full ${
+                  animationStateRef.current.policeProgress > 0.8 ? 'bg-red-500 animate-pulse' :
+                  animationStateRef.current.policeProgress > 0.5 ? 'bg-amber-500' : 'bg-emerald-500'
+                }`}
+                style={{ width: `${animationStateRef.current.policeProgress * 100}%` }}
+              ></div>
+            </div>
+            <span className={`text-[10px] font-black ${
+              animationStateRef.current.policeProgress > 0.8 ? 'text-red-500 animate-ping' :
+              animationStateRef.current.policeProgress > 0.5 ? 'text-amber-500' : 'text-emerald-500'
+            }`}>
+              {animationStateRef.current.policeProgress > 0.8 ? 'CRITIQUE' :
+               animationStateRef.current.policeProgress > 0.5 ? 'PROCHE' : 'SÉCURISÉ'}
+            </span>
+          </div>
+        )}
+
+        {/* Big live multiplier text display */}
+        {gameState === 'running' && (
+          <div className="absolute top-28 left-0 right-0 text-center z-20">
+            <h1 className="text-6xl font-black font-display tracking-tight text-white drop-shadow-md select-none animate-pulse-slow">
+              {multiplier.toFixed(2)}x
+            </h1>
+          </div>
+        )}
+
+        {/* Lobby preparations overlay */}
+        {gameState === 'waiting' && (
+          <div className="absolute inset-0 bg-slate-950/65 flex flex-col items-center justify-center backdrop-blur-md z-30">
+            <div className="bg-indigo-600/10 p-3 rounded-full text-indigo-400 border border-indigo-500/20 mb-3">
+              <Clock className="h-7 w-7 animate-spin" />
+            </div>
+            <h3 className="font-display font-black text-xl text-white">DÉPART DANS {countdown}s</h3>
+            <p className="text-xs text-slate-400 mt-1 uppercase tracking-wider">Choisissez votre route et préparez-vous à courir</p>
+          </div>
+        )}
+
+        {/* Victory/Cashout overlay */}
+        {cashoutResult && (
+          <div className="absolute inset-0 bg-emerald-950/80 flex flex-col items-center justify-center backdrop-blur-md z-30 animate-fade-in">
+            <div className="bg-emerald-600 p-4 rounded-full text-white mb-3 shadow-lg">
+              <Award className="h-8 w-8 animate-bounce" />
+            </div>
+            <h3 className="font-display font-black text-3xl text-emerald-300">RÉUSSI !</h3>
+            <p className="text-white text-lg font-bold">+{cashoutResult.payout} HTG</p>
+            <p className="text-emerald-450 text-xs mt-1">Échappé à {cashoutResult.multiplier}x</p>
+          </div>
+        )}
+
+        {/* Interactive Game Canvas */}
+        <canvas ref={canvasRef} className="block w-full max-h-[340px]" />
+
+        {/* HUD control bar (Overlay at the bottom of the visual screen container) */}
+        <div className="absolute bottom-3 left-3 right-3 grid grid-cols-1 md:grid-cols-2 gap-3 z-20 bg-slate-950/90 backdrop-blur-md p-3 rounded-2xl border border-slate-800 shadow-xl">
+          {/* Bet input */}
+          <div className="flex flex-col justify-center">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Mise (HTG)</label>
+            <div className="relative rounded-xl overflow-hidden flex border border-slate-800 bg-slate-900/40">
+              <span className="bg-slate-900 px-3 py-2 text-slate-500 text-xs font-bold flex items-center">HTG</span>
+              <input
+                type="number"
+                value={betAmount}
+                onChange={(e) => setBetAmount(Math.max(10, parseInt(e.target.value) || 0))}
+                disabled={myBet && myBet.status === 'placed'}
+                className="block w-full px-3 py-2 bg-transparent text-slate-200 focus:outline-none text-sm font-bold"
+              />
+              <button 
+                onClick={() => setBetAmount(prev => Math.max(10, Math.round((parseInt(prev) || 0) / 2)))}
+                disabled={myBet && myBet.status === 'placed'}
+                className="bg-slate-900 hover:bg-slate-800 border-l border-slate-800 px-2 text-xs font-bold text-slate-400 cursor-pointer"
+              >
+                /2
+              </button>
+              <button 
+                onClick={() => setBetAmount(prev => (parseInt(prev) || 0) * 2)}
+                disabled={myBet && myBet.status === 'placed'}
+                className="bg-slate-900 hover:bg-slate-800 border-l border-slate-800 px-2 text-xs font-bold text-slate-400 cursor-pointer"
+              >
+                x2
+              </button>
+            </div>
+          </div>
+
+          {/* Auto Cashout */}
+          <div className="flex flex-col justify-center">
+            <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">Auto Cash Out</label>
+            <div className="relative rounded-xl overflow-hidden flex border border-slate-800 bg-slate-900/40">
+              <input
+                type="number"
+                step="0.1"
+                placeholder="Ex: 2.0"
+                value={autoCashout}
+                onChange={(e) => setAutoCashout(e.target.value)}
+                disabled={myBet && myBet.status === 'placed'}
+                className="block w-full px-4 py-2 bg-transparent text-slate-200 focus:outline-none text-sm font-bold"
+              />
+              <span className="bg-slate-900 px-3 py-2 text-slate-500 text-xs font-bold flex items-center">x</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      {/* Strategic Route Selection Bar */}
+      <div className="glass-panel p-5 rounded-3xl space-y-4">
+        <div>
+          <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Choisir votre Route Strategique</label>
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { id: 'alley', name: 'Alley', desc: 'Risque moyen, chemin court' },
+              { id: 'rooftop', name: 'Rooftop', desc: 'Risque élevé, vue dégagée' },
+              { id: 'tunnel', name: 'Tunnel', desc: 'Risque faible, bien caché' }
+            ].map((route) => (
+              <button
+                key={route.id}
+                type="button"
+                disabled={myBet && myBet.status === 'placed'}
+                onClick={() => setSelectedRoute(route.id)}
+                className={`p-3 rounded-xl border text-left transition-all flex flex-col justify-between cursor-pointer ${
+                  selectedRoute === route.id 
+                    ? 'border-indigo-500 bg-indigo-500/10 text-indigo-400' 
+                    : 'border-slate-800 bg-slate-950/40 text-slate-400 hover:border-slate-700'
+                } disabled:opacity-70 disabled:cursor-not-allowed`}
+              >
+                <span className="font-bold text-xs">{route.name}</span>
+                <span className="text-[9px] text-slate-500 mt-1 font-semibold leading-none">{route.desc}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Action Button */}
+        <div className="w-full flex flex-col justify-center pt-2">
+          {myBet && myBet.status === 'placed' && gameState === 'running' ? (
+            <button
+              onClick={handleCashout}
+              className="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-lg tracking-wider transition-all transform active:scale-98 glow-emerald cursor-pointer"
+            >
+              ÉCHAPPER À LA POLICE (CASH OUT)
+              <span className="block text-xs font-mono font-bold text-slate-900/70 mt-0.5">
+                {(betAmount * multiplier).toFixed(2)} HTG
+              </span>
+            </button>
+          ) : myBet && myBet.status === 'placed' ? (
+            <button
+              disabled
+              className="w-full py-4 bg-emerald-600 text-slate-950 font-black rounded-xl font-bold text-sm select-none border border-emerald-500 glow-emerald"
+            >
+              PRÊT À L'ACTION
+              <span className="block text-[10px] font-bold text-slate-900/80 mt-0.5">
+                Départ imminent de la course...
+              </span>
+            </button>
+          ) : (
+            <button
+              onClick={handlePlaceBet}
+              disabled={gameState !== 'waiting'}
+              className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed glow-indigo cursor-pointer"
+            >
+              COMMENCER LA COURSE (PLACER LE PARI)
+              <span className="block text-xs font-mono font-normal text-indigo-200 mt-0.5">
+                Mise: {betAmount} HTG | Route: {selectedRoute.toUpperCase()} {autoCashout ? `@ ${autoCashout}x` : ''}
+              </span>
+            </button>
+          )}
+
+          {betError && (
+            <p className="text-red-500 text-xs mt-2 text-center font-bold animate-shake">{betError}</p>
+          )}
+        </div>
+      </div>
+
+      {/* Provably Fair hash details */}
+      <div className="glass-panel p-4 rounded-xl space-y-2 bg-gradient-to-br from-slate-950/40 to-slate-900/20 border border-slate-900 text-[10px] text-slate-450 font-mono">
+        <div className="flex justify-between items-center text-slate-300 font-bold border-b border-slate-900 pb-1">
+          <span>PROVABLY FAIR</span>
+          <span className="text-emerald-400 text-[9px] font-semibold font-sans">SÉCURISÉ SHA-256</span>
+        </div>
+        <p className="leading-relaxed"><strong>Server Hash :</strong> {seedHash || 'Lobby inactif'}</p>
+        {revealedSeed && <p className="leading-relaxed text-slate-300"><strong>Server Seed (Révélé) :</strong> {revealedSeed}</p>}
+      </div>
+
+    </div>
+  );
+}

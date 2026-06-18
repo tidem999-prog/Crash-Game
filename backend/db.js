@@ -169,6 +169,36 @@ const initializeDatabase = async () => {
     `);
     console.log('Database: Table "audit_logs" checked/created.');
 
+    // 8.5 Create Blood Money Games Table
+    await query(`
+      CREATE TABLE IF NOT EXISTS bloodmoney_games (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        seed_hash VARCHAR(64) NOT NULL,
+        server_seed VARCHAR(255),
+        client_seed VARCHAR(255),
+        crash_point DECIMAL(10,2) NOT NULL,
+        status VARCHAR(20) DEFAULT 'finished',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('Database: Table "bloodmoney_games" checked/created.');
+
+    // 8.6 Create Blood Money Bets Table
+    await query(`
+      CREATE TABLE IF NOT EXISTS bloodmoney_bets (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        game_id UUID REFERENCES bloodmoney_games(id) ON DELETE CASCADE,
+        bet_amount DECIMAL(12,2) NOT NULL,
+        route VARCHAR(20),
+        cashout_multiplier DECIMAL(5,2),
+        payout_amount DECIMAL(12,2),
+        is_won BOOLEAN DEFAULT false,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('Database: Table "bloodmoney_bets" checked/created.');
+
     // 9. Seed Admin User
     const adminCheck = await query("SELECT * FROM users WHERE role = 'admin' LIMIT 1");
     if (adminCheck.rows.length === 0) {

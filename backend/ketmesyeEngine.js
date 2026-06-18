@@ -718,6 +718,8 @@ const resolveDuel = async (duelId, disconnectWinnerId = null) => {
       );
 
       io.to(duel.roomId).emit('ketmesye_duel_over', { reason, winnerId, payoutAmount: payout });
+      activePlayersStore.cashoutPlayer(winnerId, 'snake_duel', payout, 1.80);
+      activePlayersStore.losePlayer(loserId, 'snake_duel', 'eliminated');
     }
 
     await query('COMMIT');

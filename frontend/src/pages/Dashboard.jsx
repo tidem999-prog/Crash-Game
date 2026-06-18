@@ -5,12 +5,13 @@ import { useAuth, apiRequest } from '../context/AuthContext';
 import { 
   Plane, Landmark, ArrowUpRight, ArrowDownRight, History, 
   Wallet, ShieldAlert, Award, Clock, Coins, Upload, Send, HelpCircle, Gamepad2, ArrowLeft, Users, Gem,
-  Copy, Check
+  Copy, Check, Flame
 } from 'lucide-react';
 import KetmesyeGame from './KetmesyeGame';
 import DominoGame from './DominoGame';
 import MinesGame from './MinesGame';
 import KothGame from './KothGame';
+import BloodmoneyGame from './BloodmoneyGame';
 
 export default function Dashboard() {
   const { user, refreshBalance, updateBalance } = useAuth();
@@ -994,6 +995,36 @@ export default function Dashboard() {
                 </button>
               </div>
 
+              {/* Card 6: BLOOD MONEY */}
+              <div className="glass-panel group relative rounded-2xl md:rounded-3xl p-3 md:p-6 bg-slate-900/40 border border-slate-800 hover:border-red-500/30 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-xl transform hover:-translate-y-1">
+                <div className="absolute top-0 right-0 w-20 h-20 md:w-32 md:h-32 bg-red-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-red-500/10 transition-all duration-300"></div>
+
+                <div>
+                  <div className="flex justify-between items-start mb-3 md:mb-6">
+                    <div className="bg-red-500/10 p-2 md:p-4 rounded-xl md:rounded-2xl text-red-500 border border-red-500/15 animate-pulse">
+                      <Flame className="h-5 w-5 md:h-8 md:w-8" />
+                    </div>
+                    <span className="text-[8px] md:text-[10px] font-bold tracking-wider uppercase bg-red-500/10 text-red-400 px-2 md:px-3 py-0.5 md:py-1 rounded-full border border-red-500/20">
+                      CRASH URBAIN
+                    </span>
+                  </div>
+
+                  <h3 className="font-display font-black text-sm md:text-xl text-white mb-1 md:mb-2 tracking-wide">
+                    BLOOD MONEY
+                  </h3>
+                  <p className="text-slate-400 text-[9px] md:text-xs leading-tight md:leading-relaxed mb-4 md:mb-6">
+                    Échappez à la police dans cette course intense ! Choisissez votre route et encaissez votre butin avant d'être arrêté.
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setSelectedGame('bloodmoney')}
+                  className="w-full py-2 md:py-3.5 bg-red-600 hover:bg-red-500 text-white font-bold rounded-lg md:rounded-xl text-[9px] md:text-xs transition-all tracking-wide shadow-md shadow-red-600/15"
+                >
+                  JOUER
+                </button>
+              </div>
+
             </div>
           </div>
         )}
@@ -1192,6 +1223,11 @@ export default function Dashboard() {
         {/* Tab content: PLAY GAME (KOTH ACTIVE) */}
         {activeTab === 'play' && selectedGame === 'koth' && (
           <KothGame socket={socket} user={user} balance={userBalanceRef.current} setSelectedGame={setSelectedGame} />
+        )}
+
+        {/* Tab content: PLAY GAME (BLOOD MONEY ACTIVE) */}
+        {activeTab === 'play' && selectedGame === 'bloodmoney' && (
+          <BloodmoneyGame socket={socket} setSelectedGame={setSelectedGame} />
         )}
 
         {/* Tab content 2: DEPOSITS */}
@@ -1880,7 +1916,7 @@ export default function Dashboard() {
                   <div className="flex flex-col">
                     <span className="text-xs font-bold text-slate-300">{player.email}</span>
                     <span className="text-[10px] font-mono text-slate-500">
-                      {player.betAmount ? player.betAmount.toFixed(0) : '0'} HTG | <span className="text-indigo-400 font-semibold">{player.game === 'crash' ? 'Crash' : player.game === 'ketmesye' ? 'Snake' : player.game === 'snake_duel' ? 'Duel Snake' : player.game === 'koth' ? 'KOTH' : player.game === 'mines' ? 'Mines' : player.game}</span>
+                      {player.betAmount ? player.betAmount.toFixed(0) : '0'} HTG | <span className="text-indigo-400 font-semibold">{player.game === 'crash' ? 'Crash' : player.game === 'ketmesye' ? 'Ket Mesye (Sepan)' : player.game === 'snake_duel' ? 'Duel Ket Mesye' : player.game === 'koth' ? 'KOTH' : player.game === 'mines' ? 'Mines' : player.game === 'bloodmoney' ? 'Blood Money' : player.game}</span>
                     </span>
                   </div>
                   {player.status === 'cashed_out' || player.cashedOut ? (
@@ -1889,11 +1925,11 @@ export default function Dashboard() {
                     </span>
                   ) : player.status === 'lost' || player.status === 'crashed' || player.status === 'dead' || player.status === 'eliminated' ? (
                     <span className="text-[10px] font-mono font-bold text-red-400 bg-red-500/10 px-2 py-1 rounded-md border border-red-500/15 uppercase">
-                      {player.status === 'dead' ? 'Mort' : player.status === 'eliminated' ? 'Éliminé' : 'Perdu'}
+                      Éliminé
                     </span>
                   ) : player.game === 'crash' && gameStatus === 'crashed' ? (
-                    <span className="text-[10px] font-mono font-bold text-red-400 bg-red-500/10 px-2 py-1 rounded-md border border-red-500/15">
-                      Crash
+                    <span className="text-[10px] font-mono font-bold text-red-400 bg-red-500/10 px-2 py-1 rounded-md border border-red-500/15 uppercase">
+                      Éliminé
                     </span>
                   ) : (
                     <div className="flex items-center space-x-1.5">

@@ -650,10 +650,13 @@ export default function LastSecondGame({ socket, onBackToLobby, addNotification 
 
         {/* Bottom Red Progress Bar */}
         {round.status === 'ticking' && (
-          <div className="absolute bottom-0 left-0 right-0 h-1 bg-slate-900 z-20">
+          <div className="absolute bottom-0 left-0 right-0 h-1.5 bg-slate-950 z-25 overflow-hidden rounded-b-3xl">
             <div 
-              className="h-full bg-red-650 transition-all duration-100 ease-linear shadow-[0_0_8px_rgba(239,68,68,0.7)]" 
-              style={{ width: `${Math.max(0, 100 - (round.elapsed / 30) * 100)}%` }}
+              className="h-full transition-all duration-100 ease-linear shadow-[0_0_8px_rgba(239,68,68,0.8)]" 
+              style={{ 
+                width: `${Math.max(0, 100 - (round.elapsed / 30) * 100)}%`,
+                backgroundColor: '#ef4444' 
+              }}
             />
           </div>
         )}

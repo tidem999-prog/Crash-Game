@@ -96,8 +96,9 @@ export default function Home() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* Game 1: Crash Plane */}
-          <div className="glass-panel p-6 rounded-2xl border border-slate-800/80 bg-slate-900/10 hover:border-indigo-500/40 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group">
-            <div>
+          <div className="glass-panel p-6 rounded-2xl border border-slate-800/80 bg-slate-900/10 hover:border-indigo-500/40 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group relative overflow-hidden">
+            <img src="/games/crash_plane.png" alt="Crash Plane" className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none group-hover:opacity-20 transition-opacity duration-300 z-0" />
+            <div className="relative z-10">
               <div className="h-10 w-10 bg-indigo-500/10 rounded-lg flex items-center justify-center text-indigo-400 mb-4 border border-indigo-500/15">
                 <Plane className="h-5 w-5 rotate-45" />
               </div>
@@ -106,12 +107,13 @@ export default function Home() {
                 Suivez le vol de l'avion et observez le multiplicateur monter. Sécurisez vos gains avant le crash !
               </p>
             </div>
-            <span className="text-indigo-400 text-[10px] font-bold uppercase tracking-wider">Multiplicateur exponentiel</span>
+            <span className="relative z-10 text-indigo-400 text-[10px] font-bold uppercase tracking-wider">Multiplicateur exponentiel</span>
           </div>
 
           {/* Game 2: KetMesye Arena (Snake) */}
-          <div className="glass-panel p-6 rounded-2xl border border-slate-800/80 bg-slate-900/10 hover:border-yellow-500/40 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group">
-            <div>
+          <div className="glass-panel p-6 rounded-2xl border border-slate-800/80 bg-slate-900/10 hover:border-yellow-500/40 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group relative overflow-hidden">
+            <img src="/games/ketmesye_snake.png" alt="KetMesye Snake" className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none group-hover:opacity-20 transition-opacity duration-300 z-0" />
+            <div className="relative z-10">
               <div className="h-10 w-10 bg-yellow-500/10 rounded-lg flex items-center justify-center text-yellow-500 mb-4 border border-yellow-500/15">
                 <Gamepad2 className="h-5 w-5" />
               </div>
@@ -120,12 +122,13 @@ export default function Home() {
                 Affrontez d'autres joueurs en direct. Éliminez les serpents adverses pour récupérer leurs gains !
               </p>
             </div>
-            <span className="text-yellow-500 text-[10px] font-bold uppercase tracking-wider">Multijoueur en temps réel</span>
+            <span className="relative z-10 text-yellow-500 text-[10px] font-bold uppercase tracking-wider">Multijoueur en temps réel</span>
           </div>
 
           {/* Game 3: Mines */}
-          <div className="glass-panel p-6 rounded-2xl border border-slate-800/80 bg-slate-900/10 hover:border-cyan-500/40 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group">
-            <div>
+          <div className="glass-panel p-6 rounded-2xl border border-slate-800/80 bg-slate-900/10 hover:border-cyan-500/40 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group relative overflow-hidden">
+            <img src="/games/mines_game.png" alt="Mines Game" className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none group-hover:opacity-20 transition-opacity duration-300 z-0" />
+            <div className="relative z-10">
               <div className="h-10 w-10 bg-cyan-500/10 rounded-lg flex items-center justify-center text-cyan-400 mb-4 border border-cyan-500/15">
                 <Gem className="h-5 w-5" />
               </div>
@@ -134,12 +137,13 @@ export default function Home() {
                 Définissez le nombre de mines. Découvrez les étoiles cachées sans exploser pour multiplier votre mise.
               </p>
             </div>
-            <span className="text-cyan-400 text-[10px] font-bold uppercase tracking-wider">Jeu de hasard & réflexion</span>
+            <span className="relative z-10 text-cyan-400 text-[10px] font-bold uppercase tracking-wider">Jeu de hasard & réflexion</span>
           </div>
 
           {/* Game 4: King of the Hill */}
-          <div className="glass-panel p-6 rounded-2xl border border-slate-800/80 bg-slate-900/10 hover:border-purple-500/40 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group">
-            <div>
+          <div className="glass-panel p-6 rounded-2xl border border-slate-800/80 bg-slate-900/10 hover:border-purple-500/40 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group relative overflow-hidden">
+            <img src="/games/koth_crown.png" alt="KOTH Crown" className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none group-hover:opacity-20 transition-opacity duration-300 z-0" />
+            <div className="relative z-10">
               <div className="h-10 w-10 bg-purple-500/10 rounded-lg flex items-center justify-center text-purple-400 mb-4 border border-purple-500/15">
                 <Crown className="h-5 w-5" />
               </div>
@@ -148,12 +152,13 @@ export default function Home() {
                 Dominez l'arène pour devenir le roi de la colline et rafler le multiplicateur du pot global !
               </p>
             </div>
-            <span className="text-purple-400 text-[10px] font-bold uppercase tracking-wider">Bataille de multiplicateurs</span>
+            <span className="relative z-10 text-purple-400 text-[10px] font-bold uppercase tracking-wider">Bataille de multiplicateurs</span>
           </div>
 
           {/* Game 5: Blood Money */}
-          <div className="glass-panel p-6 rounded-2xl border border-slate-800/80 bg-slate-900/10 hover:border-red-500/40 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group">
-            <div>
+          <div className="glass-panel p-6 rounded-2xl border border-slate-800/80 bg-slate-900/10 hover:border-red-500/40 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group relative overflow-hidden">
+            <img src="/games/blood_money.png" alt="Blood Money" className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none group-hover:opacity-20 transition-opacity duration-300 z-0" />
+            <div className="relative z-10">
               <div className="h-10 w-10 bg-red-500/10 rounded-lg flex items-center justify-center text-red-400 mb-4 border border-red-500/15">
                 <Flame className="h-5 w-5" />
               </div>
@@ -162,12 +167,13 @@ export default function Home() {
                 Échappez à la police dans cette course intense ! Choisissez votre route et encaissez avant l'arrestation.
               </p>
             </div>
-            <span className="text-red-400 text-[10px] font-bold uppercase tracking-wider">Crash Urbain Tactique</span>
+            <span className="relative z-10 text-red-400 text-[10px] font-bold uppercase tracking-wider">Crash Urbain Tactique</span>
           </div>
 
           {/* Game 6: Last Second */}
-          <div className="glass-panel p-6 rounded-2xl border border-slate-800/80 bg-slate-900/10 hover:border-emerald-500/40 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group">
-            <div>
+          <div className="glass-panel p-6 rounded-2xl border border-slate-800/80 bg-slate-900/10 hover:border-emerald-500/40 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group relative overflow-hidden">
+            <img src="/games/last_second.png" alt="Last Second" className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none group-hover:opacity-20 transition-opacity duration-300 z-0" />
+            <div className="relative z-10">
               <div className="h-10 w-10 bg-emerald-500/10 rounded-lg flex items-center justify-center text-emerald-400 mb-4 border border-emerald-500/15">
                 <Clock className="h-5 w-5" />
               </div>
@@ -176,12 +182,13 @@ export default function Home() {
                 Pariez en direct sur des actions de match réelles ! Encaissez avant le but ou tenez bon sans but.
               </p>
             </div>
-            <span className="text-emerald-400 text-[10px] font-bold uppercase tracking-wider">Live Football Simulator</span>
+            <span className="relative z-10 text-emerald-400 text-[10px] font-bold uppercase tracking-wider">Live Football Simulator</span>
           </div>
 
           {/* Game 7: Duel Snake */}
-          <div className="glass-panel p-6 rounded-2xl border border-slate-800/80 bg-slate-900/10 hover:border-pink-500/40 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group">
-            <div>
+          <div className="glass-panel p-6 rounded-2xl border border-slate-800/80 bg-slate-900/10 hover:border-pink-500/40 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group relative overflow-hidden">
+            <img src="/games/duel_snake.png" alt="Duel Snake" className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none group-hover:opacity-20 transition-opacity duration-300 z-0" />
+            <div className="relative z-10">
               <div className="h-10 w-10 bg-pink-500/10 rounded-lg flex items-center justify-center text-pink-400 mb-4 border border-pink-500/15">
                 <Crown className="h-5 w-5" />
               </div>
@@ -190,7 +197,7 @@ export default function Home() {
                 Défiez un adversaire en face-à-face dans un duel de serpent serré. Le vainqueur remporte 90% du pot global.
               </p>
             </div>
-            <span className="text-pink-400 text-[10px] font-bold uppercase tracking-wider">1v1 PvP Compétitif</span>
+            <span className="relative z-10 text-pink-400 text-[10px] font-bold uppercase tracking-wider">1v1 PvP Compétitif</span>
           </div>
         </div>
       </section>

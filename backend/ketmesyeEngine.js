@@ -1271,7 +1271,7 @@ const initKetmesyeEngine = (socketIoInstance) => {
     });
 
     // 5. Handle client disconnection (automatic death/cleanup)
-    socket.on('disconnect', () => {
+    socket.on('disconnect', async () => {
       // Check if they had a pending duel and cancel it
       Object.keys(pendingDuels).forEach(async (dId) => {
         const pending = pendingDuels[dId];

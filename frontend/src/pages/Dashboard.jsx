@@ -8,7 +8,6 @@ import {
   Copy, Check, Flame, User
 } from 'lucide-react';
 import KetmesyeGame from './KetmesyeGame';
-import DominoGame from './DominoGame';
 import MinesGame from './MinesGame';
 import KothGame from './KothGame';
 import BloodmoneyGame from './BloodmoneyGame';
@@ -18,7 +17,7 @@ export default function Dashboard() {
   const { user, refreshBalance, updateBalance, updateProfile, convertKet } = useAuth();
   const location = useLocation();
   const [activeTab, setActiveTab] = useState('play'); // 'play', 'deposit', 'withdraw', 'history', 'profile'
-  const [selectedGame, setSelectedGame] = useState(null); // null, 'crash', 'ketmesye', 'domino', 'mines'
+  const [selectedGame, setSelectedGame] = useState(null); // null, 'crash', 'ketmesye', 'mines'
   
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -98,7 +97,6 @@ export default function Dashboard() {
   // Local Simulation state & refs
   const [isLocalSim, setIsLocalSim] = useState(false);
   const [isKetmesyePlaying, setIsKetmesyePlaying] = useState(false);
-  const [isDominoPlaying, setIsDominoPlaying] = useState(false);
   const localLoopRef = useRef(null);
   const localBetRef = useRef(null);
   const userBalanceRef = useRef(0);
@@ -1322,20 +1320,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Tab content 1: PLAY GAME (DOMINO GAME ACTIVE) */}
-        {activeTab === 'play' && selectedGame === 'domino' && (
-          <div className="animate-fade-in w-full relative">
-             <DominoGame 
-               socket={socket} 
-               onBackToLobby={() => {
-                 setSelectedGame(null);
-                 setIsDominoPlaying(false);
-               }} 
-               addNotification={addNotification}
-               onPlayStateChange={(isPlaying) => setIsDominoPlaying(isPlaying)}
-             />
-          </div>
-        )}
+
 
         {/* Tab content 4: PLAY GAME (MINES ACTIVE) */}
         {activeTab === 'play' && selectedGame === 'mines' && (
@@ -2043,7 +2028,7 @@ export default function Dashboard() {
                   {Math.round(user?.ket_balance || 0).toLocaleString('en-US')} KET
                 </span>
                 <span className="text-[10px] text-slate-500 mt-1">
-                  Équivaut à {((user?.ket_balance || 0) / 1000).toFixed(2)} HTG
+                  Équivaut à {((user?.ket_balance || 0) / 10000).toFixed(2)} HTG
                 </span>
               </div>
             </div>
@@ -2099,16 +2084,16 @@ export default function Dashboard() {
                   <span>Convertir Jeton KET</span>
                 </h3>
                 <p className="text-xs text-slate-400">
-                  Échangez vos KET accumulés contre du solde réel HTG. Le taux est de <strong className="text-white">1 000 KET = 1 HTG</strong>.
+                  Échangez vos KET accumulés contre du solde réel HTG. Le taux est de <strong className="text-white">10 000 KET = 1 HTG</strong>.
                 </p>
                 <div className="bg-slate-950/50 border border-slate-900 rounded-2xl p-4 space-y-2 text-xs text-slate-400">
                   <div className="flex justify-between">
                     <span>Mise minimale requise :</span>
-                    <span className="font-semibold text-slate-200">10 HTG (génère 10 000 KET)</span>
+                    <span className="font-semibold text-slate-200">10 HTG (génère 100 KET)</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Conversion minimale :</span>
-                    <span className="font-semibold text-slate-200">200 000 KET (= 200 HTG)</span>
+                    <span className="font-semibold text-slate-200">200 000 KET (= 20 HTG)</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Retrait de KET :</span>
@@ -2137,7 +2122,7 @@ export default function Dashboard() {
                     <div className="flex justify-between items-center text-xs bg-pink-500/10 border border-pink-500/15 p-3.5 rounded-xl animate-fade-in">
                       <span className="text-pink-300 font-semibold">Montant converti estimé:</span>
                       <span className="font-mono font-bold text-white">
-                        +{(parseFloat(convertAmount) / 1000).toFixed(2)} HTG
+                        +{(parseFloat(convertAmount) / 10000).toFixed(2)} HTG
                       </span>
                     </div>
                   )}
@@ -2255,7 +2240,7 @@ export default function Dashboard() {
                   <div className="pt-2 text-xs text-slate-400 leading-relaxed bg-slate-950/40 border border-slate-900 rounded-xl p-3.5">
                     <div className="flex justify-between">
                       <span>Valeur réelle convertible :</span>
-                      <strong className="text-white">{(rewardsStats.ketBalance / 1000).toFixed(2)} HTG</strong>
+                      <strong className="text-white">{(rewardsStats.ketBalance / 10000).toFixed(2)} HTG</strong>
                     </div>
                     <div className="flex justify-between mt-1 text-[10px] text-slate-500">
                       <span>Règle d'inactivité :</span>
@@ -2326,7 +2311,7 @@ export default function Dashboard() {
                   </div>
 
                   <div className="bg-slate-950/50 rounded-xl p-3 border border-slate-850 text-[10px] text-slate-500 leading-relaxed">
-                    Taux d'échange officiel : <strong>1 000 KET = 1 HTG</strong>. La conversion est instantanée et s'ajoute à votre solde HTG disponible.
+                    Taux d'échange officiel : <strong>10 000 KET = 1 HTG</strong>. La conversion est instantanée et s'ajoute à votre solde HTG disponible.
                   </div>
                 </div>
 
@@ -2380,7 +2365,7 @@ export default function Dashboard() {
                       <div className="flex justify-between items-center text-xs bg-pink-500/10 border border-pink-500/15 p-3.5 rounded-xl animate-fade-in">
                         <span className="text-pink-300 font-semibold">Montant converti estimé:</span>
                         <span className="font-mono font-black text-white">
-                          +{(parseFloat(convertAmountRewards) / 1000).toFixed(2)} HTG
+                          +{(parseFloat(convertAmountRewards) / 10000).toFixed(2)} HTG
                         </span>
                       </div>
                     )}

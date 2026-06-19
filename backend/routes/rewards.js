@@ -160,8 +160,8 @@ router.post('/convert', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Solde de KET insuffisant.' });
     }
 
-    // Calculate conversion result (1,000 KET = 1 HTG)
-    const htgCredit = parsedAmount / 1000;
+    // Calculate conversion result (10,000 KET = 1 HTG)
+    const htgCredit = parsedAmount / 10000;
 
     // Update User Balances
     const updateRes = await query(

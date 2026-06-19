@@ -88,7 +88,6 @@ if (isVercel) {
   const { initGameEngine } = require('./gameEngine');
   const { initKetmesyeEngine } = require('./ketmesyeEngine');
   const { initChatEngine } = require('./chatEngine');
-  const { initDominoEngine } = require('./dominoEngine');
   const { initMinesEngine } = require('./minesEngine');
   const { initKothEngine } = require('./kothEngine');
   const { initBloodmoneyEngine } = require('./bloodmoneyEngine');
@@ -131,7 +130,6 @@ if (isVercel) {
     initGameEngine(io);
     initKetmesyeEngine(io);
     initChatEngine(io);
-    initDominoEngine(io);
     initMinesEngine(io);
     initKothEngine(io);
     initBloodmoneyEngine(io);

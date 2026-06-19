@@ -98,12 +98,12 @@ const processBetSettlement = async (userId, wagerAmount, payoutAmount, currency,
     
     if (payout > wager) {
       // Win
-      ketEarned = wager * 500;
+      ketEarned = wager * 10;
       desc = `Gain de mise sur ${gameType}: +${Math.round(ketEarned).toLocaleString('fr-FR')} KET (Win rate)`;
     } else {
       // Loss (partial or total)
       const lostAmount = wager - payout;
-      ketEarned = (lostAmount * 1000) + (payout * 500);
+      ketEarned = (lostAmount * 20) + (payout * 10);
       desc = `Mise sur ${gameType} (Perte: ${lostAmount.toFixed(2)} HTG, Gain/Retour: ${payout.toFixed(2)} HTG): +${Math.round(ketEarned).toLocaleString('fr-FR')} KET`;
     }
 

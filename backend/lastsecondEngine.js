@@ -285,9 +285,10 @@ const handleGoalEnd = async () => {
       const bet = activeBets[userId];
       const isKet = bet.currency === 'KET';
 
-      if (bet.bet_type === 'goal' && bet.cashedOut) {
-        // Goal bet AND cashed out -> WON
-        const payout = parseFloat((bet.amount * bet.cashed_out_at).toFixed(2));
+      if (bet.bet_type === 'goal') {
+        // Goal bet -> WON (either at cashed out multiplier, or at final multiplier if held)
+        const winMultiplier = bet.cashedOut ? bet.cashed_out_at : finalMultiplier;
+        const payout = parseFloat((bet.amount * winMultiplier).toFixed(2));
         const profit = payout - bet.amount;
 
         // Credit user balance
@@ -301,8 +302,13 @@ const handleGoalEnd = async () => {
         await query(
           `INSERT INTO ls_bets (round_id, user_id, amount, bet_type, auto_cashout, cashed_out_at, profit, status, currency) 
            VALUES ($1, $2, $3, 'goal', $4, $5, $6, 'won', $7)`,
-          [currentRound.id, userId, bet.amount, bet.auto_cashout, bet.cashed_out_at, profit, bet.currency]
+          [currentRound.id, userId, bet.amount, bet.auto_cashout, winMultiplier, profit, bet.currency]
         );
+
+        // Update active player store for live leaderboard sync
+        if (!bet.cashedOut) {
+          activePlayersStore.cashoutPlayer(userId, 'lastsecond', payout, finalMultiplier);
+        }
 
         // Process progression
         await processBetSettlement(userId, bet.amount, payout, bet.currency, 'lastsecond');
@@ -312,7 +318,7 @@ const handleGoalEnd = async () => {
           io.to(bet.socketId).emit('lastsecond:bet:result', {
             roundId: currentRound.id,
             status: 'won',
-            multiplier: bet.cashed_out_at,
+            multiplier: winMultiplier,
             profit,
             newBalance: isKet ? balances.ket_balance : balances.balance,
             currency: bet.currency
@@ -324,7 +330,7 @@ const handleGoalEnd = async () => {
           });
         }
       } else {
-        // Goal bet but NOT cashed out, OR No Goal bet -> LOST
+        // No Goal bet -> LOST
         await query(
           `INSERT INTO ls_bets (round_id, user_id, amount, bet_type, auto_cashout, cashed_out_at, profit, status, currency) 
            VALUES ($1, $2, $3, $4, $5, null, $6, 'lost', $7)`,

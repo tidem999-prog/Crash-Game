@@ -532,20 +532,20 @@ export default function LastSecondGame({ socket, onBackToLobby, addNotification 
       <div className="relative w-full overflow-hidden rounded-3xl border border-slate-800 bg-slate-950/80 shadow-2xl flex flex-col justify-between max-h-[300px]">
         
         {/* Top Scoreboard Panel */}
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-slate-900/90 border border-slate-800/80 px-4 py-1.5 rounded-full shadow-lg backdrop-blur-md flex items-center space-x-3.5 z-20 text-xs font-bold text-white select-none">
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-slate-900/90 border border-slate-800/80 px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-full shadow-lg backdrop-blur-md flex items-center space-x-1.5 sm:space-x-3 z-20 text-[10px] sm:text-xs font-bold text-white select-none whitespace-nowrap">
           <span className="text-slate-400 font-medium">{match.home_team.toUpperCase().substring(0, 3)}</span>
-          <span className="font-mono text-indigo-400 text-sm font-black bg-slate-950/80 px-2 py-0.5 rounded-md border border-slate-850">
-            {match.score_home} : {match.score_away}
+          <span className="font-mono text-indigo-400 text-xs sm:text-sm font-black bg-slate-950/80 px-1.5 sm:px-2 py-0.5 rounded-md border border-slate-850 inline-block whitespace-nowrap">
+            {match.score_home}:{match.score_away}
           </span>
           <span className="text-slate-400 font-medium">{match.away_team.toUpperCase().substring(0, 3)}</span>
           
           {/* Live Minute Pill */}
-          <span className={`px-2 py-0.5 rounded-full text-[9px] font-mono font-black flex items-center space-x-1 ${
+          <span className={`px-1.5 sm:px-2 py-0.5 rounded-full text-[8px] sm:text-[9px] font-mono font-black flex items-center space-x-1 whitespace-nowrap ${
             match.status === 'live' 
               ? 'bg-rose-950 border border-rose-500/20 text-rose-400 animate-pulse'
               : 'bg-slate-850 border border-slate-700/20 text-slate-400'
           }`}>
-            <span className="h-1.5 w-1.5 rounded-full bg-current mr-0.5"></span>
+            <span className="h-1 w-1 sm:h-1.5 sm:w-1.5 rounded-full bg-current mr-0.5"></span>
             <span>{getFormattedMatchTime()}</span>
           </span>
         </div>
@@ -560,10 +560,10 @@ export default function LastSecondGame({ socket, onBackToLobby, addNotification 
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10">
           {round.status === 'waiting' && (
             <div className="flex flex-col items-center justify-center text-center space-y-1 bg-slate-900/50 p-3 rounded-2xl border border-slate-850/20 backdrop-blur-sm">
-              <h3 className="font-display font-black text-sm text-slate-200 tracking-wider uppercase">
+              <h3 className="font-display font-black text-xs sm:text-sm text-slate-200 tracking-wider uppercase">
                 OUVERTURE DES PARIS
               </h3>
-              <p className="text-indigo-400 text-xs font-mono font-black animate-pulse">
+              <p className="text-indigo-400 text-[10px] sm:text-xs font-mono font-black animate-pulse">
                 PROCHAIN ROUND DANS {round.countdown}s
               </p>
             </div>
@@ -571,10 +571,10 @@ export default function LastSecondGame({ socket, onBackToLobby, addNotification 
 
           {round.status === 'ticking' && (
             <div className="flex flex-col items-center justify-center text-center animate-fade-in select-none">
-              <h1 className="font-display font-black text-4xl sm:text-5xl text-white tracking-wide drop-shadow-[0_0_15px_rgba(99,102,241,0.4)]">
+              <h1 className="font-display font-black text-2xl sm:text-3xl text-white tracking-wide drop-shadow-[0_0_10px_rgba(99,102,241,0.4)]">
                 {tickingMultiplier.toFixed(2)}x
               </h1>
-              <p className="text-slate-400 text-[9px] uppercase tracking-widest font-semibold mt-1">
+              <p className="text-slate-400 text-[8px] sm:text-[9px] uppercase tracking-widest font-semibold mt-1">
                 MISES EN COURS : <span className="text-indigo-400 font-black">{round.activeBetsCount}</span>
               </p>
             </div>
@@ -582,8 +582,8 @@ export default function LastSecondGame({ socket, onBackToLobby, addNotification 
 
           {round.status === 'idle' && (
             <div className="flex flex-col items-center justify-center text-center space-y-1 bg-slate-900/50 p-3 rounded-2xl border border-slate-850/20 backdrop-blur-sm">
-              <div className="h-5 w-5 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-              <p className="text-slate-400 text-[10px] uppercase tracking-widest font-bold">CHARGEMENT...</p>
+              <div className="h-4 w-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+              <p className="text-slate-400 text-[9px] sm:text-[10px] uppercase tracking-widest font-bold">CHARGEMENT...</p>
             </div>
           )}
 
@@ -591,15 +591,15 @@ export default function LastSecondGame({ socket, onBackToLobby, addNotification 
           {goalOverlay && (
             <div className="absolute inset-0 bg-emerald-950/85 flex flex-col items-center justify-center backdrop-blur-sm z-30 animate-fade-in">
               <div className="bg-emerald-500 p-2.5 rounded-full text-white mb-1.5 shadow-lg shadow-emerald-500/20">
-                <Trophy className="h-6 w-6 animate-bounce" />
+                <Trophy className="h-5 w-5 sm:h-6 sm:w-6 animate-bounce" />
               </div>
-              <h3 className="font-display font-black text-2xl text-emerald-400 tracking-wide uppercase">
+              <h3 className="font-display font-black text-lg sm:text-2xl text-emerald-400 tracking-wide uppercase">
                 BUT !!!
               </h3>
-              <p className="text-slate-200 text-[10px] font-bold uppercase tracking-wider">
+              <p className="text-slate-200 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider">
                 Buteur : <span className="text-white font-black">{goalOverlay.scorer.toUpperCase()}</span>
               </p>
-              <p className="text-white text-base font-bold">Crashed @ {goalOverlay.multiplier.toFixed(2)}x</p>
+              <p className="text-white text-xs sm:text-base font-bold">Crashed @ {goalOverlay.multiplier.toFixed(2)}x</p>
             </div>
           )}
 
@@ -607,15 +607,15 @@ export default function LastSecondGame({ socket, onBackToLobby, addNotification 
           {noGoalOverlay && (
             <div className="absolute inset-0 bg-rose-950/85 flex flex-col items-center justify-center backdrop-blur-sm z-30 animate-fade-in">
               <div className="bg-rose-500 p-2.5 rounded-full text-white mb-1.5 shadow-lg shadow-rose-500/20">
-                <ShieldAlert className="h-6 w-6 animate-bounce" />
+                <ShieldAlert className="h-5 w-5 sm:h-6 sm:w-6 animate-bounce" />
               </div>
-              <h3 className="font-display font-black text-2xl text-rose-500 tracking-wide uppercase">
+              <h3 className="font-display font-black text-lg sm:text-2xl text-rose-500 tracking-wide uppercase">
                 FIN DU MATCH
               </h3>
-              <p className="text-slate-200 text-[10px] font-bold uppercase tracking-wider">
+              <p className="text-slate-200 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider">
                 Aucun but marqué dans la fenêtre.
               </p>
-              <p className="text-white text-base font-bold">Crashed @ {noGoalOverlay.multiplier.toFixed(2)}x</p>
+              <p className="text-white text-xs sm:text-base font-bold">Crashed @ {noGoalOverlay.multiplier.toFixed(2)}x</p>
             </div>
           )}
         </div>

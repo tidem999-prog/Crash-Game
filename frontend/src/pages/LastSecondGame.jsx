@@ -76,20 +76,21 @@ export default function LastSecondGame({ socket, onBackToLobby, addNotification 
 
     // Listen to round state changes
     socket.on('lastsecond:round:state', (data) => {
-      setRound(prev => ({
-        ...prev,
-        ...data
-      }));
+      setRound(prev => {
+        // If a new round is opened, reset all active betting states
+        if (data.roundId !== prev.roundId) {
+          setMyBet(null);
+          setCashoutSuccess(null);
+          setGoalOverlay(null);
+          setNoGoalOverlay(null);
+          setBetError('');
+        }
+        return {
+          ...prev,
+          ...data
+        };
+      });
       setTickingMultiplier(data.multiplier);
-      
-      // If round changes to waiting/idle, reset betting state
-      if (data.status === 'waiting') {
-        setMyBet(null);
-        setCashoutSuccess(null);
-        setGoalOverlay(null);
-        setNoGoalOverlay(null);
-        setBetError('');
-      }
     });
 
     // Listen to live ticks

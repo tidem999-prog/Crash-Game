@@ -2303,41 +2303,6 @@ export default function Dashboard() {
 
               </div>
 
-              {/* Net Loss Indicator */}
-              <div className="glass-panel p-6 rounded-3xl space-y-3 bg-slate-900/40 border border-slate-800 shadow-xl">
-                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1.5">
-                  <h4 className="font-display font-black text-sm text-white uppercase tracking-wider">
-                    Statut de la Perte Nette (Minimum 10 000 HTG requis)
-                  </h4>
-                  <span className={`font-mono text-xs font-bold ${rewardsStats.netLoss >= 10000 ? 'text-emerald-400' : 'text-slate-400'}`}>
-                    {rewardsStats.netLoss.toFixed(2)} HTG / 10 000.00 HTG
-                  </span>
-                </div>
-                
-                {/* Progress bar */}
-                <div className="h-2.5 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-850">
-                  <div 
-                    className={`h-full rounded-full transition-all duration-500 ${
-                      rewardsStats.netLoss >= 10000 ? 'bg-emerald-500' : 'bg-pink-600'
-                    }`}
-                    style={{ width: `${Math.min(100, Math.max(5, (rewardsStats.netLoss / 10000) * 100))}%` }}
-                  />
-                </div>
-                
-                {rewardsStats.netLoss < 10000 ? (
-                  <p className="text-[10px] text-slate-500 leading-normal flex items-start space-x-1">
-                    <ShieldAlert className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />
-                    <span>
-                      Il vous manque <strong className="text-slate-400">{(10000 - rewardsStats.netLoss).toFixed(2)} HTG</strong> de perte nette sur la plateforme pour débloquer la conversion KET. La perte nette correspond à : <strong className="text-slate-400">Dépôts approuvés - Retraits approuvés</strong>.
-                    </span>
-                  </p>
-                ) : (
-                  <p className="text-[10px] text-emerald-400 font-semibold leading-normal flex items-start space-x-1">
-                    <Check className="h-3.5 w-3.5 text-emerald-400 shrink-0 mt-0.5" />
-                    <span>Félicitations ! Votre perte nette est de {rewardsStats.netLoss.toFixed(2)} HTG. La condition de perte nette est remplie.</span>
-                  </p>
-                )}
-              </div>
 
               {/* Conversion Form & Requirements Checklist Grid */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -2365,7 +2330,7 @@ export default function Dashboard() {
                       
                       {/* Req 2: Net Loss */}
                       <div className="flex items-center justify-between text-xs">
-                        <span className="text-slate-400">Perte Nette ≥ 10 000 G</span>
+                        <span className="text-slate-400">Condition d'activité</span>
                         {rewardsStats.netLoss >= 10000 ? (
                           <span className="flex items-center space-x-1 text-emerald-400 font-bold">
                             <Check className="h-4 w-4" />

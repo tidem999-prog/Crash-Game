@@ -578,6 +578,9 @@ export default function LastSecondGame({ socket, onBackToLobby, addNotification 
               <p className="text-slate-400 text-[8px] sm:text-[9px] uppercase tracking-widest font-semibold mt-1">
                 MISES EN COURS : <span className="text-indigo-400 font-black">{round.activeBetsCount}</span>
               </p>
+              <span className="text-rose-500 text-[9px] font-mono font-bold mt-1 tracking-wider uppercase block">
+                Temps restant: {Math.max(0, 30 - round.elapsed).toFixed(1)}s
+              </span>
             </div>
           )}
 
@@ -644,6 +647,16 @@ export default function LastSecondGame({ socket, onBackToLobby, addNotification 
         <div className="absolute bottom-2 right-3 text-[8px] font-mono text-slate-500 z-20 select-none bg-slate-950/60 px-2 py-0.5 rounded-full border border-slate-900/40">
           Hash: {round.seedHash ? round.seedHash.substring(0, 10) + '...' : 'Calcul...'}
         </div>
+
+        {/* Bottom Red Progress Bar */}
+        {round.status === 'ticking' && (
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-slate-900 z-20">
+            <div 
+              className="h-full bg-red-650 transition-all duration-100 ease-linear shadow-[0_0_8px_rgba(239,68,68,0.7)]" 
+              style={{ width: `${Math.max(0, 100 - (round.elapsed / 30) * 100)}%` }}
+            />
+          </div>
+        )}
 
       </div>
 

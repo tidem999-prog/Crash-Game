@@ -2040,8 +2040,8 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Profile update and KET conversion cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Profile update card */}
+            <div className="max-w-xl mx-auto w-full">
               
               {/* Profile info form */}
               <div className="glass-panel p-6 rounded-3xl space-y-4">
@@ -2083,67 +2083,6 @@ export default function Dashboard() {
                   </button>
                 </div>
               </div>
-
-              {/* KET Conversion Card */}
-              <div className="glass-panel p-6 rounded-3xl space-y-4">
-                <h3 className="font-display font-black text-lg text-white flex items-center space-x-2">
-                  <Coins className="h-5 w-5 text-pink-400" />
-                  <span>Convertir Jeton KET</span>
-                </h3>
-                <p className="text-xs text-slate-400">
-                  Échangez vos KET accumulés contre du solde réel HTG. Le taux est de <strong className="text-white">10 000 KET = 1 HTG</strong>.
-                </p>
-                <div className="bg-slate-950/50 border border-slate-900 rounded-2xl p-4 space-y-2 text-xs text-slate-400">
-                  <div className="flex justify-between">
-                    <span>Mise minimale requise :</span>
-                    <span className="font-semibold text-slate-200">10 HTG (génère 100 KET)</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Conversion minimale :</span>
-                    <span className="font-semibold text-slate-200">200 000 KET (= 20 HTG)</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Retrait de KET :</span>
-                    <span className="font-semibold text-red-400 font-bold">Interdit (Conversion en HTG obligatoire)</span>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs text-slate-400 mb-1.5 font-bold uppercase tracking-wider">Montant en KET à convertir</label>
-                    <div className="relative">
-                      <input
-                        type="number"
-                        step="1000"
-                        min="200000"
-                        value={convertAmount}
-                        onChange={(e) => setConvertAmount(e.target.value)}
-                        placeholder="Ex: 200000"
-                        className="block w-full pl-4 pr-16 py-3 bg-slate-950/70 border border-slate-800 rounded-xl text-sm font-mono text-slate-300 placeholder-slate-600 focus:outline-none focus:border-pink-500"
-                      />
-                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-pink-400">KET</span>
-                    </div>
-                  </div>
-
-                  {convertAmount && !isNaN(parseFloat(convertAmount)) && (
-                    <div className="flex justify-between items-center text-xs bg-pink-500/10 border border-pink-500/15 p-3.5 rounded-xl animate-fade-in">
-                      <span className="text-pink-300 font-semibold">Montant converti estimé:</span>
-                      <span className="font-mono font-bold text-white">
-                        +{(parseFloat(convertAmount) / 10000).toFixed(2)} HTG
-                      </span>
-                    </div>
-                  )}
-
-                  <button
-                    onClick={handleConvertKetSubmit}
-                    disabled={convertLoading || !convertAmount || parseFloat(convertAmount) < 200000 || parseFloat(convertAmount) > (user?.ket_balance || 0)}
-                    className="w-full py-3 bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 disabled:opacity-50 text-white font-bold rounded-xl text-sm transition-all shadow-md shadow-pink-600/10"
-                  >
-                    {convertLoading ? 'Conversion...' : 'Convertir en HTG'}
-                  </button>
-                </div>
-              </div>
-
             </div>
           </div>
         )}

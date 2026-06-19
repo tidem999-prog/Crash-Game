@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const { query } = require('../db');
 const { authenticateToken } = require('../middleware/auth');
 const { sendEmail } = require('../utils/email');
+const { getLevelInfo } = require('../utils/progression');
 
 // Signup
 router.post('/signup', async (req, res) => {
@@ -384,13 +385,59 @@ router.post('/convert-ket', authenticateToken, async (req, res) => {
   try {
     await query('BEGIN');
     
-    const userRes = await query('SELECT ket_balance, balance FROM users WHERE id = $1 FOR UPDATE', [req.user.id]);
+    const userRes = await query('SELECT ket_balance, balance, xp, last_conversion_at, is_suspended FROM users WHERE id = $1 FOR UPDATE', [req.user.id]);
     if (userRes.rows.length === 0) {
       await query('ROLLBACK');
       return res.status(404).json({ error: 'Utilisateur introuvable.' });
     }
 
     const user = userRes.rows[0];
+
+    // Check account status
+    if (user.is_suspended) {
+      await query('ROLLBACK');
+      return res.status(403).json({ error: 'Compte suspendu. Impossible d\'effectuer des transactions.' });
+    }
+
+    // Condition 1: Level >= 5
+    const xp = parseFloat(user.xp || 0);
+    const levelInfo = getLevelInfo(xp);
+    if (levelInfo.level < 5) {
+      await query('ROLLBACK');
+      return res.status(400).json({ error: 'Le niveau 5 (Badge Diamant) est obligatoire pour débloquer la conversion.' });
+    }
+
+    // Condition 2: Net Loss >= 10,000 HTG
+    const depositRes = await query(
+      "SELECT SUM(amount) as total FROM transactions WHERE user_id = $1 AND type = 'deposit' AND status = 'approved'",
+      [req.user.id]
+    );
+    const withdrawRes = await query(
+      "SELECT SUM(amount) as total FROM transactions WHERE user_id = $1 AND type = 'withdrawal' AND status = 'approved'",
+      [req.user.id]
+    );
+    const deposits = parseFloat(depositRes.rows[0].total || 0);
+    const withdrawals = parseFloat(withdrawRes.rows[0].total || 0);
+    const netLoss = deposits - withdrawals;
+
+    if (netLoss < 10000) {
+      await query('ROLLBACK');
+      return res.status(400).json({ error: `Une perte nette minimale de 10 000 HTG est requise pour la conversion (votre perte nette actuelle est de ${netLoss.toFixed(2)} HTG).` });
+    }
+
+    // Condition 3: Cooldown 21 days
+    if (user.last_conversion_at) {
+      const lastConversion = new Date(user.last_conversion_at);
+      const now = new Date();
+      const diffTime = now - lastConversion;
+      const diffDays = diffTime / (1000 * 60 * 60 * 24);
+      if (diffDays < 21) {
+        const remainingDays = Math.ceil(21 - diffDays);
+        await query('ROLLBACK');
+        return res.status(400).json({ error: `Vous devez attendre ${remainingDays} jours avant de pouvoir effectuer une nouvelle conversion KET.` });
+      }
+    }
+
     const currentKet = parseFloat(user.ket_balance || 0);
     if (currentKet < parsedAmount) {
       await query('ROLLBACK');
@@ -399,9 +446,9 @@ router.post('/convert-ket', authenticateToken, async (req, res) => {
 
     const htgCredit = parsedAmount / 10000;
     
-    // Update balances
+    // Update balances and last conversion time
     const updateRes = await query(
-      "UPDATE users SET ket_balance = ket_balance - $1, balance = balance + $2 WHERE id = $3 RETURNING balance, ket_balance",
+      "UPDATE users SET ket_balance = ket_balance - $1, balance = balance + $2, last_conversion_at = CURRENT_TIMESTAMP WHERE id = $3 RETURNING balance, ket_balance",
       [parsedAmount, htgCredit, req.user.id]
     );
 

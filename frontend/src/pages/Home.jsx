@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Gamepad2, Zap, Landmark, ArrowRight, ShieldCheck, Trophy, Users, Activity, Plane, Bomb, Crown } from 'lucide-react';
+import { Gamepad2, Zap, Landmark, ArrowRight, ShieldCheck, Trophy, Users, Activity, Plane, Bomb, Crown, Coins, Flame, Clock, Gem } from 'lucide-react';
 
 export default function Home() {
   const { user } = useAuth();
@@ -28,7 +28,7 @@ export default function Home() {
         </h1>
 
         <p className="text-slate-400 text-lg sm:text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
-          Déposez par <span className="text-white font-semibold">MonCash</span> ou <span className="text-white font-semibold">NatCash</span>, affrontez les joueurs sur <span className="text-yellow-400 font-semibold">KetMesye (Snake)</span> ou volez avec <span className="text-indigo-400 font-semibold">Crash Plane</span> pour faire de gros bénéfices !
+          Déposez par <span className="text-white font-semibold">MonCash</span> ou <span className="text-white font-semibold">NatCash</span>, affrontez les joueurs sur <span className="text-yellow-400 font-semibold">KetMesye (Snake)</span> ou pariez sur <span className="text-emerald-400 font-semibold">Last Second</span> pour faire de gros bénéfices !
         </p>
 
         {/* Action Button */}
@@ -85,64 +85,196 @@ export default function Home() {
 
       {/* Our Games Grid Section */}
       <section className="relative max-w-5xl mx-auto px-4 py-16 z-10 w-full border-t border-slate-900">
-        <h2 className="font-display font-black text-3xl text-center text-white mb-10">
-          Explorez les Jeux de l'Arena
-        </h2>
+        <div className="text-center max-w-2xl mx-auto mb-12">
+          <h2 className="font-display font-black text-3xl text-white tracking-wide uppercase">
+            Explorez les Jeux de l'Arena
+          </h2>
+          <p className="text-slate-400 text-xs mt-2 uppercase tracking-wider font-semibold">
+            8 Jeux exclusifs multijoueurs et solos pour parier et multiplier vos HTG en direct
+          </p>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* Game 1: Crash Plane */}
-          <div className="glass-panel p-6 rounded-2xl border border-slate-800/80 bg-slate-900/10 hover:border-indigo-500/40 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between">
+          <div className="glass-panel p-6 rounded-2xl border border-slate-800/80 bg-slate-900/10 hover:border-indigo-500/40 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group">
             <div>
-              <div className="h-10 w-10 bg-indigo-500/10 rounded-lg flex items-center justify-center text-indigo-400 mb-4">
-                <Plane className="h-5 w-5" />
+              <div className="h-10 w-10 bg-indigo-500/10 rounded-lg flex items-center justify-center text-indigo-400 mb-4 border border-indigo-500/15">
+                <Plane className="h-5 w-5 rotate-45" />
               </div>
               <h3 className="font-bold text-lg text-slate-200 mb-2">Crash Plane</h3>
-              <p className="text-slate-400 text-sm leading-relaxed mb-4">
+              <p className="text-slate-400 text-xs leading-relaxed mb-4">
                 Suivez le vol de l'avion et observez le multiplicateur monter. Sécurisez vos gains avant le crash !
               </p>
             </div>
-            <span className="text-indigo-400 text-xs font-semibold uppercase tracking-wider">Multiplicateur exponentiel</span>
+            <span className="text-indigo-400 text-[10px] font-bold uppercase tracking-wider">Multiplicateur exponentiel</span>
           </div>
 
           {/* Game 2: KetMesye Arena (Snake) */}
-          <div className="glass-panel p-6 rounded-2xl border border-slate-800/80 bg-slate-900/10 hover:border-yellow-500/40 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between">
+          <div className="glass-panel p-6 rounded-2xl border border-slate-800/80 bg-slate-900/10 hover:border-yellow-500/40 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group">
             <div>
-              <div className="h-10 w-10 bg-yellow-500/10 rounded-lg flex items-center justify-center text-yellow-500 mb-4">
+              <div className="h-10 w-10 bg-yellow-500/10 rounded-lg flex items-center justify-center text-yellow-500 mb-4 border border-yellow-500/15">
                 <Gamepad2 className="h-5 w-5" />
               </div>
               <h3 className="font-bold text-lg text-slate-200 mb-2">KetMesye (Snake)</h3>
-              <p className="text-slate-400 text-sm leading-relaxed mb-4">
+              <p className="text-slate-400 text-xs leading-relaxed mb-4">
                 Affrontez d'autres joueurs en direct. Éliminez les serpents adverses pour récupérer leurs gains !
               </p>
             </div>
-            <span className="text-yellow-500 text-xs font-semibold uppercase tracking-wider">Multijoueur en temps réel</span>
+            <span className="text-yellow-500 text-[10px] font-bold uppercase tracking-wider">Multijoueur en temps réel</span>
           </div>
 
           {/* Game 3: Mines */}
-          <div className="glass-panel p-6 rounded-2xl border border-slate-800/80 bg-slate-900/10 hover:border-emerald-500/40 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between">
+          <div className="glass-panel p-6 rounded-2xl border border-slate-800/80 bg-slate-900/10 hover:border-cyan-500/40 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group">
             <div>
-              <div className="h-10 w-10 bg-emerald-500/10 rounded-lg flex items-center justify-center text-emerald-400 mb-4">
-                <Bomb className="h-5 w-5" />
+              <div className="h-10 w-10 bg-cyan-500/10 rounded-lg flex items-center justify-center text-cyan-400 mb-4 border border-cyan-500/15">
+                <Gem className="h-5 w-5" />
               </div>
               <h3 className="font-bold text-lg text-slate-200 mb-2">Mines</h3>
-              <p className="text-slate-400 text-sm leading-relaxed mb-4">
+              <p className="text-slate-400 text-xs leading-relaxed mb-4">
                 Définissez le nombre de mines. Découvrez les étoiles cachées sans exploser pour multiplier votre mise.
               </p>
             </div>
-            <span className="text-emerald-400 text-xs font-semibold uppercase tracking-wider">Jeu de hasard & réflexion</span>
+            <span className="text-cyan-400 text-[10px] font-bold uppercase tracking-wider">Jeu de hasard & réflexion</span>
           </div>
 
           {/* Game 4: King of the Hill */}
-          <div className="glass-panel p-6 rounded-2xl border border-slate-800/80 bg-slate-900/10 hover:border-purple-500/40 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between">
+          <div className="glass-panel p-6 rounded-2xl border border-slate-800/80 bg-slate-900/10 hover:border-purple-500/40 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group">
             <div>
-              <div className="h-10 w-10 bg-purple-500/10 rounded-lg flex items-center justify-center text-purple-400 mb-4">
+              <div className="h-10 w-10 bg-purple-500/10 rounded-lg flex items-center justify-center text-purple-400 mb-4 border border-purple-500/15">
                 <Crown className="h-5 w-5" />
               </div>
               <h3 className="font-bold text-lg text-slate-200 mb-2">King of the Hill</h3>
-              <p className="text-slate-400 text-sm leading-relaxed mb-4">
+              <p className="text-slate-400 text-xs leading-relaxed mb-4">
                 Dominez l'arène pour devenir le roi de la colline et rafler le multiplicateur du pot global !
               </p>
             </div>
-            <span className="text-purple-400 text-xs font-semibold uppercase tracking-wider">Bataille de multiplicateurs</span>
+            <span className="text-purple-400 text-[10px] font-bold uppercase tracking-wider">Bataille de multiplicateurs</span>
+          </div>
+
+          {/* Game 5: Blood Money */}
+          <div className="glass-panel p-6 rounded-2xl border border-slate-800/80 bg-slate-900/10 hover:border-red-500/40 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group">
+            <div>
+              <div className="h-10 w-10 bg-red-500/10 rounded-lg flex items-center justify-center text-red-400 mb-4 border border-red-500/15">
+                <Flame className="h-5 w-5" />
+              </div>
+              <h3 className="font-bold text-lg text-slate-200 mb-2">Blood Money</h3>
+              <p className="text-slate-400 text-xs leading-relaxed mb-4">
+                Échappez à la police dans cette course intense ! Choisissez votre route et encaissez avant l'arrestation.
+              </p>
+            </div>
+            <span className="text-red-400 text-[10px] font-bold uppercase tracking-wider">Crash Urbain Tactique</span>
+          </div>
+
+          {/* Game 6: Last Second */}
+          <div className="glass-panel p-6 rounded-2xl border border-slate-800/80 bg-slate-900/10 hover:border-emerald-500/40 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group">
+            <div>
+              <div className="h-10 w-10 bg-emerald-500/10 rounded-lg flex items-center justify-center text-emerald-400 mb-4 border border-emerald-500/15">
+                <Clock className="h-5 w-5" />
+              </div>
+              <h3 className="font-bold text-lg text-slate-200 mb-2">Last Second</h3>
+              <p className="text-slate-400 text-xs leading-relaxed mb-4">
+                Pariez en direct sur des actions de match réelles ! Encaissez avant le but ou tenez bon sans but.
+              </p>
+            </div>
+            <span className="text-emerald-400 text-[10px] font-bold uppercase tracking-wider">Live Football Simulator</span>
+          </div>
+
+          {/* Game 7: Domino */}
+          <div className="glass-panel p-6 rounded-2xl border border-slate-800/80 bg-slate-900/10 hover:border-amber-500/40 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group">
+            <div>
+              <div className="h-10 w-10 bg-amber-500/10 rounded-lg flex items-center justify-center text-amber-500 mb-4 border border-amber-500/15">
+                <Gamepad2 className="h-5 w-5" />
+              </div>
+              <h3 className="font-bold text-lg text-slate-200 mb-2">Domino</h3>
+              <p className="text-slate-400 text-xs leading-relaxed mb-4">
+                Affrontez de vrais joueurs dans le jeu traditionnel de domino et multipliez vos HTG intelligemment.
+              </p>
+            </div>
+            <span className="text-amber-500 text-[10px] font-bold uppercase tracking-wider">Multijoueur P2P Classique</span>
+          </div>
+
+          {/* Game 8: Duel Snake */}
+          <div className="glass-panel p-6 rounded-2xl border border-slate-800/80 bg-slate-900/10 hover:border-pink-500/40 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group">
+            <div>
+              <div className="h-10 w-10 bg-pink-500/10 rounded-lg flex items-center justify-center text-pink-400 mb-4 border border-pink-500/15">
+                <Crown className="h-5 w-5" />
+              </div>
+              <h3 className="font-bold text-lg text-slate-200 mb-2">Duel Snake</h3>
+              <p className="text-slate-400 text-xs leading-relaxed mb-4">
+                Défiez un adversaire en face-à-face dans un duel de serpent serré. Le vainqueur remporte 90% du pot global.
+              </p>
+            </div>
+            <span className="text-pink-400 text-[10px] font-bold uppercase tracking-wider">1v1 PvP Compétitif</span>
+          </div>
+        </div>
+      </section>
+
+      {/* Rewards, Levels & KET Loyalty Section */}
+      <section className="relative max-w-5xl mx-auto px-4 py-16 z-10 w-full border-t border-slate-900">
+        <div className="text-center max-w-2xl mx-auto mb-12">
+          <div className="inline-flex items-center space-x-2 bg-pink-950/45 border border-pink-500/25 px-3 py-1 rounded-full text-pink-400 text-xs font-semibold mb-4 animate-pulse">
+            <Coins className="h-3 w-3" />
+            <span>Fidélité Récompensée & Progression</span>
+          </div>
+          <h2 className="font-display font-black text-3xl sm:text-4xl text-white tracking-tight leading-tight">
+            Niveaux, Récompenses et Jetons <span className="bg-gradient-to-r from-pink-400 via-purple-400 to-indigo-400 bg-clip-text text-transparent">KET</span>
+          </h2>
+          <p className="text-slate-400 text-sm mt-3 leading-relaxed">
+            Chaque action dans l'arène vous rapproche du rang supérieur et génère des jetons de fidélité KET.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Card 1: Niveaux */}
+          <div className="glass-panel p-6 rounded-2xl border border-slate-800 bg-slate-900/10 hover:border-indigo-500/30 hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-indigo-500/10 transition-all duration-300"></div>
+            <div className="h-10 w-10 bg-indigo-500/10 rounded-lg flex items-center justify-center text-indigo-400 mb-4 border border-indigo-500/20">
+              <Trophy className="h-5 w-5" />
+            </div>
+            <h3 className="font-bold text-lg text-slate-200 mb-2">Progression de Niveaux</h3>
+            <p className="text-slate-400 text-xs leading-relaxed mb-4">
+              Gagnez de l'XP à chaque mise. Montez les échelons du niveau 1 (Bronze) jusqu'au niveau 5 (Diamant) pour déverrouiller des plafonds de retrait plus élevés et des multiplicateurs boostés.
+            </p>
+            {/* Simulated progress bar */}
+            <div className="w-full bg-slate-950 rounded-full h-2 overflow-hidden border border-slate-850 mt-4">
+              <div className="bg-indigo-500 h-full rounded-full w-2/3 animate-pulse"></div>
+            </div>
+            <div className="flex justify-between text-[10px] text-slate-500 mt-2 font-mono">
+              <span>Niveau 3 (Or)</span>
+              <span>65% XP</span>
+            </div>
+          </div>
+
+          {/* Card 2: Jetons KET */}
+          <div className="glass-panel p-6 rounded-2xl border border-slate-800 bg-slate-900/10 hover:border-pink-500/30 hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-pink-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-pink-500/10 transition-all duration-300"></div>
+            <div className="h-10 w-10 bg-pink-500/10 rounded-lg flex items-center justify-center text-pink-400 mb-4 border border-pink-500/20">
+              <Coins className="h-5 w-5" />
+            </div>
+            <h3 className="font-bold text-lg text-slate-200 mb-2">Jetons Fidélité KET</h3>
+            <p className="text-slate-400 text-xs leading-relaxed mb-4">
+              Recevez des jetons KET gratuits pour chaque jeu joué, qu'il soit gagnant ou perdant. Vos jetons s'accumulent de manière sécurisée dans votre coffre de récompenses personnel.
+            </p>
+            <div className="bg-slate-950/60 border border-slate-850 rounded-xl px-3 py-2 text-[10px] text-pink-400 font-mono flex items-center space-x-1.5 mt-4">
+              <Coins className="h-3.5 w-3.5" />
+              <span>Votre coffre génère des jetons à chaque seconde !</span>
+            </div>
+          </div>
+
+          {/* Card 3: Conversion */}
+          <div className="glass-panel p-6 rounded-2xl border border-slate-800 bg-slate-900/10 hover:border-emerald-500/30 hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-emerald-500/10 transition-all duration-300"></div>
+            <div className="h-10 w-10 bg-emerald-500/10 rounded-lg flex items-center justify-center text-emerald-400 mb-4 border border-emerald-500/20">
+              <Zap className="h-5 w-5" />
+            </div>
+            <h3 className="font-bold text-lg text-slate-200 mb-2">Conversion Instantanée</h3>
+            <p className="text-slate-400 text-xs leading-relaxed mb-4">
+              Pas de points virtuels inutiles ! Échangez instantanément vos jetons KET accumulés contre de l'argent réel sur votre solde principal. Le taux officiel est fixe : <strong>1 000 KET = 1 HTG</strong>.
+            </p>
+            <div className="bg-slate-950/60 border border-slate-850 rounded-xl px-3 py-2 text-[11px] text-slate-400 font-semibold flex justify-between mt-4">
+              <span>Taux d'échange :</span>
+              <strong className="text-emerald-400 font-mono">1 000 KET ➔ 1 HTG</strong>
+            </div>
           </div>
         </div>
       </section>

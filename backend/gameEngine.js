@@ -1,5 +1,6 @@
 const { query } = require('./db');
 const activePlayersStore = require('./activePlayersStore');
+const { processWager, processBetSettlement } = require('./utils/progression');
 
 let io;
 let gameState = {
@@ -194,6 +195,9 @@ const processCashout = async (userId, multiplier) => {
 
     await query('COMMIT');
 
+    // Process progression settlement (awards KET on HTG wins)
+    await processBetSettlement(userId, bet.betAmount, payout, bet.currency || 'HTG', 'crash');
+
     // Update in-memory state
     bet.cashedOut = true;
     bet.cashoutMultiplier = multiplier;
@@ -267,6 +271,9 @@ const handleCrashPhase = async () => {
           [userId, gameState.gameId, bet.betAmount, bet.currency || 'HTG']
         );
         activePlayersStore.losePlayer(userId, 'crash', 'crashed');
+
+        // Process progression settlement (awards KET on HTG losses)
+        await processBetSettlement(userId, bet.betAmount, 0.00, bet.currency || 'HTG', 'crash');
       }
     }
 
@@ -374,15 +381,16 @@ const initGameEngine = (socketIoInstance) => {
           if (newBalance < betAmount) {
             return socket.emit('bet_error', { message: 'Solde insuffisant pour placer ce pari.' });
           }
-          // Deduct HTG and earn KET (10 HTG = 10,000 KET => 1 HTG = 1,000 KET)
-          const earnedKet = betAmount * 1000;
+          // Deduct HTG only (no starting KET credit)
           await query(
-            'UPDATE users SET balance = balance - $1, ket_balance = ket_balance + $2 WHERE id = $3',
-            [betAmount, earnedKet, userId]
+            'UPDATE users SET balance = balance - $1 WHERE id = $2',
+            [betAmount, userId]
           );
           newBalance -= betAmount;
-          newKetBalance += earnedKet;
         }
+
+        // Process wager (resets inactivity, adds XP if HTG)
+        await processWager(userId, betAmount, activeCurrency);
 
         // Register in memory
         activeBets[userId] = {

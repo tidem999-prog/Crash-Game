@@ -1,5 +1,6 @@
 const { query } = require('./db');
 const activePlayersStore = require('./activePlayersStore');
+const { processWager, processBetSettlement } = require('./utils/progression');
 
 let io;
 
@@ -212,6 +213,8 @@ const tickSandbox = async (currency) => {
           "UPDATE bets SET payout_amount = 0.00, is_won = false WHERE id = $1",
           [snake.betId]
         );
+        // Process progression settlement (awards KET on HTG losses)
+        await processBetSettlement(snake.userId, snake.wager, 0.00, snake.currency || 'HTG', 'ketmesye');
       } catch (err) {
         console.error('Error logging snake death in DB:', err);
       }
@@ -739,6 +742,10 @@ const resolveDuel = async (duelId, disconnectWinnerId = null) => {
     }
 
     await query('COMMIT');
+
+    // Process progression settlements (awards KET on HTG duel win/loss)
+    await processBetSettlement(winnerId, duel.betAmount, payout, activeCurrency, 'snake_duel');
+    await processBetSettlement(loserId, duel.betAmount, 0.00, activeCurrency, 'snake_duel');
   } catch (err) {
     await query('ROLLBACK');
     console.error('Ketmesye Resolve Duel Error:', err);
@@ -890,6 +897,9 @@ const initKetmesyeEngine = (socketIoInstance) => {
         );
         const betId = betRes.rows[0].id;
 
+        // Process progression wager (resets inactivity, adds XP if HTG)
+        await processWager(userId, entryWager, activeCurrency);
+
         await query('COMMIT');
 
         // Initialize snake segments randomly on the map
@@ -1030,6 +1040,9 @@ const initKetmesyeEngine = (socketIoInstance) => {
 
         await query('COMMIT');
 
+        // Process progression settlement (awards KET on HTG wins)
+        await processBetSettlement(snake.userId, snake.wager, payout, currency, 'ketmesye');
+
         socket.leave(`ketmesye_sandbox_${currency}`);
 
         // Notify user of cashout success
@@ -1106,6 +1119,9 @@ const initKetmesyeEngine = (socketIoInstance) => {
           [userId, duelId, betAmount]
         );
 
+        // Process progression wager (resets inactivity, adds XP if HTG)
+        await processWager(userId, betAmount, activeCurrency);
+
         await query('COMMIT');
 
         pendingDuels[duelId] = {
@@ -1168,6 +1184,9 @@ const initKetmesyeEngine = (socketIoInstance) => {
           `INSERT INTO audit_logs (user_id, game_id, game_type, amount, action) VALUES ($1, $2, 'snake_duel', $3, 'escrow_deposit')`,
           [userId, duelId, pending.betAmount]
         );
+
+        // Process progression wager (resets inactivity, adds XP if HTG)
+        await processWager(userId, pending.betAmount, activeCurrency);
 
         await query('COMMIT');
 
@@ -1298,6 +1317,18 @@ const initKetmesyeEngine = (socketIoInstance) => {
             isCashDrop: true
           });
         });
+
+        // Update bet row to lost in database on disconnect
+        try {
+          await query(
+            "UPDATE bets SET payout_amount = 0.00, is_won = false WHERE id = $1",
+            [snake.betId]
+          );
+          // Process progression settlement (awards KET on HTG losses)
+          await processBetSettlement(snake.userId, snake.wager, 0.00, currency, 'ketmesye');
+        } catch (err) {
+          console.error('Error updating bet row on disconnect:', err);
+        }
 
         activePlayersStore.losePlayer(snake.userId, 'ketmesye', 'dead');
         activePlayersStore.notify(`Le serpent de ${snake.email.split('@')[0]} s'est déconnecté et a perdu ${snake.value.toFixed(0)} ${currency} !`, 'danger');

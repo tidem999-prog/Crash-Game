@@ -56,6 +56,15 @@ const initializeDatabase = async () => {
     await query(`
       ALTER TABLE users ADD COLUMN IF NOT EXISTS active_currency VARCHAR(10) DEFAULT 'HTG';
     `);
+    await query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS xp DECIMAL(12, 2) DEFAULT 0.00;
+    `);
+    await query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS last_activity_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+    `);
+    await query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS last_conversion_at TIMESTAMP DEFAULT NULL;
+    `);
 
     // Ensure currency column exists for bets, bloodmoney_bets, mines_games, duels, koth_rooms
     await query(`
@@ -229,6 +238,32 @@ const initializeDatabase = async () => {
       );
     `);
     console.log('Database: Table "bloodmoney_bets" checked/created.');
+
+    // 8.7 Create KET History Table
+    await query(`
+      CREATE TABLE IF NOT EXISTS ket_history (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        amount DECIMAL(15, 2) NOT NULL,
+        type VARCHAR(20) NOT NULL CHECK (type IN ('earning', 'conversion', 'expiration')),
+        description TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('Database: Table "ket_history" checked/created.');
+
+    // 8.8 Create Notifications Table
+    await query(`
+      CREATE TABLE IF NOT EXISTS notifications (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        type VARCHAR(50) NOT NULL,
+        message TEXT NOT NULL,
+        is_read BOOLEAN DEFAULT false,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('Database: Table "notifications" checked/created.');
 
     // 9. Seed Admin User
     const adminCheck = await query("SELECT * FROM users WHERE role = 'admin' LIMIT 1");

@@ -12,7 +12,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Terms from './pages/Terms';
 import ChatWidget from './components/ChatWidget';
-import { LogOut, User, RefreshCw, Landmark, ShieldAlert, Gamepad2, MessageCircle } from 'lucide-react';
+import { LogOut, User, RefreshCw, Landmark, ShieldAlert, Gamepad2, MessageCircle, Award, Coins } from 'lucide-react';
 
 // Protected Route for normal users
 const ProtectedRoute = ({ children }) => {
@@ -148,7 +148,7 @@ const Navbar = () => {
         </button>
 
         <div 
-          onClick={() => navigateTo('/')} 
+          onClick={() => navigateTo('/dashboard?tab=play')} 
           style={{ 
             cursor: 'pointer', 
             marginRight: 'auto', 
@@ -213,7 +213,7 @@ const Navbar = () => {
       {/* ===== DESKTOP NAVBAR (Hidden on mobile) ===== */}
       <nav className="hidden lg:flex sticky top-0 z-50 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 px-4 py-3 sm:px-6">
         <div className="max-w-7xl mx-auto flex items-center justify-between w-full">
-          <Link to="/" className="flex items-center space-x-1.5 group shrink-0">
+          <Link to="/dashboard?tab=play" className="flex items-center space-x-1.5 group shrink-0">
             <div className="bg-gradient-to-tr from-yellow-500 to-indigo-600 p-1.5 sm:p-2 rounded-lg text-white transform group-hover:scale-105 transition-all duration-300 shadow-md shadow-indigo-500/20">
               <Gamepad2 className="h-4 w-4 sm:h-5 sm:w-5" />
             </div>
@@ -335,6 +335,10 @@ const Navbar = () => {
             <span className="nav-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"></path></svg></span>
             <span className="nav-item-label">Parrainage</span>
           </button>
+          <button className="sidebar-nav-item" onClick={() => navigateTo('/dashboard?tab=rewards')}>
+            <span className="nav-item-icon"><Award className="h-5 w-5 text-indigo-400" /></span>
+            <span className="nav-item-label">Récompenses</span>
+          </button>
         </nav>
 
         <div className="sidebar-footer">
@@ -372,13 +376,13 @@ const Navbar = () => {
             <span className="nav-item-icon"><User className="h-5 w-5" /></span>
             <span className="nav-item-label">Informations du profil</span>
           </button>
-          <button className="sidebar-nav-item" onClick={() => navigateTo('/dashboard?tab=profile')}>
-            <span className="nav-item-icon"><RefreshCw className="h-5 w-5" /></span>
+          <button className="sidebar-nav-item" onClick={() => navigateTo('/dashboard?tab=rewards')}>
+            <span className="nav-item-icon"><Award className="h-5 w-5 text-pink-400" /></span>
             <span className="nav-item-label">Convertir Jeton KET</span>
           </button>
-          <button className="sidebar-nav-item has-value">
+          <button className="sidebar-nav-item has-value cursor-pointer hover:bg-slate-800/40" onClick={() => navigateTo('/dashboard?tab=rewards')}>
             <span className="nav-item-icon"><KetTokenIcon className="h-5 w-5 text-pink-400" /></span>
-            <span className="nav-item-label">Balance KET</span>
+            <span className="nav-item-label text-slate-300">Balance KET</span>
             <span className="nav-item-value">{Math.round(user.ket_balance || 0).toLocaleString('fr-FR')} KET</span>
           </button>
           <button className="sidebar-nav-item" onClick={() => navigateTo('/dashboard?tab=referrals')}>

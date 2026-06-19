@@ -1,6 +1,7 @@
 const { query } = require('./db');
 const crypto = require('crypto');
 const activePlayersStore = require('./activePlayersStore');
+const { processWager, processBetSettlement } = require('./utils/progression');
 
 let io = null;
 let gameState = {
@@ -225,6 +226,9 @@ const processCashout = async (userId, baseMultiplier) => {
 
     await query('COMMIT');
 
+    // Process progression settlement (awards KET on HTG wins)
+    await processBetSettlement(userId, bet.betAmount, payout, bet.currency || 'HTG', 'bloodmoney');
+
     bet.cashedOut = true;
     bet.cashoutMultiplier = routeMult;
     bet.payoutAmount = payout;
@@ -321,6 +325,9 @@ const handleCrashPhase = async () => {
             });
           }
           activePlayersStore.losePlayer(userId, 'bloodmoney', 'lost');
+
+          // Process progression settlement (awards KET on HTG tunnel-refunds)
+          await processBetSettlement(userId, bet.betAmount, refundAmount, bet.currency || 'HTG', 'bloodmoney');
         } else {
           // Normal loss (Alley, Rooftop)
           await query(
@@ -329,6 +336,9 @@ const handleCrashPhase = async () => {
             [userId, gameState.gameId, bet.betAmount, bet.currency || 'HTG', bet.route]
           );
           activePlayersStore.losePlayer(userId, 'bloodmoney', 'lost');
+
+          // Process progression settlement (awards KET on HTG normal losses)
+          await processBetSettlement(userId, bet.betAmount, 0.00, bet.currency || 'HTG', 'bloodmoney');
         }
       } else if (bet.status === 'lost') {
         // If they were already busted early (e.g. rooftop at 85%)
@@ -338,6 +348,9 @@ const handleCrashPhase = async () => {
           [userId, gameState.gameId, bet.betAmount, bet.currency || 'HTG', bet.route]
         );
         activePlayersStore.losePlayer(userId, 'bloodmoney', 'lost');
+
+        // Process progression settlement (awards KET on HTG rooftop early bust losses)
+        await processBetSettlement(userId, bet.betAmount, 0.00, bet.currency || 'HTG', 'bloodmoney');
       }
     }
 
@@ -428,15 +441,16 @@ const initBloodmoneyEngine = (socketIoInstance) => {
           if (newBalance < amount) {
             throw new Error('Solde insuffisant.');
           }
-          // Deduct HTG and earn KET (10 HTG = 10,000 KET => 1 HTG = 1,000 KET)
-          const earnedKet = amount * 1000;
+          // Deduct HTG only (no starting KET credit)
           await query(
-            'UPDATE users SET balance = balance - $1, ket_balance = ket_balance + $2 WHERE id = $3',
-            [amount, earnedKet, userId]
+            'UPDATE users SET balance = balance - $1 WHERE id = $2',
+            [amount, userId]
           );
           newBalance -= amount;
-          newKetBalance += earnedKet;
         }
+
+        // Process wager (resets inactivity, adds XP if HTG)
+        await processWager(userId, amount, activeCurrency);
 
         await query('COMMIT');
 

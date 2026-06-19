@@ -1,6 +1,7 @@
 const { query } = require('./db');
 const crypto = require('crypto');
 const activePlayersStore = require('./activePlayersStore');
+const { processWager, processBetSettlement } = require('./utils/progression');
 
 let io;
 
@@ -26,6 +27,9 @@ const startMinesTimer = (socket, userId, gameId) => {
         const game = gameRes.rows[0];
         await query(`UPDATE mines_games SET status = 'lost' WHERE id = $1`, [gameId]);
         activePlayersStore.losePlayer(userId, 'mines', 'lost');
+        
+        // Process progression settlement (awards KET on HTG losses)
+        await processBetSettlement(userId, parseFloat(game.bet_amount), 0.00, game.currency || 'HTG', 'mines');
         socket.emit('mines_game_over', {
           status: 'lost_timeout',
           gridMines: game.grid_mines,
@@ -122,15 +126,16 @@ const handleMinesStart = async (socket, payload) => {
         await query('ROLLBACK');
         return socket.emit('mines_error', 'Solde insuffisant.');
       }
-      // Deduct HTG and credit KET (10 HTG = 10,000 KET => 1 HTG = 1,000 KET)
-      const earnedKet = betAmount * 1000;
+      // Deduct HTG only (no starting KET credit)
       await query(
-        'UPDATE users SET balance = balance - $1, ket_balance = ket_balance + $2 WHERE id = $3',
-        [betAmount, earnedKet, userId]
+        'UPDATE users SET balance = balance - $1 WHERE id = $2',
+        [betAmount, userId]
       );
       newBalance -= betAmount;
-      newKetBalance += earnedKet;
     }
+
+    // Process wager (resets inactivity, adds XP if HTG)
+    await processWager(userId, betAmount, activeCurrency);
 
     const email = user.email;
 
@@ -216,6 +221,9 @@ const handleMinesReveal = async (socket, payload) => {
       // BOOM! Lost.
       await query(`UPDATE mines_games SET status = 'lost' WHERE id = $1`, [gameId]);
       await query('COMMIT');
+
+      // Process progression settlement (awards KET on HTG losses)
+      await processBetSettlement(userId, parseFloat(game.bet_amount), 0.00, game.currency || 'HTG', 'mines');
       
       const emailRes = await query('SELECT email FROM users WHERE id = $1', [userId]);
       const email = emailRes.rows[0]?.email || 'Joueur';
@@ -267,6 +275,9 @@ const handleMinesReveal = async (socket, payload) => {
       );
 
       await query('COMMIT');
+
+      // Process progression settlement (awards KET on HTG wins)
+      await processBetSettlement(userId, parseFloat(game.bet_amount), payoutAmount, game.currency || 'HTG', 'mines');
 
       io.emit('balance_update', { userId, newBalance: balances.balance, newKetBalance: balances.ket_balance });
 
@@ -358,6 +369,9 @@ const handleMinesCashout = async (socket, payload) => {
     );
 
     await query('COMMIT');
+
+    // Process progression settlement (awards KET on HTG wins)
+    await processBetSettlement(userId, parseFloat(game.bet_amount), payoutAmount, game.currency || 'HTG', 'mines');
 
     io.emit('balance_update', { userId, newBalance: balances.balance, newKetBalance: balances.ket_balance });
 

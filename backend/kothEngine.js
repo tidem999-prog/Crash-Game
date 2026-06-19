@@ -1,5 +1,6 @@
 const { query } = require('./db');
 const activePlayersStore = require('./activePlayersStore');
+const { processWager, processBetSettlement } = require('./utils/progression');
 
 let io;
 
@@ -79,6 +80,9 @@ const initKothEngine = (socketIo) => {
         
         await logAudit(userId, roomId, entryFee, 'JOIN_ESCROW_DEDUCTION');
         
+        // Process progression wager
+        await processWager(userId, entryFee, activeCurrency);
+
         await query('COMMIT');
 
         // Setup room state in memory
@@ -161,6 +165,9 @@ const initKothEngine = (socketIo) => {
         
         await logAudit(userId, roomId, entryFee, 'JOIN_ESCROW_DEDUCTION');
         
+        // Process progression wager
+        await processWager(userId, entryFee, activeCurrency);
+
         await query('COMMIT');
 
         // Update in-memory
@@ -420,6 +427,16 @@ const endGameWinner = async (roomId, winnerPlayer) => {
     
     await query('COMMIT');
     
+    // Process progression settlements
+    const players = Object.values(room.players);
+    for (const p of players) {
+      if (p.id === winnerPlayer.id) {
+        await processBetSettlement(p.id, entryFee, room.potTotal, activeCurrency, 'KOTH');
+      } else {
+        await processBetSettlement(p.id, entryFee, 0.00, activeCurrency, 'KOTH');
+      }
+    }
+    
     io.to(`koth_${roomId}`).emit('koth_game_over', {
       winner: winnerPlayer,
       potTotal: room.potTotal,
@@ -440,6 +457,9 @@ const endGameNoWinner = async (roomId) => {
   const room = activeRooms[roomId];
   if (!room) return;
 
+  const activeCurrency = room.currency || 'HTG';
+  const entryFee = room.entryFee || (activeCurrency === 'KET' ? 1000 : 150);
+
   try {
     await query(`UPDATE koth_rooms SET status = 'finished' WHERE id = $1`, [roomId]);
     io.to(`koth_${roomId}`).emit('koth_game_over', {
@@ -450,6 +470,12 @@ const endGameNoWinner = async (roomId) => {
     Object.values(room.players).forEach(p => {
       activePlayersStore.losePlayer(p.id, 'koth', 'eliminated');
     });
+
+    // Process progression settlements (all lose)
+    const players = Object.values(room.players);
+    for (const p of players) {
+      await processBetSettlement(p.id, entryFee, 0.00, activeCurrency, 'KOTH');
+    }
   } catch (err) {
     console.error(err);
   }

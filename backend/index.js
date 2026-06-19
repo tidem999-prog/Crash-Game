@@ -8,6 +8,7 @@ require('dotenv').config();
 const authRoutes = require('./routes/auth');
 const transactionRoutes = require('./routes/transactions');
 const adminRoutes = require('./routes/admin');
+const rewardsRoutes = require('./routes/rewards');
 
 const app = express();
 
@@ -50,6 +51,7 @@ const ensureDb = async (req, res, next) => {
 app.use('/api/auth', ensureDb, authRoutes);
 app.use('/api/transactions', ensureDb, transactionRoutes);
 app.use('/api/admin', ensureDb, adminRoutes);
+app.use('/api/rewards', ensureDb, rewardsRoutes);
 
 // Serve frontend static files if they exist (production build)
 const distPath = path.join(__dirname, '../frontend/dist');
@@ -109,6 +111,21 @@ if (isVercel) {
 
   (async () => {
     await initializeDatabase();
+
+    // Periodic inactivity checker (every 1 hour)
+    const { checkInactivityAndClean } = require('./utils/progression');
+    setInterval(async () => {
+      try {
+        const { query } = require('./db');
+        const activeUsers = await query("SELECT id FROM users WHERE ket_balance > 0");
+        for (const row of activeUsers.rows) {
+          await checkInactivityAndClean(row.id);
+        }
+      } catch (err) {
+        console.error('Inactivity checker error:', err);
+      }
+    }, 60 * 60 * 1000); // 1 hour
+
     initActivePlayersStore(io);
     initGameEngine(io);
     initKetmesyeEngine(io);

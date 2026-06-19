@@ -950,7 +950,7 @@ export default function Dashboard() {
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6 max-w-5xl mx-auto w-full px-2">
               {/* Card 1: Crash Plane */}
               <div className="glass-panel group relative rounded-2xl md:rounded-3xl p-3 md:p-6 bg-slate-900/40 border border-slate-800 hover:border-indigo-500/30 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-xl transform hover:-translate-y-1">
-                <img src="/games/crash_plane.png" alt="Crash Plane" className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none group-hover:opacity-20 transition-opacity duration-300 z-0" />
+                <img src="/games/crash_plane.png" alt="Crash Plane" className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none group-hover:opacity-60 transition-opacity duration-300 z-0" />
                 <div className="absolute top-0 right-0 w-20 h-20 md:w-32 md:h-32 bg-indigo-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-indigo-500/10 transition-all duration-300 z-0"></div>
                 
                 <div className="relative z-10">
@@ -981,7 +981,7 @@ export default function Dashboard() {
 
               {/* Card 2: Ketmesye (Snake) */}
               <div className="glass-panel group relative rounded-2xl md:rounded-3xl p-3 md:p-6 bg-slate-900/40 border border-slate-800 hover:border-yellow-500/30 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-xl transform hover:-translate-y-1">
-                <img src="/games/ketmesye_snake.png" alt="KetMesye Snake" className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none group-hover:opacity-20 transition-opacity duration-300 z-0" />
+                <img src="/games/ketmesye_snake.png" alt="KetMesye Snake" className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none group-hover:opacity-60 transition-opacity duration-300 z-0" />
                 <div className="absolute top-0 right-0 w-20 h-20 md:w-32 md:h-32 bg-yellow-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-yellow-500/10 transition-all duration-300 z-0"></div>
 
                 <div className="relative z-10">
@@ -1012,7 +1012,7 @@ export default function Dashboard() {
 
               {/* Card 3: Mines */}
               <div className="glass-panel group relative rounded-2xl md:rounded-3xl p-3 md:p-6 bg-slate-900/40 border border-slate-800 hover:border-cyan-500/30 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-xl transform hover:-translate-y-1">
-                <img src="/games/mines_game.png" alt="Mines Game" className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none group-hover:opacity-20 transition-opacity duration-300 z-0" />
+                <img src="/games/mines_game.png" alt="Mines Game" className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none group-hover:opacity-60 transition-opacity duration-300 z-0" />
                 <div className="absolute top-0 right-0 w-20 h-20 md:w-32 md:h-32 bg-cyan-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-cyan-500/10 transition-all duration-300 z-0"></div>
 
                 <div className="relative z-10">
@@ -1043,7 +1043,7 @@ export default function Dashboard() {
 
               {/* Card 4: Duel Snake 1v1 */}
               <div className="glass-panel group relative rounded-2xl md:rounded-3xl p-3 md:p-6 bg-slate-900/40 border border-slate-800 hover:border-emerald-500/30 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-xl transform hover:-translate-y-1">
-                <img src="/games/duel_snake.png" alt="Duel Snake" className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none group-hover:opacity-20 transition-opacity duration-300 z-0" />
+                <img src="/games/duel_snake.png" alt="Duel Snake" className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none group-hover:opacity-60 transition-opacity duration-300 z-0" />
                 <div className="absolute top-0 right-0 w-20 h-20 md:w-32 md:h-32 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-emerald-500/10 transition-all duration-300 z-0"></div>
 
                 <div className="relative z-10">
@@ -1074,7 +1074,7 @@ export default function Dashboard() {
 
               {/* Card 5: KOTH (King of the Hill) */}
               <div className="glass-panel group relative rounded-2xl md:rounded-3xl p-3 md:p-6 bg-slate-900/40 border border-slate-800 hover:border-purple-500/30 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-xl transform hover:-translate-y-1">
-                <img src="/games/koth_crown.png" alt="KOTH Crown" className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none group-hover:opacity-20 transition-opacity duration-300 z-0" />
+                <img src="/games/koth_crown.png" alt="KOTH Crown" className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none group-hover:opacity-60 transition-opacity duration-300 z-0" />
                 <div className="absolute top-0 right-0 w-20 h-20 md:w-32 md:h-32 bg-purple-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-purple-500/10 transition-all duration-300 z-0"></div>
 
                 <div className="relative z-10">
@@ -1105,7 +1105,7 @@ export default function Dashboard() {
 
               {/* Card 6: BLOOD MONEY */}
               <div className="glass-panel group relative rounded-2xl md:rounded-3xl p-3 md:p-6 bg-slate-900/40 border border-slate-800 hover:border-red-500/30 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-xl transform hover:-translate-y-1">
-                <img src="/games/blood_money.png" alt="Blood Money" className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none group-hover:opacity-20 transition-opacity duration-300 z-0" />
+                <img src="/games/blood_money.png" alt="Blood Money" className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none group-hover:opacity-60 transition-opacity duration-300 z-0" />
                 <div className="absolute top-0 right-0 w-20 h-20 md:w-32 md:h-32 bg-red-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-red-500/10 transition-all duration-300 z-0"></div>
 
                 <div className="relative z-10">
@@ -1136,7 +1136,7 @@ export default function Dashboard() {
 
               {/* Card 7: LAST SECOND */}
               <div className="glass-panel group relative rounded-2xl md:rounded-3xl p-3 md:p-6 bg-slate-900/40 border border-slate-800 hover:border-emerald-500/30 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-xl transform hover:-translate-y-1">
-                <img src="/games/last_second.png" alt="Last Second" className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none group-hover:opacity-20 transition-opacity duration-300 z-0" />
+                <img src="/games/last_second.png" alt="Last Second" className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none group-hover:opacity-60 transition-opacity duration-300 z-0" />
                 <div className="absolute top-0 right-0 w-20 h-20 md:w-32 md:h-32 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-emerald-500/10 transition-all duration-300 z-0"></div>
 
                 <div className="relative z-10">

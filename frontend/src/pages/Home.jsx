@@ -97,7 +97,7 @@ export default function Home() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* Game 1: Crash Plane */}
           <div className="glass-panel p-6 rounded-2xl border border-slate-800/80 bg-slate-900/10 hover:border-indigo-500/40 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group relative overflow-hidden">
-            <img src="/games/crash_plane.png" alt="Crash Plane" className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none group-hover:opacity-20 transition-opacity duration-300 z-0" />
+            <img src="/games/crash_plane.png" alt="Crash Plane" className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none group-hover:opacity-60 transition-opacity duration-300 z-0" />
             <div className="relative z-10">
               <div className="h-10 w-10 bg-indigo-500/10 rounded-lg flex items-center justify-center text-indigo-400 mb-4 border border-indigo-500/15">
                 <Plane className="h-5 w-5 rotate-45" />
@@ -112,7 +112,7 @@ export default function Home() {
 
           {/* Game 2: KetMesye Arena (Snake) */}
           <div className="glass-panel p-6 rounded-2xl border border-slate-800/80 bg-slate-900/10 hover:border-yellow-500/40 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group relative overflow-hidden">
-            <img src="/games/ketmesye_snake.png" alt="KetMesye Snake" className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none group-hover:opacity-20 transition-opacity duration-300 z-0" />
+            <img src="/games/ketmesye_snake.png" alt="KetMesye Snake" className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none group-hover:opacity-60 transition-opacity duration-300 z-0" />
             <div className="relative z-10">
               <div className="h-10 w-10 bg-yellow-500/10 rounded-lg flex items-center justify-center text-yellow-500 mb-4 border border-yellow-500/15">
                 <Gamepad2 className="h-5 w-5" />
@@ -127,7 +127,7 @@ export default function Home() {
 
           {/* Game 3: Mines */}
           <div className="glass-panel p-6 rounded-2xl border border-slate-800/80 bg-slate-900/10 hover:border-cyan-500/40 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group relative overflow-hidden">
-            <img src="/games/mines_game.png" alt="Mines Game" className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none group-hover:opacity-20 transition-opacity duration-300 z-0" />
+            <img src="/games/mines_game.png" alt="Mines Game" className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none group-hover:opacity-60 transition-opacity duration-300 z-0" />
             <div className="relative z-10">
               <div className="h-10 w-10 bg-cyan-500/10 rounded-lg flex items-center justify-center text-cyan-400 mb-4 border border-cyan-500/15">
                 <Gem className="h-5 w-5" />
@@ -142,7 +142,7 @@ export default function Home() {
 
           {/* Game 4: King of the Hill */}
           <div className="glass-panel p-6 rounded-2xl border border-slate-800/80 bg-slate-900/10 hover:border-purple-500/40 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group relative overflow-hidden">
-            <img src="/games/koth_crown.png" alt="KOTH Crown" className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none group-hover:opacity-20 transition-opacity duration-300 z-0" />
+            <img src="/games/koth_crown.png" alt="KOTH Crown" className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none group-hover:opacity-60 transition-opacity duration-300 z-0" />
             <div className="relative z-10">
               <div className="h-10 w-10 bg-purple-500/10 rounded-lg flex items-center justify-center text-purple-400 mb-4 border border-purple-500/15">
                 <Crown className="h-5 w-5" />
@@ -157,7 +157,7 @@ export default function Home() {
 
           {/* Game 5: Blood Money */}
           <div className="glass-panel p-6 rounded-2xl border border-slate-800/80 bg-slate-900/10 hover:border-red-500/40 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group relative overflow-hidden">
-            <img src="/games/blood_money.png" alt="Blood Money" className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none group-hover:opacity-20 transition-opacity duration-300 z-0" />
+            <img src="/games/blood_money.png" alt="Blood Money" className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none group-hover:opacity-60 transition-opacity duration-300 z-0" />
             <div className="relative z-10">
               <div className="h-10 w-10 bg-red-500/10 rounded-lg flex items-center justify-center text-red-400 mb-4 border border-red-500/15">
                 <Flame className="h-5 w-5" />
@@ -172,7 +172,7 @@ export default function Home() {
 
           {/* Game 6: Last Second */}
           <div className="glass-panel p-6 rounded-2xl border border-slate-800/80 bg-slate-900/10 hover:border-emerald-500/40 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group relative overflow-hidden">
-            <img src="/games/last_second.png" alt="Last Second" className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none group-hover:opacity-20 transition-opacity duration-300 z-0" />
+            <img src="/games/last_second.png" alt="Last Second" className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none group-hover:opacity-60 transition-opacity duration-300 z-0" />
             <div className="relative z-10">
               <div className="h-10 w-10 bg-emerald-500/10 rounded-lg flex items-center justify-center text-emerald-400 mb-4 border border-emerald-500/15">
                 <Clock className="h-5 w-5" />
@@ -187,7 +187,7 @@ export default function Home() {
 
           {/* Game 7: Duel Snake */}
           <div className="glass-panel p-6 rounded-2xl border border-slate-800/80 bg-slate-900/10 hover:border-pink-500/40 hover:-translate-y-1 transition-all duration-300 flex flex-col justify-between group relative overflow-hidden">
-            <img src="/games/duel_snake.png" alt="Duel Snake" className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none group-hover:opacity-20 transition-opacity duration-300 z-0" />
+            <img src="/games/duel_snake.png" alt="Duel Snake" className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none group-hover:opacity-60 transition-opacity duration-300 z-0" />
             <div className="relative z-10">
               <div className="h-10 w-10 bg-pink-500/10 rounded-lg flex items-center justify-center text-pink-400 mb-4 border border-pink-500/15">
                 <Crown className="h-5 w-5" />

@@ -950,9 +950,10 @@ export default function Dashboard() {
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6 max-w-5xl mx-auto w-full px-2">
               {/* Card 1: Crash Plane */}
               <div className="glass-panel group relative rounded-2xl md:rounded-3xl p-3 md:p-6 bg-slate-900/40 border border-slate-800 hover:border-indigo-500/30 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-xl transform hover:-translate-y-1">
-                <div className="absolute top-0 right-0 w-20 h-20 md:w-32 md:h-32 bg-indigo-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-indigo-500/10 transition-all duration-300"></div>
+                <img src="/games/crash_plane.png" alt="Crash Plane" className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none group-hover:opacity-20 transition-opacity duration-300 z-0" />
+                <div className="absolute top-0 right-0 w-20 h-20 md:w-32 md:h-32 bg-indigo-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-indigo-500/10 transition-all duration-300 z-0"></div>
                 
-                <div>
+                <div className="relative z-10">
                   <div className="flex justify-between items-start mb-3 md:mb-6">
                     <div className="bg-indigo-600/10 p-2 md:p-4 rounded-xl md:rounded-2xl text-indigo-400 border border-indigo-500/15">
                       <Plane className="h-5 w-5 md:h-8 md:w-8 rotate-45" />
@@ -972,7 +973,7 @@ export default function Dashboard() {
 
                 <button
                   onClick={() => setSelectedGame('crash')}
-                  className="w-full py-2 md:py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg md:rounded-xl text-[9px] md:text-xs transition-all tracking-wide shadow-md shadow-indigo-600/15"
+                  className="relative z-10 w-full py-2 md:py-3.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg md:rounded-xl text-[9px] md:text-xs transition-all tracking-wide shadow-md shadow-indigo-600/15"
                 >
                   JOUER
                 </button>
@@ -980,9 +981,10 @@ export default function Dashboard() {
 
               {/* Card 2: Ketmesye (Snake) */}
               <div className="glass-panel group relative rounded-2xl md:rounded-3xl p-3 md:p-6 bg-slate-900/40 border border-slate-800 hover:border-yellow-500/30 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-xl transform hover:-translate-y-1">
-                <div className="absolute top-0 right-0 w-20 h-20 md:w-32 md:h-32 bg-yellow-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-yellow-500/10 transition-all duration-300"></div>
+                <img src="/games/ketmesye_snake.png" alt="KetMesye Snake" className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none group-hover:opacity-20 transition-opacity duration-300 z-0" />
+                <div className="absolute top-0 right-0 w-20 h-20 md:w-32 md:h-32 bg-yellow-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-yellow-500/10 transition-all duration-300 z-0"></div>
 
-                <div>
+                <div className="relative z-10">
                   <div className="flex justify-between items-start mb-3 md:mb-6">
                     <div className="bg-yellow-500/10 p-2 md:p-4 rounded-xl md:rounded-2xl text-yellow-500 border border-yellow-500/15 animate-pulse">
                       <Gamepad2 className="h-5 w-5 md:h-8 md:w-8" />
@@ -1002,7 +1004,7 @@ export default function Dashboard() {
 
                 <button
                   onClick={() => setSelectedGame('ketmesye')}
-                  className="w-full py-2 md:py-3.5 bg-yellow-600 hover:bg-yellow-500 text-slate-950 font-black rounded-lg md:rounded-xl text-[9px] md:text-xs transition-all tracking-wide shadow-md shadow-yellow-600/15"
+                  className="relative z-10 w-full py-2 md:py-3.5 bg-yellow-600 hover:bg-yellow-500 text-slate-950 font-black rounded-lg md:rounded-xl text-[9px] md:text-xs transition-all tracking-wide shadow-md shadow-yellow-600/15"
                 >
                   SPAWN
                 </button>
@@ -1010,9 +1012,10 @@ export default function Dashboard() {
 
               {/* Card 3: Mines */}
               <div className="glass-panel group relative rounded-2xl md:rounded-3xl p-3 md:p-6 bg-slate-900/40 border border-slate-800 hover:border-cyan-500/30 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-xl transform hover:-translate-y-1">
-                <div className="absolute top-0 right-0 w-20 h-20 md:w-32 md:h-32 bg-cyan-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-cyan-500/10 transition-all duration-300"></div>
+                <img src="/games/mines_game.png" alt="Mines Game" className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none group-hover:opacity-20 transition-opacity duration-300 z-0" />
+                <div className="absolute top-0 right-0 w-20 h-20 md:w-32 md:h-32 bg-cyan-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-cyan-500/10 transition-all duration-300 z-0"></div>
 
-                <div>
+                <div className="relative z-10">
                   <div className="flex justify-between items-start mb-3 md:mb-6">
                     <div className="bg-cyan-500/10 p-2 md:p-4 rounded-xl md:rounded-2xl text-cyan-500 border border-cyan-500/15 animate-pulse">
                       <Gem className="h-5 w-5 md:h-8 md:w-8" />
@@ -1032,7 +1035,7 @@ export default function Dashboard() {
 
                 <button
                   onClick={() => setSelectedGame('mines')}
-                  className="w-full py-2 md:py-3.5 bg-cyan-600 hover:bg-cyan-500 text-white font-black rounded-lg md:rounded-xl text-[9px] md:text-xs transition-all tracking-wide shadow-md shadow-cyan-600/15"
+                  className="relative z-10 w-full py-2 md:py-3.5 bg-cyan-600 hover:bg-cyan-500 text-white font-black rounded-lg md:rounded-xl text-[9px] md:text-xs transition-all tracking-wide shadow-md shadow-cyan-600/15"
                 >
                   JOUER
                 </button>
@@ -1040,9 +1043,10 @@ export default function Dashboard() {
 
               {/* Card 4: Duel Snake 1v1 */}
               <div className="glass-panel group relative rounded-2xl md:rounded-3xl p-3 md:p-6 bg-slate-900/40 border border-slate-800 hover:border-emerald-500/30 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-xl transform hover:-translate-y-1">
-                <div className="absolute top-0 right-0 w-20 h-20 md:w-32 md:h-32 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-emerald-500/10 transition-all duration-300"></div>
+                <img src="/games/duel_snake.png" alt="Duel Snake" className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none group-hover:opacity-20 transition-opacity duration-300 z-0" />
+                <div className="absolute top-0 right-0 w-20 h-20 md:w-32 md:h-32 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-emerald-500/10 transition-all duration-300 z-0"></div>
 
-                <div>
+                <div className="relative z-10">
                   <div className="flex justify-between items-start mb-3 md:mb-6">
                     <div className="bg-emerald-500/10 p-2 md:p-4 rounded-xl md:rounded-2xl text-emerald-500 border border-emerald-500/15 animate-pulse">
                       <Gamepad2 className="h-5 w-5 md:h-8 md:w-8" />
@@ -1062,7 +1066,7 @@ export default function Dashboard() {
 
                 <button
                   onClick={() => setSelectedGame('snake_duel')}
-                  className="w-full py-2 md:py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-lg md:rounded-xl text-[9px] md:text-xs transition-all tracking-wide shadow-md shadow-emerald-600/15"
+                  className="relative z-10 w-full py-2 md:py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black rounded-lg md:rounded-xl text-[9px] md:text-xs transition-all tracking-wide shadow-md shadow-emerald-600/15"
                 >
                   DÉFIER
                 </button>
@@ -1070,9 +1074,10 @@ export default function Dashboard() {
 
               {/* Card 5: KOTH (King of the Hill) */}
               <div className="glass-panel group relative rounded-2xl md:rounded-3xl p-3 md:p-6 bg-slate-900/40 border border-slate-800 hover:border-purple-500/30 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-xl transform hover:-translate-y-1">
-                <div className="absolute top-0 right-0 w-20 h-20 md:w-32 md:h-32 bg-purple-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-purple-500/10 transition-all duration-300"></div>
+                <img src="/games/koth_crown.png" alt="KOTH Crown" className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none group-hover:opacity-20 transition-opacity duration-300 z-0" />
+                <div className="absolute top-0 right-0 w-20 h-20 md:w-32 md:h-32 bg-purple-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-purple-500/10 transition-all duration-300 z-0"></div>
 
-                <div>
+                <div className="relative z-10">
                   <div className="flex justify-between items-start mb-3 md:mb-6">
                     <div className="bg-purple-500/10 p-2 md:p-4 rounded-xl md:rounded-2xl text-purple-500 border border-purple-500/15 animate-pulse">
                       <ShieldAlert className="h-5 w-5 md:h-8 md:w-8" />
@@ -1092,7 +1097,7 @@ export default function Dashboard() {
 
                 <button
                   onClick={() => setSelectedGame('koth')}
-                  className="w-full py-2 md:py-3.5 bg-purple-600 hover:bg-purple-500 text-white font-black rounded-lg md:rounded-xl text-[9px] md:text-xs transition-all tracking-wide shadow-md shadow-purple-600/15"
+                  className="relative z-10 w-full py-2 md:py-3.5 bg-purple-600 hover:bg-purple-500 text-white font-black rounded-lg md:rounded-xl text-[9px] md:text-xs transition-all tracking-wide shadow-md shadow-purple-600/15"
                 >
                   REJOINDRE
                 </button>
@@ -1100,9 +1105,10 @@ export default function Dashboard() {
 
               {/* Card 6: BLOOD MONEY */}
               <div className="glass-panel group relative rounded-2xl md:rounded-3xl p-3 md:p-6 bg-slate-900/40 border border-slate-800 hover:border-red-500/30 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-xl transform hover:-translate-y-1">
-                <div className="absolute top-0 right-0 w-20 h-20 md:w-32 md:h-32 bg-red-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-red-500/10 transition-all duration-300"></div>
+                <img src="/games/blood_money.png" alt="Blood Money" className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none group-hover:opacity-20 transition-opacity duration-300 z-0" />
+                <div className="absolute top-0 right-0 w-20 h-20 md:w-32 md:h-32 bg-red-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-red-500/10 transition-all duration-300 z-0"></div>
 
-                <div>
+                <div className="relative z-10">
                   <div className="flex justify-between items-start mb-3 md:mb-6">
                     <div className="bg-red-500/10 p-2 md:p-4 rounded-xl md:rounded-2xl text-red-500 border border-red-500/15 animate-pulse">
                       <Flame className="h-5 w-5 md:h-8 md:w-8" />
@@ -1122,7 +1128,7 @@ export default function Dashboard() {
 
                 <button
                   onClick={() => setSelectedGame('bloodmoney')}
-                  className="w-full py-2 md:py-3.5 bg-red-600 hover:bg-red-500 text-white font-bold rounded-lg md:rounded-xl text-[9px] md:text-xs transition-all tracking-wide shadow-md shadow-red-600/15"
+                  className="relative z-10 w-full py-2 md:py-3.5 bg-red-600 hover:bg-red-500 text-white font-bold rounded-lg md:rounded-xl text-[9px] md:text-xs transition-all tracking-wide shadow-md shadow-red-600/15"
                 >
                   JOUER
                 </button>
@@ -1130,9 +1136,10 @@ export default function Dashboard() {
 
               {/* Card 7: LAST SECOND */}
               <div className="glass-panel group relative rounded-2xl md:rounded-3xl p-3 md:p-6 bg-slate-900/40 border border-slate-800 hover:border-emerald-500/30 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-xl transform hover:-translate-y-1">
-                <div className="absolute top-0 right-0 w-20 h-20 md:w-32 md:h-32 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-emerald-500/10 transition-all duration-300"></div>
+                <img src="/games/last_second.png" alt="Last Second" className="absolute inset-0 w-full h-full object-cover opacity-10 pointer-events-none group-hover:opacity-20 transition-opacity duration-300 z-0" />
+                <div className="absolute top-0 right-0 w-20 h-20 md:w-32 md:h-32 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-emerald-500/10 transition-all duration-300 z-0"></div>
 
-                <div>
+                <div className="relative z-10">
                   <div className="flex justify-between items-start mb-3 md:mb-6">
                     <div className="bg-emerald-500/10 p-2 md:p-4 rounded-xl md:rounded-2xl text-emerald-400 border border-emerald-500/15 animate-pulse">
                       <Clock className="h-5 w-5 md:h-8 md:w-8" />
@@ -1152,7 +1159,7 @@ export default function Dashboard() {
 
                 <button
                   onClick={() => setSelectedGame('lastsecond')}
-                  className="w-full py-2 md:py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg md:rounded-xl text-[9px] md:text-xs transition-all tracking-wide shadow-md shadow-emerald-600/15"
+                  className="relative z-10 w-full py-2 md:py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg md:rounded-xl text-[9px] md:text-xs transition-all tracking-wide shadow-md shadow-emerald-600/15"
                 >
                   JOUER
                 </button>

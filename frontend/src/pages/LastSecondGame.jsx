@@ -96,6 +96,10 @@ export default function LastSecondGame({ socket, onBackToLobby, addNotification 
     // Listen to live ticks
     socket.on('lastsecond:round:tick', (data) => {
       setTickingMultiplier(data.multiplier);
+      setRound(prev => ({
+        ...prev,
+        elapsed: data.elapsed
+      }));
     });
 
     // Round ended with a GOAL

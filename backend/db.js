@@ -265,6 +265,55 @@ const initializeDatabase = async () => {
     `);
     console.log('Database: Table "notifications" checked/created.');
 
+    // 8.9 Create Sport Events Table (Last Second)
+    await query(`
+      CREATE TABLE IF NOT EXISTS sport_events (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        api_match_id VARCHAR(32),
+        home_team VARCHAR(64) NOT NULL,
+        away_team VARCHAR(64) NOT NULL,
+        score_home INT DEFAULT 0,
+        score_away INT DEFAULT 0,
+        minute INT DEFAULT 0,
+        status VARCHAR(20) DEFAULT 'live',
+        next_goal_window BOOLEAN DEFAULT false,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('Database: Table "sport_events" checked/created.');
+
+    // 8.10 Create Last Second Rounds Table
+    await query(`
+      CREATE TABLE IF NOT EXISTS ls_rounds (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        event_id UUID REFERENCES sport_events(id) ON DELETE CASCADE,
+        started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        ended_at TIMESTAMP,
+        crash_type VARCHAR(20) CHECK (crash_type IN ('goal', 'no_goal', 'timeout')),
+        multiplier_at_crash DECIMAL(8,2),
+        seed_hash VARCHAR(64)
+      );
+    `);
+    console.log('Database: Table "ls_rounds" checked/created.');
+
+    // 8.11 Create Last Second Bets Table
+    await query(`
+      CREATE TABLE IF NOT EXISTS ls_bets (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        round_id UUID REFERENCES ls_rounds(id) ON DELETE CASCADE,
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        amount DECIMAL(10,2) NOT NULL,
+        bet_type VARCHAR(20) CHECK (bet_type IN ('goal', 'no_goal')),
+        auto_cashout DECIMAL(5,2),
+        cashed_out_at DECIMAL(5,2),
+        profit DECIMAL(10,2) DEFAULT 0.00,
+        status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'won', 'lost')),
+        currency VARCHAR(10) DEFAULT 'HTG',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('Database: Table "ls_bets" checked/created.');
+
     // 9. Seed Admin User
     const adminCheck = await query("SELECT * FROM users WHERE role = 'admin' LIMIT 1");
     if (adminCheck.rows.length === 0) {

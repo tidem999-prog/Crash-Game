@@ -12,6 +12,7 @@ import DominoGame from './DominoGame';
 import MinesGame from './MinesGame';
 import KothGame from './KothGame';
 import BloodmoneyGame from './BloodmoneyGame';
+import LastSecondGame from './LastSecondGame';
 
 export default function Dashboard() {
   const { user, refreshBalance, updateBalance, updateProfile, convertKet } = useAuth();
@@ -1129,6 +1130,36 @@ export default function Dashboard() {
                 </button>
               </div>
 
+              {/* Card 7: LAST SECOND */}
+              <div className="glass-panel group relative rounded-2xl md:rounded-3xl p-3 md:p-6 bg-slate-900/40 border border-slate-800 hover:border-emerald-500/30 transition-all duration-300 flex flex-col justify-between overflow-hidden shadow-xl transform hover:-translate-y-1">
+                <div className="absolute top-0 right-0 w-20 h-20 md:w-32 md:h-32 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none group-hover:bg-emerald-500/10 transition-all duration-300"></div>
+
+                <div>
+                  <div className="flex justify-between items-start mb-3 md:mb-6">
+                    <div className="bg-emerald-500/10 p-2 md:p-4 rounded-xl md:rounded-2xl text-emerald-400 border border-emerald-500/15 animate-pulse">
+                      <Clock className="h-5 w-5 md:h-8 md:w-8" />
+                    </div>
+                    <span className="text-[8px] md:text-[10px] font-bold tracking-wider uppercase bg-emerald-500/10 text-emerald-400 px-2 md:px-3 py-0.5 md:py-1 rounded-full border border-emerald-500/20">
+                      LIVE FOOTBALL
+                    </span>
+                  </div>
+
+                  <h3 className="font-display font-black text-sm md:text-xl text-white mb-1 md:mb-2 tracking-wide">
+                    LAST SECOND
+                  </h3>
+                  <p className="text-slate-400 text-[9px] md:text-xs leading-tight md:leading-relaxed mb-4 md:mb-6">
+                    Pariez en direct sur des matchs réels ! Encaissez avant le but ou tenez bon sans but.
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setSelectedGame('lastsecond')}
+                  className="w-full py-2 md:py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg md:rounded-xl text-[9px] md:text-xs transition-all tracking-wide shadow-md shadow-emerald-600/15"
+                >
+                  JOUER
+                </button>
+              </div>
+
             </div>
           </div>
         )}
@@ -1340,6 +1371,11 @@ export default function Dashboard() {
         {/* Tab content: PLAY GAME (BLOOD MONEY ACTIVE) */}
         {activeTab === 'play' && selectedGame === 'bloodmoney' && (
           <BloodmoneyGame socket={socket} setSelectedGame={setSelectedGame} />
+        )}
+
+        {/* Tab content: PLAY GAME (LAST SECOND ACTIVE) */}
+        {activeTab === 'play' && selectedGame === 'lastsecond' && (
+          <LastSecondGame socket={socket} onBackToLobby={() => setSelectedGame(null)} addNotification={addNotification} />
         )}
 
         {/* Tab content 2: DEPOSITS */}

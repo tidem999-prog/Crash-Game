@@ -99,13 +99,13 @@ const getRecentHistory = async () => {
 
 const broadcastMatchUpdate = () => {
   if (io) {
-    io.emit('match:update', currentMatch);
+    io.emit('lastsecond:match:update', currentMatch);
   }
 };
 
 const broadcastRoundState = () => {
   if (io) {
-    io.emit('round:state', {
+    io.emit('lastsecond:round:state', {
       roundId: currentRound.id,
       status: currentRound.status,
       countdown: currentRound.countdown,
@@ -176,7 +176,7 @@ const startWaitingPhase = async () => {
   broadcastRoundState();
 
   if (io) {
-    io.emit('round:opening', {
+    io.emit('lastsecond:round:opening', {
       roundId: currentRound.id,
       seedHash: currentRound.seed_hash,
       matchMinute: currentMatch.minute
@@ -210,7 +210,7 @@ const startTickingPhase = () => {
 
     // Emit live ticks
     if (io) {
-      io.emit('round:tick', {
+      io.emit('lastsecond:round:tick', {
         multiplier: currentRound.multiplier,
         elapsed: parseFloat(elapsed.toFixed(1))
       });
@@ -242,7 +242,7 @@ const checkAutoCashouts = async (currentMultiplier) => {
       activePlayersStore.cashoutPlayer(userId, 'lastsecond', bet.amount * bet.auto_cashout, bet.auto_cashout);
 
       if (io) {
-        io.to(bet.socketId).emit('bet:cashout:confirm', {
+        io.to(bet.socketId).emit('lastsecond:bet:cashout:confirm', {
           roundId: currentRound.id,
           multiplier: bet.auto_cashout,
           potentialWin: bet.amount * bet.auto_cashout
@@ -309,7 +309,7 @@ const handleGoalEnd = async () => {
 
         const balances = await getUserBalances(userId);
         if (io) {
-          io.to(bet.socketId).emit('bet:result', {
+          io.to(bet.socketId).emit('lastsecond:bet:result', {
             roundId: currentRound.id,
             status: 'won',
             multiplier: bet.cashed_out_at,
@@ -337,7 +337,7 @@ const handleGoalEnd = async () => {
         await processBetSettlement(userId, bet.amount, 0.00, bet.currency, 'lastsecond');
 
         if (io) {
-          io.to(bet.socketId).emit('bet:result', {
+          io.to(bet.socketId).emit('lastsecond:bet:result', {
             roundId: currentRound.id,
             status: 'lost',
             multiplier: finalMultiplier,
@@ -355,7 +355,7 @@ const handleGoalEnd = async () => {
   }
 
   if (io) {
-    io.emit('round:closed:goal', {
+    io.emit('lastsecond:round:closed:goal', {
       multiplier: finalMultiplier,
       scorer,
       score_home: currentMatch.score_home,
@@ -415,7 +415,7 @@ const handleNoGoalEnd = async () => {
 
         const balances = await getUserBalances(userId);
         if (io) {
-          io.to(bet.socketId).emit('bet:result', {
+          io.to(bet.socketId).emit('lastsecond:bet:result', {
             roundId: currentRound.id,
             status: 'won',
             multiplier: finalMultiplier,
@@ -443,7 +443,7 @@ const handleNoGoalEnd = async () => {
         await processBetSettlement(userId, bet.amount, 0.00, bet.currency, 'lastsecond');
 
         if (io) {
-          io.to(bet.socketId).emit('bet:result', {
+          io.to(bet.socketId).emit('lastsecond:bet:result', {
             roundId: currentRound.id,
             status: 'lost',
             multiplier: finalMultiplier,
@@ -461,7 +461,7 @@ const handleNoGoalEnd = async () => {
   }
 
   if (io) {
-    io.emit('round:closed:nogoal', {
+    io.emit('lastsecond:round:closed:nogoal', {
       serverSeed: currentRound.server_seed,
       multiplier: finalMultiplier
     });
@@ -526,9 +526,9 @@ const initLastsecondEngine = (socketIoInstance) => {
   })();
 
   io.on('connection', (socket) => {
-    socket.emit('match:update', currentMatch);
+    socket.emit('lastsecond:match:update', currentMatch);
     
-    socket.emit('round:state', {
+    socket.emit('lastsecond:round:state', {
       roundId: currentRound.id,
       status: currentRound.status,
       countdown: currentRound.countdown,
@@ -548,34 +548,34 @@ const initLastsecondEngine = (socketIoInstance) => {
     });
 
     // 1. Place Bet Event
-    socket.on('bet:place', async (data) => {
+    socket.on('lastsecond:bet:place', async (data) => {
       const { userId, email, amount, type, autoCashout } = data;
 
       if (currentRound.status !== 'waiting') {
-        return socket.emit('bet:error', { message: 'Les paris sont fermés pour cette manche.' });
+        return socket.emit('lastsecond:bet:error', { message: 'Les paris sont fermés pour cette manche.' });
       }
 
       if (!userId || !amount || amount <= 0) {
-        return socket.emit('bet:error', { message: 'Montant de pari invalide.' });
+        return socket.emit('lastsecond:bet:error', { message: 'Montant de pari invalide.' });
       }
 
       if (type !== 'goal' && type !== 'no_goal') {
-        return socket.emit('bet:error', { message: 'Type de pari invalide.' });
+        return socket.emit('lastsecond:bet:error', { message: 'Type de pari invalide.' });
       }
 
       if (activeBets[userId]) {
-        return socket.emit('bet:error', { message: 'Vous avez déjà placé un pari pour cette manche.' });
+        return socket.emit('lastsecond:bet:error', { message: 'Vous avez déjà placé un pari pour cette manche.' });
       }
 
       try {
         const userRes = await query('SELECT balance, ket_balance, active_currency, is_suspended FROM users WHERE id = $1', [userId]);
         if (userRes.rows.length === 0) {
-          return socket.emit('bet:error', { message: 'Utilisateur introuvable.' });
+          return socket.emit('lastsecond:bet:error', { message: 'Utilisateur introuvable.' });
         }
 
         const user = userRes.rows[0];
         if (user.is_suspended) {
-          return socket.emit('bet:error', { message: 'Votre compte est suspendu.' });
+          return socket.emit('lastsecond:bet:error', { message: 'Votre compte est suspendu.' });
         }
 
         const activeCurrency = user.active_currency || 'HTG';
@@ -584,19 +584,19 @@ const initLastsecondEngine = (socketIoInstance) => {
 
         if (activeCurrency === 'KET') {
           if (amount < 1000) {
-            return socket.emit('bet:error', { message: 'La mise minimale en KET est de 1 000 KET.' });
+            return socket.emit('lastsecond:bet:error', { message: 'La mise minimale en KET est de 1 000 KET.' });
           }
           if (newKetBalance < amount) {
-            return socket.emit('bet:error', { message: 'Solde de KET insuffisant.' });
+            return socket.emit('lastsecond:bet:error', { message: 'Solde de KET insuffisant.' });
           }
           await query('UPDATE users SET ket_balance = ket_balance - $1 WHERE id = $2', [amount, userId]);
           newKetBalance -= amount;
         } else {
           if (amount < 10) {
-            return socket.emit('bet:error', { message: 'La mise minimale est de 10 HTG.' });
+            return socket.emit('lastsecond:bet:error', { message: 'La mise minimale est de 10 HTG.' });
           }
           if (newBalance < amount) {
-            return socket.emit('bet:error', { message: 'Solde insuffisant.' });
+            return socket.emit('lastsecond:bet:error', { message: 'Solde insuffisant.' });
           }
           await query('UPDATE users SET balance = balance - $1 WHERE id = $2', [amount, userId]);
           newBalance -= amount;
@@ -619,12 +619,12 @@ const initLastsecondEngine = (socketIoInstance) => {
 
         activePlayersStore.addPlayer(userId, email, 'lastsecond', amount);
 
-        socket.emit('bet:confirmed', {
+        socket.emit('lastsecond:bet:confirmed', {
           betId: currentRound.id,
           potentialWin: type === 'goal' ? (autoCashout ? amount * autoCashout : null) : null
         });
 
-        socket.emit('bet_success', {
+        socket.emit('lastsecond:bet_success', {
           betAmount: amount,
           autoCashout: autoCashout || null,
           newBalance: activeCurrency === 'KET' ? newKetBalance : newBalance,
@@ -638,34 +638,41 @@ const initLastsecondEngine = (socketIoInstance) => {
           newKetBalance
         });
 
+        io.emit('lastsecond:player_placed_bet', {
+          email: email.split('@')[0],
+          amount: parseFloat(amount),
+          bet_type: type,
+          currency: activeCurrency
+        });
+
         broadcastRoundState();
         console.log(`LastSecond: Bet confirmed for ${email} : ${amount} ${activeCurrency} [${type}]`);
       } catch (err) {
         console.error('LastSecond: Error placing bet:', err);
-        socket.emit('bet:error', { message: 'Erreur interne du serveur.' });
+        socket.emit('lastsecond:bet:error', { message: 'Erreur interne du serveur.' });
       }
     });
 
     // 2. Cashout Event
-    socket.on('bet:cashout', async (data) => {
+    socket.on('lastsecond:bet:cashout', async (data) => {
       const { roundId } = data;
       const userId = socket.userId || Object.keys(activeBets).find(uid => activeBets[uid].socketId === socket.id);
 
       if (currentRound.status !== 'ticking') {
-        return socket.emit('bet:error', { message: 'La manche n\'est pas en cours.' });
+        return socket.emit('lastsecond:bet:error', { message: 'La manche n\'est pas en cours.' });
       }
 
       if (!userId || !activeBets[userId]) {
-        return socket.emit('bet:error', { message: 'Aucun pari actif trouvé.' });
+        return socket.emit('lastsecond:bet:error', { message: 'Aucun pari actif trouvé.' });
       }
 
       const bet = activeBets[userId];
       if (bet.bet_type !== 'goal') {
-        return socket.emit('bet:error', { message: 'Seuls les paris sur BUT ("goal") peuvent être encaissés en cours.' });
+        return socket.emit('lastsecond:bet:error', { message: 'Seuls les paris sur BUT ("goal") peuvent être encaissés en cours.' });
       }
 
       if (bet.cashedOut) {
-        return socket.emit('bet:error', { message: 'Vous avez déjà encaissé.' });
+        return socket.emit('lastsecond:bet:error', { message: 'Vous avez déjà encaissé.' });
       }
 
       const currentMultiplier = currentRound.multiplier;
@@ -674,13 +681,13 @@ const initLastsecondEngine = (socketIoInstance) => {
 
       activePlayersStore.cashoutPlayer(userId, 'lastsecond', bet.amount * currentMultiplier, currentMultiplier);
 
-      socket.emit('bet:cashout:confirm', {
+      socket.emit('lastsecond:bet:cashout:confirm', {
         roundId: currentRound.id,
         multiplier: currentMultiplier,
         potentialWin: bet.amount * currentMultiplier
       });
 
-      io.emit('player_cashed_out', {
+      io.emit('lastsecond:player_cashed_out', {
         email: bet.email.split('@')[0],
         multiplier: currentMultiplier,
         payout: bet.amount * currentMultiplier,

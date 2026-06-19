@@ -44,6 +44,7 @@ export default function LastSecondGame({ socket, onBackToLobby, addNotification 
   const [cashoutSuccess, setCashoutSuccess] = useState(null); // { payout, multiplier }
   const [goalOverlay, setGoalOverlay] = useState(null); // null or { scorer, multiplier }
   const [noGoalOverlay, setNoGoalOverlay] = useState(null); // null or { multiplier }
+  const [showResultOverlay, setShowResultOverlay] = useState(false);
 
   // Canvas and Animation Refs
   const canvasRef = useRef(null);
@@ -83,6 +84,7 @@ export default function LastSecondGame({ socket, onBackToLobby, addNotification 
           setCashoutSuccess(null);
           setGoalOverlay(null);
           setNoGoalOverlay(null);
+          setShowResultOverlay(false);
           setBetError('');
         }
         return {
@@ -108,6 +110,9 @@ export default function LastSecondGame({ socket, onBackToLobby, addNotification 
         scorer: data.scorer,
         multiplier: data.multiplier
       });
+      setTimeout(() => {
+        setShowResultOverlay(true);
+      }, 2000);
       refreshBalance();
     });
 
@@ -116,6 +121,9 @@ export default function LastSecondGame({ socket, onBackToLobby, addNotification 
       setNoGoalOverlay({
         multiplier: data.multiplier
       });
+      setTimeout(() => {
+        setShowResultOverlay(true);
+      }, 2000);
       refreshBalance();
     });
 
@@ -232,125 +240,215 @@ export default function LastSecondGame({ socket, onBackToLobby, addNotification 
     canvas.height = 220 * dpr;
     ctx.scale(dpr, dpr);
 
-    // Initialize entities
-    const ball = { x: 300, y: 110, targetX: 300, targetY: 110, size: 5, color: '#ffffff' };
-    const p1 = { x: 200, y: 110, targetX: 200, targetY: 110, color: '#3b82f6', label: '10' };
-    const p2 = { x: 400, y: 110, targetX: 400, targetY: 110, color: '#ef4444', label: '7' };
+    // Initialize 11 players for Home (Blue) in a 4-4-2 layout
+    const GK1_COLOR = '#fbbf24'; // Yellow GK shirt
+    const team1 = [
+      { id: 1, label: '1', baseX: 45, baseY: 110, x: 45, y: 110, targetX: 45, targetY: 110, color: GK1_COLOR, role: 'gk' },
+      { id: 2, label: '2', baseX: 90, baseY: 50, x: 90, y: 50, targetX: 90, targetY: 50, color: '#3b82f6', role: 'df' },
+      { id: 3, label: '4', baseX: 80, baseY: 90, x: 80, y: 90, targetX: 80, targetY: 90, color: '#3b82f6', role: 'df' },
+      { id: 4, label: '5', baseX: 80, baseY: 130, x: 80, y: 130, targetX: 80, targetY: 130, color: '#3b82f6', role: 'df' },
+      { id: 5, label: '3', baseX: 90, baseY: 170, x: 90, y: 170, targetX: 90, targetY: 170, color: '#3b82f6', role: 'df' },
+      { id: 6, label: '6', baseX: 170, baseY: 40, x: 170, y: 40, targetX: 170, targetY: 40, color: '#3b82f6', role: 'md' },
+      { id: 7, label: '8', baseX: 160, baseY: 85, x: 160, y: 85, targetX: 160, targetY: 85, color: '#3b82f6', role: 'md' },
+      { id: 8, label: '10', baseX: 160, baseY: 135, x: 160, y: 135, targetX: 160, targetY: 135, color: '#3b82f6', role: 'md' },
+      { id: 9, label: '7', baseX: 170, baseY: 180, x: 170, y: 180, targetX: 170, targetY: 180, color: '#3b82f6', role: 'md' },
+      { id: 10, label: '9', baseX: 250, baseY: 85, x: 250, y: 85, targetX: 250, targetY: 85, color: '#3b82f6', role: 'fw' },
+      { id: 11, label: '11', baseX: 250, baseY: 135, x: 250, y: 135, targetX: 250, targetY: 135, color: '#3b82f6', role: 'fw' }
+    ];
+
+    // Initialize 11 players for Away (Red) in a 4-4-2 layout
+    const GK2_COLOR = '#10b981'; // Green GK shirt
+    const team2 = [
+      { id: 1, label: '1', baseX: 555, baseY: 110, x: 555, y: 110, targetX: 555, targetY: 110, color: GK2_COLOR, role: 'gk' },
+      { id: 2, label: '2', baseX: 510, baseY: 50, x: 510, y: 50, targetX: 510, targetY: 50, color: '#ef4444', role: 'df' },
+      { id: 3, label: '4', baseX: 520, baseY: 90, x: 520, y: 90, targetX: 520, targetY: 90, color: '#ef4444', role: 'df' },
+      { id: 4, label: '5', baseX: 520, baseY: 130, x: 520, y: 130, targetX: 520, targetY: 130, color: '#ef4444', role: 'df' },
+      { id: 5, label: '3', baseX: 510, baseY: 170, x: 510, y: 170, targetX: 510, targetY: 170, color: '#ef4444', role: 'df' },
+      { id: 6, label: '6', baseX: 430, baseY: 40, x: 430, y: 40, targetX: 430, targetY: 40, color: '#ef4444', role: 'md' },
+      { id: 7, label: '8', baseX: 440, baseY: 85, x: 440, y: 85, targetX: 440, targetY: 85, color: '#ef4444', role: 'md' },
+      { id: 8, label: '10', baseX: 440, baseY: 135, x: 440, y: 135, targetX: 440, targetY: 135, color: '#ef4444', role: 'md' },
+      { id: 9, label: '7', baseX: 430, baseY: 180, x: 430, y: 180, targetX: 430, targetY: 180, color: '#ef4444', role: 'md' },
+      { id: 10, label: '9', baseX: 350, baseY: 85, x: 350, y: 85, targetX: 350, targetY: 85, color: '#ef4444', role: 'fw' },
+      { id: 11, label: '11', baseX: 350, baseY: 135, x: 350, y: 135, targetX: 350, targetY: 135, color: '#ef4444', role: 'fw' }
+    ];
+
+    const ball = { x: 300, y: 110, targetX: 300, targetY: 110, size: 4.5, color: '#ffffff' };
     let frameCount = 0;
     let ballInNet = false;
     let netVibration = 0;
 
-    // Synchronize phase states
-    if (goalOverlay) {
-      phaseRef.current = 'scoring';
-      const homeScored = goalOverlay.scorer === match.home_team;
-      ball.targetX = homeScored ? 578 : 22;
-      ball.targetY = 110 + (Math.random() * 20 - 10);
-      if (homeScored) {
-        p1.x = ball.x - 30; p1.y = ball.y - 5;
-      } else {
-        p2.x = ball.x + 30; p2.y = ball.y - 5;
-      }
-    } else if (noGoalOverlay) {
-      phaseRef.current = 'missing';
-      const shootRight = Math.random() < 0.5;
-      ball.targetX = shootRight ? 595 : 5;
-      ball.targetY = Math.random() < 0.5 ? 40 : 180;
-      if (shootRight) {
-        p1.x = ball.x - 30; p1.y = ball.y;
-      } else {
-        p2.x = ball.x + 30; p2.y = ball.y;
-      }
-    } else if (round.status === 'ticking') {
-      phaseRef.current = 'dribbling';
-    } else {
-      phaseRef.current = 'idle';
-    }
+    // Shot initial values
+    let shotStartX = 300;
+    let shotStartY = 110;
 
     const animate = () => {
       frameCount++;
+
+      // 1. Transition phase state check
+      if (goalOverlay && phaseRef.current !== 'scoring') {
+        phaseRef.current = 'scoring';
+        const homeScored = goalOverlay.scorer === match.home_team;
+        const shooter = homeScored ? team1[9] : team2[9]; // Striker takes the shot
+        ball.x = shooter.x;
+        ball.y = shooter.y;
+        shotStartX = shooter.x;
+        shotStartY = shooter.y;
+        ball.targetX = homeScored ? 578 : 22;
+        ball.targetY = 95 + Math.random() * 30; // Random height in the goal mouth
+        ballInNet = false;
+      } 
+      else if (noGoalOverlay && phaseRef.current !== 'missing') {
+        phaseRef.current = 'missing';
+        const shootRight = Math.random() < 0.5;
+        const shooter = shootRight ? team1[9] : team2[9]; // Missed shot
+        ball.x = shooter.x;
+        ball.y = shooter.y;
+        shotStartX = shooter.x;
+        shotStartY = shooter.y;
+        ball.targetX = shootRight ? 595 : 5;
+        ball.targetY = Math.random() < 0.5 ? 40 : 180; // Out of bounds
+        ballInNet = false;
+      }
+      else if (!goalOverlay && !noGoalOverlay) {
+        if (round.status === 'ticking') {
+          phaseRef.current = 'dribbling';
+        } else {
+          phaseRef.current = 'idle';
+        }
+      }
+
       const phase = phaseRef.current;
 
-      // Update positions based on active phase
+      // 2. State specific updates
       if (phase === 'idle') {
         ball.targetX = 300;
         ball.targetY = 110;
-        p1.targetX = 180 + Math.sin(frameCount * 0.03) * 15;
-        p1.targetY = 110 + Math.cos(frameCount * 0.02) * 15;
-        p2.targetX = 420 + Math.sin(frameCount * 0.025) * 15;
-        p2.targetY = 110 + Math.cos(frameCount * 0.035) * 15;
-
         ball.x += (ball.targetX - ball.x) * 0.05;
         ball.y += (ball.targetY - ball.y) * 0.05;
         ballInNet = false;
+
+        // Base idle pacing
+        team1.forEach(p => {
+          p.targetX = p.baseX + Math.sin(frameCount * 0.03 + p.id) * 6;
+          p.targetY = p.baseY + Math.cos(frameCount * 0.02 + p.id) * 6;
+        });
+        team2.forEach(p => {
+          p.targetX = p.baseX + Math.sin(frameCount * 0.035 + p.id) * 6;
+          p.targetY = p.baseY + Math.cos(frameCount * 0.018 + p.id) * 6;
+        });
       } 
       else if (phase === 'dribbling') {
-        // Ball moves dynamically around the field
+        // Ball travels around midfield zone
         if (frameCount % 100 === 0) {
-          ball.targetX = 180 + Math.random() * 240; // between 180 and 420
-          ball.targetY = 40 + Math.random() * 140;  // between 40 and 180
+          ball.targetX = 180 + Math.random() * 240; // 180 to 420
+          ball.targetY = 40 + Math.random() * 140;  // 40 to 180
         }
-
-        // Players chase the ball
-        if (ball.x < 300) {
-          p1.targetX = ball.x - 12;
-          p1.targetY = ball.y;
-          p2.targetX = 380 + Math.sin(frameCount * 0.02) * 20;
-          p2.targetY = 110 + Math.cos(frameCount * 0.01) * 30;
-        } else {
-          p2.targetX = ball.x + 12;
-          p2.targetY = ball.y;
-          p1.targetX = 220 + Math.sin(frameCount * 0.02) * 20;
-          p1.targetY = 110 + Math.cos(frameCount * 0.015) * 30;
-        }
-
         ball.x += (ball.targetX - ball.x) * 0.05;
         ball.y += (ball.targetY - ball.y) * 0.05;
         ballInNet = false;
+
+        // Goalkeepers track the ball height
+        team1[0].targetY = Math.max(90, Math.min(130, ball.y));
+        team2[0].targetY = Math.max(90, Math.min(130, ball.y));
+
+        // Find closest players on each team to the ball (excluding GKs)
+        let closestP1 = team1[9];
+        let minDist1 = Infinity;
+        team1.forEach((p, idx) => {
+          if (idx > 0) {
+            const dist = Math.hypot(p.x - ball.x, p.y - ball.y);
+            if (dist < minDist1) { minDist1 = dist; closestP1 = p; }
+          }
+        });
+
+        let closestP2 = team2[9];
+        let minDist2 = Infinity;
+        team2.forEach((p, idx) => {
+          if (idx > 0) {
+            const dist = Math.hypot(p.x - ball.x, p.y - ball.y);
+            if (dist < minDist2) { minDist2 = dist; closestP2 = p; }
+          }
+        });
+
+        // Other players pace around base coordinates
+        team1.forEach((p, idx) => {
+          if (idx > 0) {
+            p.targetX = p.baseX + Math.sin(frameCount * 0.02 + p.id) * 8;
+            p.targetY = p.baseY + Math.cos(frameCount * 0.015 + p.id) * 8;
+          }
+        });
+        team2.forEach((p, idx) => {
+          if (idx > 0) {
+            p.targetX = p.baseX + Math.sin(frameCount * 0.025 + p.id) * 8;
+            p.targetY = p.baseY + Math.cos(frameCount * 0.02 + p.id) * 8;
+          }
+        });
+
+        // Both closest players run to challenge for the ball
+        closestP1.targetX = ball.x - 6;
+        closestP1.targetY = ball.y;
+        closestP2.targetX = ball.x + 6;
+        closestP2.targetY = ball.y;
       } 
       else if (phase === 'scoring') {
-        // Ball goes towards goal net
-        ball.x += (ball.targetX - ball.x) * 0.12;
-        ball.y += (ball.targetY - ball.y) * 0.12;
-
-        // Check if ball reached the net
-        const distToGoal = Math.abs(ball.x - ball.targetX);
-        if (distToGoal < 8) {
-          ballInNet = true;
-          netVibration = Math.sin(frameCount * 0.5) * 4;
-        }
+        ball.x += (ball.targetX - ball.x) * 0.15;
+        ball.y += (ball.targetY - ball.y) * 0.15;
 
         const homeScored = goalOverlay?.scorer === match.home_team;
-        if (homeScored) {
-          p1.targetX = ball.x - 15;
-          p1.targetY = ball.y;
-          p2.targetX = 480; p2.targetY = 110;
-        } else {
-          p2.targetX = ball.x + 15;
-          p2.targetY = ball.y;
-          p1.targetX = 120; p1.targetY = 110;
+        const shooter = homeScored ? team1[9] : team2[9];
+        const gk = homeScored ? team2[0] : team1[0];
+
+        // Scorer celebrates / runs to follow shot
+        shooter.targetX = ball.x - (homeScored ? 25 : -25);
+        shooter.targetY = ball.y;
+
+        // Opponent GK dives towards shot but misses
+        gk.targetY = ball.targetY + (ball.targetY > 110 ? -15 : 15);
+        gk.targetX = homeScored ? 562 : 38;
+
+        // Rest of the teammates run towards scorer to celebrate!
+        const winningTeam = homeScored ? team1 : team2;
+        winningTeam.forEach((p, idx) => {
+          if (p.id !== shooter.id && p.id > 1) {
+            p.targetX = shooter.x + Math.sin(frameCount * 0.05 + p.id) * 20;
+            p.targetY = shooter.y + Math.cos(frameCount * 0.05 + p.id) * 20;
+          }
+        });
+
+        const distToGoal = Math.abs(ball.x - ball.targetX);
+        if (distToGoal < 7) {
+          ballInNet = true;
+          netVibration = Math.sin(frameCount * 0.6) * 4.5;
         }
       } 
       else if (phase === 'missing') {
-        // Ball flies wide (out / deyo)
-        ball.x += (ball.targetX - ball.x) * 0.1;
-        ball.y += (ball.targetY - ball.y) * 0.1;
-        p1.targetX = 250; p1.targetY = 110;
-        p2.targetX = 350; p2.targetY = 110;
+        ball.x += (ball.targetX - ball.x) * 0.12;
+        ball.y += (ball.targetY - ball.y) * 0.12;
         ballInNet = false;
+
+        // Run back to positions
+        team1.forEach(p => { p.targetX = p.baseX; p.targetY = p.baseY; });
+        team2.forEach(p => { p.targetX = p.baseX; p.targetY = p.baseY; });
       }
 
-      // Interpolate players positions
-      p1.x += (p1.targetX - p1.x) * 0.08;
-      p1.y += (p1.targetY - p1.y) * 0.08;
-      p2.x += (p2.targetX - p2.x) * 0.08;
-      p2.y += (p2.targetY - p2.y) * 0.08;
+      // 3. Interpolate and clamp players coordinates
+      team1.forEach(p => {
+        p.x += (p.targetX - p.x) * 0.08;
+        p.y += (p.targetY - p.y) * 0.08;
+        p.x = Math.max(30, Math.min(570, p.x));
+        p.y = Math.max(20, Math.min(200, p.y));
+      });
+      team2.forEach(p => {
+        p.x += (p.targetX - p.x) * 0.08;
+        p.y += (p.targetY - p.y) * 0.08;
+        p.x = Math.max(30, Math.min(570, p.x));
+        p.y = Math.max(20, Math.min(200, p.y));
+      });
 
-
-      // DRAWING THE SOCCER PITCH
+      // 4. DRAWING THE SOCCER PITCH
       ctx.clearRect(0, 0, 600, 220);
 
-      // Draw alternating green stripes
+      // Alternating green stripes
       const numStripes = 8;
       const stripeWidth = 600 / numStripes;
       for (let i = 0; i < numStripes; i++) {
@@ -358,42 +456,40 @@ export default function LastSecondGame({ socket, onBackToLobby, addNotification 
         ctx.fillRect(i * stripeWidth, 0, stripeWidth, 220);
       }
 
-      // Draw pitch lines (semi-transparent white)
+      // Pitch borders & lines
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
       ctx.lineWidth = 1.5;
-
-      // Field borders
       ctx.strokeRect(30, 20, 540, 180);
 
-      // Center line
+      // Center Line
       ctx.beginPath();
       ctx.moveTo(300, 20);
       ctx.lineTo(300, 200);
       ctx.stroke();
 
-      // Center circle
+      // Center Circle
       ctx.beginPath();
       ctx.arc(300, 110, 35, 0, Math.PI * 2);
       ctx.stroke();
 
-      // Center spot
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+      // Center Spot
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
       ctx.beginPath();
       ctx.arc(300, 110, 2.5, 0, Math.PI * 2);
       ctx.fill();
 
-      // Penalty areas
+      // Penalty Areas
       ctx.strokeRect(30, 55, 50, 110);
       ctx.strokeRect(520, 55, 50, 110);
 
-      // Penalty spots
+      // Penalty Spots
       ctx.beginPath();
       ctx.arc(80, 110, 1.5, 0, Math.PI * 2);
       ctx.arc(520, 110, 1.5, 0, Math.PI * 2);
       ctx.fill();
 
-      // Goal nets (vibrating if scored)
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+      // Goal Nets
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
       
       // Left Goal Net
       const leftGoalOffset = (phase === 'scoring' && ballInNet && ball.targetX < 100) ? netVibration : 0;
@@ -413,71 +509,134 @@ export default function LastSecondGame({ socket, onBackToLobby, addNotification 
       ctx.lineTo(570, 135);
       ctx.stroke();
 
+      // Clamp ball coordinates (pitch boundaries X:15 to 585, Y:15 to 205)
+      ball.x = Math.max(15, Math.min(585, ball.x));
+      ball.y = Math.max(15, Math.min(205, ball.y));
 
-      // DRAWING SHADOWS & ENTITIES
+      // 5. DRAW ENTITIES
+      // Draw Shadows
       ctx.fillStyle = 'rgba(0, 0, 0, 0.25)';
-      
-      // P1 Shadow
+      team1.forEach(p => {
+        ctx.beginPath();
+        ctx.ellipse(p.x, p.y + 7.5, 7.5, 2.8, 0, 0, Math.PI * 2);
+        ctx.fill();
+      });
+      team2.forEach(p => {
+        ctx.beginPath();
+        ctx.ellipse(p.x, p.y + 7.5, 7.5, 2.8, 0, 0, Math.PI * 2);
+        ctx.fill();
+      });
       ctx.beginPath();
-      ctx.ellipse(p1.x, p1.y + 10, 9, 3.5, 0, 0, Math.PI * 2);
-      ctx.fill();
-      
-      // P2 Shadow
-      ctx.beginPath();
-      ctx.ellipse(p2.x, p2.y + 10, 9, 3.5, 0, 0, Math.PI * 2);
-      ctx.fill();
-      
-      // Ball Shadow
-      ctx.beginPath();
-      ctx.ellipse(ball.x, ball.y + 6, 4, 1.8, 0, 0, Math.PI * 2);
+      ctx.ellipse(ball.x, ball.y + 5.5, 4, 1.5, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      // Draw P1 (Domicile - Blue)
-      ctx.fillStyle = p1.color;
-      ctx.beginPath();
-      ctx.arc(p1.x, p1.y, 9, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
+      // Draw Shot Trail in Scoring/Missing phases
+      if (phase === 'scoring' || phase === 'missing') {
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.moveTo(shotStartX, shotStartY);
+        ctx.lineTo(ball.x, ball.y);
+        ctx.stroke();
 
-      // P1 Jersey number
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 8px Inter, system-ui';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(p1.label, p1.x, p1.y);
+        // Draw Scorer Golden Indicator Crown
+        const homeScored = phase === 'scoring' ? (goalOverlay?.scorer === match.home_team) : (ball.targetX > 300);
+        const shooter = homeScored ? team1[9] : team2[9];
+        
+        ctx.fillStyle = '#fbbf24'; // Gold
+        ctx.strokeStyle = '#d97706'; // Darker Gold border
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        // Draw a small 3-pointed crown above the shooter's jersey
+        ctx.moveTo(shooter.x - 5, shooter.y - 13);
+        ctx.lineTo(shooter.x - 3, shooter.y - 18);
+        ctx.lineTo(shooter.x, shooter.y - 14);
+        ctx.lineTo(shooter.x + 3, shooter.y - 18);
+        ctx.lineTo(shooter.x + 5, shooter.y - 13);
+        ctx.lineTo(shooter.x + 4, shooter.y - 11);
+        ctx.lineTo(shooter.x - 4, shooter.y - 11);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      }
 
-      // Draw P2 (Extérieur - Red)
-      ctx.fillStyle = p2.color;
-      ctx.beginPath();
-      ctx.arc(p2.x, p2.y, 9, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
+      // Draw Team 1 players (Blue)
+      team1.forEach(p => {
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
 
-      // P2 Jersey number
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 8px Inter, system-ui';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(p2.label, p2.x, p2.y);
+        // Jersey text number
+        ctx.fillStyle = p.color === GK1_COLOR ? '#111827' : '#ffffff';
+        ctx.font = 'bold 7.5px Inter, system-ui';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(p.label, p.x, p.y);
+      });
 
-      // Draw Ball (White)
+      // Draw Team 2 players (Red)
+      team2.forEach(p => {
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.75)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // Jersey text number
+        ctx.fillStyle = p.color === GK2_COLOR ? '#111827' : '#ffffff';
+        ctx.font = 'bold 7.5px Inter, system-ui';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(p.label, p.x, p.y);
+      });
+
+      // Draw Ball (White with details)
       ctx.fillStyle = ball.color;
       ctx.beginPath();
       ctx.arc(ball.x, ball.y, ball.size, 0, Math.PI * 2);
       ctx.fill();
       ctx.strokeStyle = '#000000';
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 0.8;
       ctx.stroke();
 
-      // Pentagon pattern outline
+      // Ball pentagon texture
       ctx.fillStyle = '#000000';
       ctx.beginPath();
-      ctx.arc(ball.x, ball.y, 1.2, 0, Math.PI * 2);
+      ctx.arc(ball.x, ball.y, 1.1, 0, Math.PI * 2);
       ctx.fill();
+
+      // Draw GOAL or NO GOAL overlay text directly on the canvas pitch grass
+      if (phase === 'scoring' && ballInNet) {
+        ctx.fillStyle = '#fbbf24'; // Gold
+        ctx.font = '900 24px Inter, system-ui';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 4;
+        ctx.strokeText('BUT !!!', 300, 95);
+        ctx.fillText('BUT !!!', 300, 95);
+
+        const winnerTeam = goalOverlay?.scorer || (ball.targetX > 300 ? match.home_team : match.away_team);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 11px Inter, system-ui';
+        ctx.strokeText(`VAINQUEUR : ${winnerTeam.toUpperCase()}`, 300, 120);
+        ctx.fillText(`VAINQUEUR : ${winnerTeam.toUpperCase()}`, 300, 120);
+      } else if (phase === 'missing' && Math.abs(ball.x - ball.targetX) < 15) {
+        ctx.fillStyle = '#ef4444'; // Red
+        ctx.font = '900 20px Inter, system-ui';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 4;
+        ctx.strokeText('PAS DE BUT !', 300, 110);
+        ctx.fillText('PAS DE BUT !', 300, 110);
+      }
 
       animationFrameId = requestAnimationFrame(animate);
     };
@@ -537,22 +696,44 @@ export default function LastSecondGame({ socket, onBackToLobby, addNotification 
       <div className="relative w-full overflow-hidden rounded-3xl border border-slate-800 bg-slate-950/80 shadow-2xl flex flex-col justify-between max-h-[300px]">
         
         {/* Top Scoreboard Panel */}
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-slate-900/90 border border-slate-800/80 px-2.5 sm:px-4 py-1 sm:py-1.5 rounded-full shadow-lg backdrop-blur-md flex items-center space-x-1.5 sm:space-x-3 z-20 text-[10px] sm:text-xs font-bold text-white select-none whitespace-nowrap">
-          <span className="text-slate-400 font-medium">{match.home_team.toUpperCase().substring(0, 3)}</span>
-          <span className="font-mono text-indigo-400 text-xs sm:text-sm font-black bg-slate-950/80 px-1.5 sm:px-2 py-0.5 rounded-md border border-slate-850 inline-block whitespace-nowrap">
-            {match.score_home}:{match.score_away}
-          </span>
-          <span className="text-slate-400 font-medium">{match.away_team.toUpperCase().substring(0, 3)}</span>
-          
-          {/* Live Minute Pill */}
-          <span className={`px-1.5 sm:px-2 py-0.5 rounded-full text-[8px] sm:text-[9px] font-mono font-black flex items-center space-x-1 whitespace-nowrap ${
-            match.status === 'live' 
-              ? 'bg-rose-950 border border-rose-500/20 text-rose-400 animate-pulse'
-              : 'bg-slate-850 border border-slate-700/20 text-slate-400'
-          }`}>
-            <span className="h-1 w-1 sm:h-1.5 sm:w-1.5 rounded-full bg-current mr-0.5"></span>
-            <span>{getFormattedMatchTime()}</span>
-          </span>
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-slate-900/90 border border-slate-800/80 px-3 sm:px-4 py-1.5 rounded-2xl shadow-lg backdrop-blur-md flex flex-col items-center justify-between z-20 text-[10px] sm:text-xs font-bold text-white select-none whitespace-nowrap relative">
+          <div className="flex items-center space-x-1.5 sm:space-x-3">
+            <span className={`font-medium flex items-center space-x-1 ${goalOverlay && goalOverlay.scorer === match.home_team ? 'text-emerald-400 font-black' : 'text-slate-400'}`}>
+              {match.home_team.toUpperCase().substring(0, 3)}
+              {goalOverlay && goalOverlay.scorer === match.home_team && <span className="text-[10px] animate-bounce">👑</span>}
+            </span>
+            <span className="font-mono text-indigo-400 text-xs sm:text-sm font-black bg-slate-950/80 px-1.5 sm:px-2 py-0.5 rounded-md border border-slate-850 inline-block whitespace-nowrap">
+              {match.score_home}:{match.score_away}
+            </span>
+            <span className={`font-medium flex items-center space-x-1 ${goalOverlay && goalOverlay.scorer === match.away_team ? 'text-emerald-400 font-black' : 'text-slate-400'}`}>
+              {goalOverlay && goalOverlay.scorer === match.away_team && <span className="text-[10px] animate-bounce">👑</span>}
+              {match.away_team.toUpperCase().substring(0, 3)}
+            </span>
+            
+            {/* Live Minute Pill */}
+            <span className={`px-1.5 sm:px-2 py-0.5 rounded-full text-[8px] sm:text-[9px] font-mono font-black flex items-center space-x-1 whitespace-nowrap ${
+              match.status === 'live' 
+                ? 'bg-rose-950 border border-rose-500/20 text-rose-400 animate-pulse'
+                : 'bg-slate-850 border border-slate-700/20 text-slate-400'
+            }`}>
+              <span className="h-1 w-1 sm:h-1.5 sm:w-1.5 rounded-full bg-current mr-0.5"></span>
+              <span>{getFormattedMatchTime()}</span>
+            </span>
+
+            {/* Multiplier pill floating at the top right of the score panel! */}
+            {round.status === 'ticking' && (
+              <span className="absolute -top-3.5 -right-3.5 font-mono text-emerald-400 text-xs sm:text-sm font-black bg-emerald-950 border border-emerald-500/30 px-2 py-0.5 rounded-xl whitespace-nowrap animate-pulse shadow-md shadow-emerald-500/25">
+                {tickingMultiplier.toFixed(2)}x
+              </span>
+            )}
+          </div>
+
+          {/* Mises en cours text under the score! */}
+          {round.status === 'ticking' && (
+            <div className="text-[8px] text-slate-400 font-medium uppercase tracking-widest mt-1">
+              Mises en cours : <span className="text-indigo-400 font-black">{round.activeBetsCount}</span>
+            </div>
+          )}
         </div>
 
         {/* Canvas element */}
@@ -574,20 +755,6 @@ export default function LastSecondGame({ socket, onBackToLobby, addNotification 
             </div>
           )}
 
-          {round.status === 'ticking' && (
-            <div className="flex flex-col items-center justify-center text-center animate-fade-in select-none">
-              <h1 className="font-display font-black text-2xl sm:text-3xl text-white tracking-wide drop-shadow-[0_0_10px_rgba(99,102,241,0.4)]">
-                {tickingMultiplier.toFixed(2)}x
-              </h1>
-              <p className="text-slate-400 text-[8px] sm:text-[9px] uppercase tracking-widest font-semibold mt-1">
-                MISES EN COURS : <span className="text-indigo-400 font-black">{round.activeBetsCount}</span>
-              </p>
-              <span className="text-rose-500 text-[9px] font-mono font-bold mt-1 tracking-wider uppercase block">
-                Temps restant: {Math.max(0, 30 - round.elapsed).toFixed(1)}s
-              </span>
-            </div>
-          )}
-
           {round.status === 'idle' && (
             <div className="flex flex-col items-center justify-center text-center space-y-1 bg-slate-900/50 p-3 rounded-2xl border border-slate-850/20 backdrop-blur-sm">
               <div className="h-4 w-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
@@ -596,7 +763,7 @@ export default function LastSecondGame({ socket, onBackToLobby, addNotification 
           )}
 
           {/* Exploding Goal Overlay (Win) */}
-          {goalOverlay && (
+          {goalOverlay && showResultOverlay && (
             <div className="absolute inset-0 bg-emerald-950/85 flex flex-col items-center justify-center backdrop-blur-sm z-30 animate-fade-in">
               <div className="bg-emerald-500 p-2.5 rounded-full text-white mb-1.5 shadow-lg shadow-emerald-500/20">
                 <Trophy className="h-5 w-5 sm:h-6 sm:w-6 animate-bounce" />
@@ -608,11 +775,22 @@ export default function LastSecondGame({ socket, onBackToLobby, addNotification 
                 Buteur : <span className="text-white font-black">{goalOverlay.scorer.toUpperCase()}</span>
               </p>
               <p className="text-white text-xs sm:text-base font-bold">Crashed @ {goalOverlay.multiplier.toFixed(2)}x</p>
+              
+              {/* User Bet Result inside the overlay */}
+              {myBet && (myBet.status === 'won' || myBet.status === 'cashed_out') ? (
+                <div className="mt-3 bg-emerald-500 text-slate-950 font-black px-4 py-1.5 rounded-full text-xs sm:text-sm uppercase tracking-wider animate-pulse shadow-lg shadow-emerald-500/40">
+                  🏆 GAGNANT ! +{(myBet.payout || (myBet.amount * (myBet.cashed_out_at || goalOverlay.multiplier))).toFixed(0)} {currencyLabel}
+                </div>
+              ) : myBet ? (
+                <div className="mt-3 bg-rose-500 text-white font-black px-4 py-1.5 rounded-full text-xs sm:text-sm uppercase tracking-wider">
+                  ❌ PERDU ! -{myBet.amount} {currencyLabel}
+                </div>
+              ) : null}
             </div>
           )}
 
           {/* Red No-Goal Overlay (Lose) */}
-          {noGoalOverlay && (
+          {noGoalOverlay && showResultOverlay && (
             <div className="absolute inset-0 bg-rose-950/85 flex flex-col items-center justify-center backdrop-blur-sm z-30 animate-fade-in">
               <div className="bg-rose-500 p-2.5 rounded-full text-white mb-1.5 shadow-lg shadow-rose-500/20">
                 <ShieldAlert className="h-5 w-5 sm:h-6 sm:w-6 animate-bounce" />
@@ -624,6 +802,17 @@ export default function LastSecondGame({ socket, onBackToLobby, addNotification 
                 Aucun but marqué dans la fenêtre.
               </p>
               <p className="text-white text-xs sm:text-base font-bold">Crashed @ {noGoalOverlay.multiplier.toFixed(2)}x</p>
+              
+              {/* User Bet Result inside the overlay */}
+              {myBet && myBet.status === 'won' ? (
+                <div className="mt-3 bg-emerald-500 text-slate-950 font-black px-4 py-1.5 rounded-full text-xs sm:text-sm uppercase tracking-wider animate-pulse shadow-lg shadow-emerald-500/40">
+                  🏆 GAGNANT ! +{(myBet.payout || (myBet.amount * noGoalOverlay.multiplier)).toFixed(0)} {currencyLabel}
+                </div>
+              ) : myBet ? (
+                <div className="mt-3 bg-rose-500 text-white font-black px-4 py-1.5 rounded-full text-xs sm:text-sm uppercase tracking-wider">
+                  ❌ PERDU ! -{myBet.amount} {currencyLabel}
+                </div>
+              ) : null}
             </div>
           )}
         </div>
@@ -639,6 +828,13 @@ export default function LastSecondGame({ socket, onBackToLobby, addNotification 
               <span className="font-mono text-xs font-bold text-white block">+{cashoutSuccess.payout.toFixed(0)} {currencyLabel}</span>
               <span className="text-[9px] text-slate-400 block">Bloqué à {cashoutSuccess.multiplier.toFixed(2)}x</span>
             </div>
+          </div>
+        )}
+
+        {/* Bottom Center Countdown Pill */}
+        {round.status === 'ticking' && (
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 text-[9px] font-mono font-bold text-rose-500 z-20 select-none bg-slate-950/70 px-2.5 py-0.5 rounded-full border border-rose-950/40">
+            Temps restant: {Math.max(0, 30 - round.elapsed).toFixed(1)}s
           </div>
         )}
 

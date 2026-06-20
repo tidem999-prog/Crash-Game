@@ -148,6 +148,35 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
     // Classic Sandbox Tick
     socket.on('ketmesye_tick', (data) => {
       if (gameMode === 'duel') return; // ignore sandbox ticks when in duel
+
+      // Eat pellet detection (done FIRST using previous tick's ref values)
+      if (mySnakeIdRef.current && snakesRef.current[mySnakeIdRef.current]) {
+        const lastSnake = snakesRef.current[mySnakeIdRef.current];
+        const lastHead = lastSnake.segments[0];
+        const prevPellets = pelletsRef.current || [];
+        const newPelletIds = new Set(data.pellets.map(p => p.id));
+        
+        let ateNormal = false;
+        let ateCash = false;
+        
+        prevPellets.forEach(p => {
+          const dist = Math.hypot(lastHead.x - p.x, lastHead.y - p.y);
+          if (dist < 36) { // mathematically safe eating range (20 radius + 16 max speed)
+            if (!newPelletIds.has(p.id)) {
+              if (p.isCashDrop) ateCash = true;
+              else ateNormal = true;
+            }
+          }
+        });
+        
+        if (ateCash) {
+          playSnakeEatCash();
+        } else if (ateNormal) {
+          playSnakeEat();
+        }
+      }
+
+      // Update refs with new tick data
       snakesRef.current = data.snakes;
       pelletsRef.current = data.pellets;
       setLeaderboard(data.leaderboard || []);
@@ -161,32 +190,6 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
           length: pSnake.segments.length,
           energy: pSnake.energy || 0
         });
-
-        const lastSnake = snakesRef.current[mySnakeIdRef.current];
-        if (lastSnake && lastSnake.segments && lastSnake.segments[0]) {
-          const lastHead = lastSnake.segments[0];
-          const prevPellets = pelletsRef.current || [];
-          const newPelletIds = new Set(data.pellets.map(p => p.id));
-          
-          let ateNormal = false;
-          let ateCash = false;
-          
-          prevPellets.forEach(p => {
-            const dist = Math.hypot(lastHead.x - p.x, lastHead.y - p.y);
-            if (dist < 22) { // eating range
-              if (!newPelletIds.has(p.id)) {
-                if (p.isCashDrop) ateCash = true;
-                else ateNormal = true;
-              }
-            }
-          });
-          
-          if (ateCash) {
-            playSnakeEatCash();
-          } else if (ateNormal) {
-            playSnakeEat();
-          }
-        }
         prevSnakeValueRef.current = pSnake.value;
       } else {
         prevSnakeValueRef.current = 0;
@@ -273,6 +276,33 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
     });
 
     socket.on('ketmesye_duel_tick', (data) => {
+      // Duel eat pellet detection (done FIRST using previous tick's ref values)
+      if (mySnakeIdRef.current && snakesRef.current[mySnakeIdRef.current]) {
+        const lastSnake = snakesRef.current[mySnakeIdRef.current];
+        const lastHead = lastSnake.segments[0];
+        const prevPellets = pelletsRef.current || [];
+        const newPelletIds = new Set(data.pellets.map(p => p.id));
+        
+        let ateNormal = false;
+        let ateCash = false;
+        
+        prevPellets.forEach(p => {
+          const dist = Math.hypot(lastHead.x - p.x, lastHead.y - p.y);
+          if (dist < 36) { // mathematically safe eating range (20 radius + 16 max speed)
+            if (!newPelletIds.has(p.id)) {
+              if (p.isCashDrop) ateCash = true;
+              else ateNormal = true;
+            }
+          }
+        });
+        
+        if (ateCash) {
+          playSnakeEatCash();
+        } else if (ateNormal) {
+          playSnakeEat();
+        }
+      }
+
       setDuelData(data);
       setIsPlaying(true);
       snakesRef.current = data.snakes;
@@ -297,33 +327,6 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
           }, 220);
         }
         prevDeathsRef.current = currentDeaths;
-
-        // Duel eat pellet detection
-        const lastSnake = snakesRef.current[mySnakeIdRef.current];
-        if (lastSnake && lastSnake.segments && lastSnake.segments[0]) {
-          const lastHead = lastSnake.segments[0];
-          const prevPellets = pelletsRef.current || [];
-          const newPelletIds = new Set(data.pellets.map(p => p.id));
-          
-          let ateNormal = false;
-          let ateCash = false;
-          
-          prevPellets.forEach(p => {
-            const dist = Math.hypot(lastHead.x - p.x, lastHead.y - p.y);
-            if (dist < 22) { // eating range
-              if (!newPelletIds.has(p.id)) {
-                if (p.isCashDrop) ateCash = true;
-                else ateNormal = true;
-              }
-            }
-          });
-          
-          if (ateCash) {
-            playSnakeEatCash();
-          } else if (ateNormal) {
-            playSnakeEat();
-          }
-        }
         prevSnakeValueRef.current = pSnake.value;
       }
     });

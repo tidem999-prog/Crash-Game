@@ -1,8 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { 
-  ShieldAlert, Award, Clock, Coins, User, Compass, History, Trophy, Lock, Play, Flame, HelpCircle
+  ShieldAlert, Award, Clock, Coins, User, Compass, History, Trophy, Lock, Play, Flame, HelpCircle,
+  Volume2, VolumeX
 } from 'lucide-react';
+import { 
+  initAudio, playBmBetClick, playTireScreech, startBmEngineSound, 
+  updateBmEnginePitch, stopBmEngineSound, playBustedSound, playBmCashout, 
+  getMuted, setMuted 
+} from '../utils/audio';
 
 export default function BloodmoneyGame({ socket, setSelectedGame }) {
   const { user, refreshBalance, updateBalance } = useAuth();
@@ -23,6 +29,37 @@ export default function BloodmoneyGame({ socket, setSelectedGame }) {
   const [myBet, setMyBet] = useState(null); // null, { amount, status: 'placed'/'cashed_out'/'lost', route }
   const [betError, setBetError] = useState('');
   const [cashoutResult, setCashoutResult] = useState(null); // { payout, multiplier }
+
+  // Sound States
+  const [isAudioMuted, setIsAudioMuted] = useState(getMuted());
+
+  const handleMuteToggle = () => {
+    const muted = !isAudioMuted;
+    setIsAudioMuted(muted);
+    setMuted(muted);
+    if (!muted && gameState === 'running') {
+      startBmEngineSound();
+      updateBmEnginePitch(multiplier);
+    }
+  };
+
+  useEffect(() => {
+    const handleGesture = () => {
+      initAudio();
+    };
+    window.addEventListener('click', handleGesture);
+    window.addEventListener('touchstart', handleGesture);
+    return () => {
+      window.removeEventListener('click', handleGesture);
+      window.removeEventListener('touchstart', handleGesture);
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      stopBmEngineSound();
+    };
+  }, []);
 
   // Canvas Refs
   const canvasRef = useRef(null);
@@ -55,6 +92,8 @@ export default function BloodmoneyGame({ socket, setSelectedGame }) {
       setCashoutResult(null);
       setBetError('');
       
+      stopBmEngineSound();
+
       // Reset runner animation
       animationStateRef.current.policeProgress = 0;
       animationStateRef.current.shakeIntensity = 0;
@@ -70,10 +109,15 @@ export default function BloodmoneyGame({ socket, setSelectedGame }) {
       setGameState('running');
       setCountdown(0);
       setMultiplier(1.00);
+
+      playTireScreech();
+      startBmEngineSound();
     });
 
     socket.on('game:tick', (data) => {
       setMultiplier(data.multiplier);
+      updateBmEnginePitch(data.multiplier);
+
       // Map progress to 0-1 based on expected crash values (clamped to 100%)
       const estimatedMax = 15.00;
       const progress = Math.min(data.multiplier / estimatedMax, 1.00);
@@ -89,6 +133,8 @@ export default function BloodmoneyGame({ socket, setSelectedGame }) {
       setMultiplier(data.crashPoint);
       setRevealedSeed(data.serverSeed);
       refreshBalance();
+
+      playBustedSound();
 
       // Trigger heavy shake & explosion particles
       animationStateRef.current.shakeIntensity = 12.0;
@@ -127,6 +173,7 @@ export default function BloodmoneyGame({ socket, setSelectedGame }) {
         setMyBet(prev => prev ? { ...prev, status: 'cashed_out', payout: data.payout, multiplier: data.multiplier } : null);
         setCashoutResult({ payout: data.payout, multiplier: data.multiplier });
         updateBalance(data.newBalance, user?.active_currency || 'HTG');
+        playBmCashout();
       } else if (data.status === 'lost') {
         setMyBet(prev => prev ? { ...prev, status: 'lost' } : null);
         setBetError(data.message || 'Vous avez été arrêté.');
@@ -179,6 +226,7 @@ export default function BloodmoneyGame({ socket, setSelectedGame }) {
   // 2. Betting Handlers
   const handlePlaceBet = () => {
     if (!socket || !socket.connected) return;
+    playBmBetClick();
     const isKet = user?.active_currency === 'KET';
     const minBet = isKet ? 100 : 10;
     const currencyLabel = isKet ? 'KET' : 'HTG';
@@ -518,6 +566,18 @@ export default function BloodmoneyGame({ socket, setSelectedGame }) {
 
         {/* Interactive Game Canvas */}
         <canvas ref={canvasRef} className="block w-full h-[240px] md:h-[340px]" />
+
+        {/* Mute/Unmute speaker icon button */}
+        <button 
+          onClick={handleMuteToggle}
+          className="absolute bottom-3 right-3 z-30 p-2 rounded-xl bg-slate-900/80 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800/80 transition-all active:scale-95 cursor-pointer shadow-lg backdrop-blur-md"
+        >
+          {isAudioMuted ? (
+            <VolumeX className="h-4 w-4 text-red-400" />
+          ) : (
+            <Volume2 className="h-4 w-4 text-emerald-400" />
+          )}
+        </button>
 
       </div>
 

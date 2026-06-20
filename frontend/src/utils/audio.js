@@ -1,4 +1,10 @@
 let audioCtx = null;
+let isMuted = false;
+
+// Continuous engine nodes references
+let engineOsc = null;
+let engineNoise = null;
+let engineGain = null;
 
 export function getAudioContext() {
   if (typeof window === 'undefined') return null;
@@ -22,68 +28,140 @@ export function initAudio() {
   }
 }
 
-// 1. Takeoff Jet Engine sweep
-export function playTakeoff() {
+export function setMuted(muted) {
+  isMuted = muted;
+  if (isMuted) {
+    stopEngineSound();
+  }
+}
+
+export function getMuted() {
+  return isMuted;
+}
+
+// 1. Play Button Click sound
+export function playClick() {
+  if (isMuted) return;
   const ctx = getAudioContext();
   if (!ctx) return;
 
   const now = ctx.currentTime;
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
 
-  // Synthesize white noise buffer
-  const bufferSize = 2 * ctx.sampleRate;
+  osc.type = 'triangle';
+  osc.frequency.setValueAtTime(523.25, now); // C5
+  osc.frequency.exponentialRampToValueAtTime(783.99, now + 0.12); // G5 sweep
+
+  gain.gain.setValueAtTime(0.001, now);
+  gain.gain.linearRampToValueAtTime(0.15, now + 0.02); // Louder peak
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15); // Longer decay
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+
+  osc.start(now);
+  osc.stop(now + 0.15);
+}
+
+// 2. Continuous Engine flight loop sound
+export function startEngineSound() {
+  if (isMuted) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
+  // Don't restart if already playing
+  if (engineOsc || engineNoise) return;
+
+  const now = ctx.currentTime;
+  engineGain = ctx.createGain();
+  engineGain.gain.setValueAtTime(0.001, now);
+  engineGain.gain.exponentialRampToValueAtTime(0.08, now + 0.3); // smooth fade-in
+
+  // Low frequency rumble oscillator
+  engineOsc = ctx.createOscillator();
+  engineOsc.type = 'sawtooth';
+  engineOsc.frequency.setValueAtTime(45, now);
+
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.setValueAtTime(140, now);
+
+  engineOsc.connect(filter);
+  filter.connect(engineGain);
+
+  // White noise for air resistance whoosh
+  const bufferSize = 1 * ctx.sampleRate;
   const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
   const output = noiseBuffer.getChannelData(0);
   for (let i = 0; i < bufferSize; i++) {
     output[i] = Math.random() * 2 - 1;
   }
+  
+  engineNoise = ctx.createBufferSource();
+  engineNoise.buffer = noiseBuffer;
+  engineNoise.loop = true;
 
-  const noise = ctx.createBufferSource();
-  noise.buffer = noiseBuffer;
+  const noiseFilter = ctx.createBiquadFilter();
+  noiseFilter.type = 'lowpass';
+  noiseFilter.frequency.setValueAtTime(260, now);
 
-  const filter = ctx.createBiquadFilter();
-  filter.type = 'lowpass';
-  filter.Q.value = 6.0;
-  filter.frequency.setValueAtTime(120, now);
-  filter.frequency.exponentialRampToValueAtTime(1400, now + 1.8);
+  engineNoise.connect(noiseFilter);
+  noiseFilter.connect(engineGain);
 
-  const gain = ctx.createGain();
-  gain.gain.setValueAtTime(0.001, now);
-  gain.gain.exponentialRampToValueAtTime(0.12, now + 0.4);
-  gain.gain.exponentialRampToValueAtTime(0.001, now + 2.0);
+  engineGain.connect(ctx.destination);
 
-  noise.connect(filter);
-  filter.connect(gain);
-  gain.connect(ctx.destination);
-
-  noise.start(now);
-  noise.stop(now + 2.0);
-
-  // Mix in a rising oscillator rumble for engine power
-  const osc = ctx.createOscillator();
-  const oscGain = ctx.createGain();
-  osc.type = 'sawtooth';
-  osc.frequency.setValueAtTime(55, now); // A1 note
-  osc.frequency.exponentialRampToValueAtTime(280, now + 1.8);
-
-  oscGain.gain.setValueAtTime(0.001, now);
-  oscGain.gain.exponentialRampToValueAtTime(0.06, now + 0.4);
-  oscGain.gain.exponentialRampToValueAtTime(0.001, now + 2.0);
-
-  // Extra lowpass filter on rumble oscillator to keep it warm
-  const oscFilter = ctx.createBiquadFilter();
-  oscFilter.type = 'lowpass';
-  oscFilter.frequency.setValueAtTime(400, now);
-
-  osc.connect(oscFilter);
-  oscFilter.connect(oscGain);
-  oscGain.connect(ctx.destination);
-
-  osc.start(now);
-  osc.stop(now + 2.0);
+  engineOsc.start(now);
+  engineNoise.start(now);
 }
 
-// 2. Explosion Crash sound
+// 3. Update flight engine pitch/rumble based on multiplier
+export function updateEnginePitch(multiplier) {
+  if (isMuted || !engineOsc) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
+  // Pitch goes up from 45Hz (1.0x) to 160Hz (15x+) as the plane gains altitude
+  const targetFreq = Math.min(160, 45 + (multiplier - 1.0) * 12);
+  engineOsc.frequency.setTargetAtTime(targetFreq, ctx.currentTime, 0.15);
+}
+
+// 4. Terminate flight engine loop
+export function stopEngineSound() {
+  const ctx = getAudioContext();
+  const now = ctx ? ctx.currentTime : 0;
+  
+  if (engineGain && ctx) {
+    try {
+      engineGain.gain.setValueAtTime(engineGain.gain.value, now);
+      engineGain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+    } catch (e) {}
+  }
+  
+  const oscToStop = engineOsc;
+  const noiseToStop = engineNoise;
+  engineOsc = null;
+  engineNoise = null;
+  engineGain = null;
+
+  setTimeout(() => {
+    try { if (oscToStop) oscToStop.stop(); } catch (e) {}
+    try { if (noiseToStop) noiseToStop.stop(); } catch (e) {}
+  }, 150);
+}
+
+// 5. Short Takeoff Trigger (Deprecated for continuous engine loop, but kept as fallback)
+export function playTakeoff() {
+  // We prefer using the continuous startEngineSound() loop for the flying phase
+  startEngineSound();
+}
+
+// 6. Explosion Crash sound
 export function playCrash() {
+  // Stop the engine loop immediately when crash happens
+  stopEngineSound();
+
+  if (isMuted) return;
   const ctx = getAudioContext();
   if (!ctx) return;
 
@@ -133,8 +211,9 @@ export function playCrash() {
   boom.stop(now + 1.0);
 }
 
-// 3. Metallic Double coin chime
+// 7. Metallic Double coin chime
 export function playCashout() {
+  if (isMuted) return;
   const ctx = getAudioContext();
   if (!ctx) return;
 

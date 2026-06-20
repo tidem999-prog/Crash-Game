@@ -408,7 +408,7 @@ const initGameEngine = (socketIoInstance) => {
 
         console.log(`Game: Bet placed by ${email}: ${betAmount} ${activeCurrency} (AutoCashOut: ${autoCashout || 'None'})`);
         
-        activePlayersStore.addPlayer(userId, email, 'crash', betAmount);
+        activePlayersStore.addPlayer(userId, email, 'crash', betAmount, activeCurrency);
 
         socket.emit('bet_success', {
           betAmount,

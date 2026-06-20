@@ -953,7 +953,7 @@ const initKetmesyeEngine = (socketIoInstance) => {
         });
 
         console.log(`Ketmesye: ${email} joined with ${entryWager} ${activeCurrency} wager.`);
-        activePlayersStore.addPlayer(userId, email, 'ketmesye', entryWager);
+        activePlayersStore.addPlayer(userId, email, 'ketmesye', entryWager, activeCurrency);
         activePlayersStore.notify(`${email.split('@')[0]} a rejoint l'arène de KetMesye avec ${entryWager} ${activeCurrency} !`, 'info');
 
       } catch (err) {
@@ -1249,7 +1249,7 @@ const initKetmesyeEngine = (socketIoInstance) => {
         if (res.rows.length > 0 && duel.snakes[socket.id]) {
           const email = res.rows[0].email;
           duel.snakes[socket.id].email = email;
-          activePlayersStore.addPlayer(userId, email, 'snake_duel', duel.betAmount);
+          activePlayersStore.addPlayer(userId, email, 'snake_duel', duel.betAmount, duel.currency);
           activePlayersStore.notify(`${email.split('@')[0]} a rejoint le duel de serpent (${duel.betAmount} ${duel.currency || 'HTG'}) !`, 'info');
         }
       }).catch(err => console.error(err));

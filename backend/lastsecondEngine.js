@@ -623,7 +623,7 @@ const initLastsecondEngine = (socketIoInstance) => {
           socketId: socket.id
         };
 
-        activePlayersStore.addPlayer(userId, email, 'lastsecond', amount);
+        activePlayersStore.addPlayer(userId, email, 'lastsecond', amount, activeCurrency);
 
         socket.emit('lastsecond:bet:confirmed', {
           betId: currentRound.id,

@@ -165,7 +165,7 @@ const handleMinesStart = async (socket, payload) => {
     // Send updated balances globally
     io.emit('balance_update', { userId, newBalance, newKetBalance });
 
-    activePlayersStore.addPlayer(userId, email, 'mines', betAmount);
+    activePlayersStore.addPlayer(userId, email, 'mines', betAmount, activeCurrency);
 
     socket.emit('mines_started', {
       gameId,

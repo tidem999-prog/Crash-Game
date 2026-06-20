@@ -16,6 +16,7 @@ const broadcast = () => {
     email: p.email ? p.email.split('@')[0] : 'Joueur',
     game: p.game,
     betAmount: p.betAmount,
+    currency: p.currency || 'HTG',
     status: p.status, // 'playing', 'cashed_out', 'lost', 'dead', 'crashed', 'eliminated'
     payoutAmount: p.payoutAmount || 0,
     cashoutMultiplier: p.cashoutMultiplier || null,
@@ -31,13 +32,14 @@ const notify = (message, type = 'info') => {
   }
 };
 
-const addPlayer = (userId, email, game, betAmount) => {
+const addPlayer = (userId, email, game, betAmount, currency = 'HTG') => {
   if (!userId) return;
   activePlayers[`${userId}_${game}`] = {
     userId,
     email: email || 'Joueur',
     game,
     betAmount: parseFloat(betAmount) || 0,
+    currency: currency || 'HTG',
     status: 'playing',
     payoutAmount: 0,
     cashoutMultiplier: null,
@@ -109,6 +111,7 @@ const getActivePlayersList = () => {
     email: p.email ? p.email.split('@')[0] : 'Joueur',
     game: p.game,
     betAmount: p.betAmount,
+    currency: p.currency || 'HTG',
     status: p.status,
     payoutAmount: p.payoutAmount || 0,
     cashoutMultiplier: p.cashoutMultiplier || null,

@@ -483,7 +483,7 @@ const initBloodmoneyEngine = (socketIoInstance) => {
           newKetBalance
         });
 
-        activePlayersStore.addPlayer(userId, email, 'bloodmoney', amount);
+        activePlayersStore.addPlayer(userId, email, 'bloodmoney', amount, activeCurrency);
         broadcastState();
 
         console.log(`BloodMoney: ${email} placed ${amount} ${activeCurrency} on route ${route}`);

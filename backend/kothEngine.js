@@ -105,7 +105,7 @@ const initKothEngine = (socketIo) => {
 
         socket.emit('koth_room_joined', { roomId, potTotal: potContribution, currency: activeCurrency });
         broadcastLobbies();
-        activePlayersStore.addPlayer(userId, email, 'koth', entryFee);
+        activePlayersStore.addPlayer(userId, email, 'koth', entryFee, activeCurrency);
         activePlayersStore.notify(`${email.split('@')[0]} a rejoint la partie King of the Hill !`, 'info');
 
         // Start Lobby Timer
@@ -180,7 +180,7 @@ const initKothEngine = (socketIo) => {
         
         io.to(`koth_${roomId}`).emit('koth_lobby_update', getLobbyUpdate(room));
         broadcastLobbies();
-        activePlayersStore.addPlayer(userId, email, 'koth', entryFee);
+        activePlayersStore.addPlayer(userId, email, 'koth', entryFee, activeCurrency);
         activePlayersStore.notify(`${email.split('@')[0]} a rejoint la partie King of the Hill !`, 'info');
 
       } catch (err) {

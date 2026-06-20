@@ -5,14 +5,14 @@ import { useAuth, apiRequest } from '../context/AuthContext';
 import { 
   Plane, Landmark, ArrowUpRight, ArrowDownRight, History, 
   Wallet, ShieldAlert, Award, Clock, Coins, Upload, Send, HelpCircle, Gamepad2, ArrowLeft, Users, Gem,
-  Copy, Check, Flame, User
+  Copy, Check, Flame, User, Volume2, VolumeX
 } from 'lucide-react';
 import KetmesyeGame from './KetmesyeGame';
 import MinesGame from './MinesGame';
 import KothGame from './KothGame';
 import BloodmoneyGame from './BloodmoneyGame';
 import LastSecondGame from './LastSecondGame';
-import { initAudio, playTakeoff, playCrash, playCashout } from '../utils/audio';
+import { initAudio, playTakeoff, playCrash, playCashout, playClick, startEngineSound, stopEngineSound, updateEnginePitch, setMuted } from '../utils/audio';
 
 export default function Dashboard() {
   const { user, refreshBalance, updateBalance, updateProfile, convertKet } = useAuth();
@@ -49,6 +49,7 @@ export default function Dashboard() {
   // Game state
   const [socket, setSocket] = useState(null);
   const [gameStatus, setGameStatus] = useState('waiting'); // 'waiting', 'flying', 'crashed'
+  const [isAudioMuted, setIsAudioMuted] = useState(false);
   const [multiplier, setMultiplier] = useState(1.00);
   const [countdown, setCountdown] = useState(10);
   const [gameHistory, setGameHistory] = useState([]);
@@ -95,6 +96,18 @@ export default function Dashboard() {
   // Notifications / Toasts
   const [notifications, setNotifications] = useState([]);
 
+  const [socketStatus, setSocketStatus] = useState('connecting'); // 'connecting', 'connected', 'disconnected'
+  const activeTabRef = useRef(activeTab);
+  const selectedGameRef = useRef(selectedGame);
+
+  useEffect(() => {
+    activeTabRef.current = activeTab;
+  }, [activeTab]);
+
+  useEffect(() => {
+    selectedGameRef.current = selectedGame;
+  }, [selectedGame]);
+
   // Local Simulation state & refs
   const [isLocalSim, setIsLocalSim] = useState(false);
   const [isKetmesyePlaying, setIsKetmesyePlaying] = useState(false);
@@ -103,6 +116,16 @@ export default function Dashboard() {
   const userBalanceRef = useRef(0);
   const prevStatusRef = useRef('');
   const userIdRef = useRef(null);
+
+  const stopLocalSimulation = () => {
+    if (localLoopRef.current) {
+      clearInterval(localLoopRef.current);
+      clearTimeout(localLoopRef.current);
+      localLoopRef.current = null;
+    }
+    setIsLocalSim(false);
+    stopEngineSound();
+  };
 
   useEffect(() => {
     if (user) {
@@ -128,6 +151,16 @@ export default function Dashboard() {
     const random = Math.random();
     const mult = 0.95 / (1 - random);
     return Math.min(parseFloat(mult.toFixed(2)), 100.00);
+  };
+
+  const handleMuteToggle = () => {
+    const muted = !isAudioMuted;
+    setIsAudioMuted(muted);
+    setMuted(muted);
+    if (!muted && gameStatus === 'flying') {
+      startEngineSound();
+      updateEnginePitch(multiplier);
+    }
   };
 
   const startLocalSimulation = () => {
@@ -167,7 +200,7 @@ export default function Dashboard() {
     setMultiplier(1.00);
     setCashoutSuccess(null);
     
-    playTakeoff();
+    startEngineSound();
     
     const startTime = Date.now();
     if (localLoopRef.current) clearInterval(localLoopRef.current);
@@ -176,6 +209,7 @@ export default function Dashboard() {
       const elapsed = (Date.now() - startTime) / 1000;
       const currentMultiplier = parseFloat(Math.pow(1.07, elapsed).toFixed(2));
       setMultiplier(currentMultiplier);
+      updateEnginePitch(currentMultiplier);
 
       // Check auto cashout
       const bet = localBetRef.current;
@@ -220,10 +254,11 @@ export default function Dashboard() {
           addNotification('Vous avez perdu la mise.', 'danger');
         }
 
-        setTimeout(() => {
+        const timeout = setTimeout(() => {
           const nextTarget = generateLocalTarget();
           runLocalWaitingPhase(nextTarget);
         }, 3000);
+        localLoopRef.current = timeout;
       }
     }, 100);
     localLoopRef.current = interval;
@@ -231,11 +266,31 @@ export default function Dashboard() {
 
   useEffect(() => {
     return () => {
-      if (localLoopRef.current) {
-        clearInterval(localLoopRef.current);
-      }
+      stopLocalSimulation();
     };
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'play' && selectedGame === 'crash') {
+      if (socketStatus === 'disconnected') {
+        if (!isLocalSim) {
+          setIsLocalSim(true);
+          addNotification("Mode Démo Activé (Simulation locale car le serveur est hors-ligne)", "info");
+          const firstTarget = generateLocalTarget();
+          runLocalWaitingPhase(firstTarget);
+        }
+      } else {
+        if (isLocalSim) {
+          stopLocalSimulation();
+        }
+      }
+    } else {
+      if (isLocalSim) {
+        stopLocalSimulation();
+      }
+      stopEngineSound();
+    }
+  }, [activeTab, selectedGame, socketStatus, isLocalSim]);
 
   useEffect(() => {
     const handleGesture = () => {
@@ -279,18 +334,19 @@ export default function Dashboard() {
       if (!newSocket.connected) {
         console.warn('Socket connection timeout. Falling back to local simulation.');
         newSocket.close();
-        startLocalSimulation();
+        setSocketStatus('disconnected');
       }
     }, 3000);
 
     newSocket.on('connect', () => {
       clearTimeout(connTimeout);
+      setSocketStatus('connected');
     });
 
     newSocket.on('connect_error', () => {
       clearTimeout(connTimeout);
       newSocket.close();
-      startLocalSimulation();
+      setSocketStatus('disconnected');
     });
 
     newSocket.on('game_state', (data) => {
@@ -301,7 +357,11 @@ export default function Dashboard() {
       setOnlineUsersCount(data.onlineUsersCount || 0);
 
       if (data.status === 'flying' && prevStatusRef.current !== 'flying') {
-        playTakeoff();
+        if (activeTabRef.current === 'play' && selectedGameRef.current === 'crash') {
+          startEngineSound();
+        }
+      } else if (data.status !== 'flying') {
+        stopEngineSound();
       }
 
       // Only reset active bet states when transitioning from another state (e.g. crashed) to 'waiting'
@@ -315,7 +375,11 @@ export default function Dashboard() {
     });
 
     newSocket.on('game_tick', (data) => {
-      setMultiplier(parseFloat(data.multiplier));
+      const mult = parseFloat(data.multiplier);
+      setMultiplier(mult);
+      if (activeTabRef.current === 'play' && selectedGameRef.current === 'crash') {
+        updateEnginePitch(mult);
+      }
     });
 
     newSocket.on('game_crash', (data) => {
@@ -323,17 +387,22 @@ export default function Dashboard() {
       setMultiplier(parseFloat(data.crashMultiplier));
       addNotification(`L'avion s'est écrasé à ${data.crashMultiplier}x`, 'danger');
       refreshBalance(); // Refresh final balance
-      playCrash();
+      if (activeTabRef.current === 'play' && selectedGameRef.current === 'crash') {
+        playCrash();
+      } else {
+        stopEngineSound();
+      }
     });
 
     newSocket.on('bet_success', (data) => {
       setMyBet({
         amount: data.betAmount,
         autoCashout: data.autoCashout,
-        status: 'placed'
+        status: 'placed',
+        currency: data.currency
       });
-      updateBalance(data.newBalance);
-      addNotification(`Pari de ${data.betAmount} HTG enregistré !`, 'success');
+      updateBalance(data.newBalance, data.currency);
+      addNotification(`Pari de ${data.betAmount} ${data.currency || 'HTG'} enregistré !`, 'success');
     });
 
     newSocket.on('bet_error', (data) => {
@@ -344,8 +413,8 @@ export default function Dashboard() {
     newSocket.on('cashout_success', (data) => {
       setMyBet(prev => prev ? { ...prev, status: 'cashed_out', cashoutMultiplier: data.multiplier, payout: data.payout } : null);
       setCashoutSuccess({ payout: data.payout, multiplier: data.multiplier });
-      updateBalance(data.newBalance);
-      addNotification(`Gagné ! +${data.payout} HTG (${data.multiplier}x)`, 'success');
+      updateBalance(data.newBalance, data.currency);
+      addNotification(`Gagné ! +${data.payout} ${data.currency || 'HTG'} (${data.multiplier}x)`, 'success');
       playCashout();
     });
 
@@ -354,7 +423,7 @@ export default function Dashboard() {
     });
 
     newSocket.on('player_cashed_out', (data) => {
-      addNotification(`${data.email} a encaissé +${data.payout} HTG à ${data.multiplier}x`, 'info');
+      addNotification(`${data.email} a encaissé +${data.payout} ${data.currency || 'HTG'} à ${data.multiplier}x`, 'info');
     });
 
     newSocket.on('balance_update', (data) => {
@@ -537,9 +606,9 @@ export default function Dashboard() {
       // Draw Axes Labels
       ctx.fillStyle = '#64748b';
       ctx.font = '10px monospace';
-      ctx.fillText('0s', 45, h - 85);
-      ctx.fillText('Time', w / 2 - 15, h - 80);
-      ctx.fillText('1.00x', 5, h - 100);
+      ctx.fillText('0s', 45, h - 15);
+      ctx.fillText('Time', w / 2 - 15, h - 15);
+      ctx.fillText('1.00x', 5, h - 45);
 
       if (gameStatus === 'waiting') {
         // Draw waiting circle countdown
@@ -575,7 +644,7 @@ export default function Dashboard() {
         // Calculate dynamic plane coordinates along a curve
         // Curve equation: y = x^1.8
         const paddingLeft = 50;
-        const paddingBottom = 95;
+        const paddingBottom = 45;
         
         const startX = paddingLeft;
         const startY = h - paddingBottom;
@@ -661,12 +730,12 @@ export default function Dashboard() {
       } 
       else if (gameStatus === 'crashed') {
         // Redraw the path static
-         const paddingLeft = 50;
-         const paddingBottom = 95;
-        const startX = paddingLeft;
-        const startY = h - paddingBottom;
-        const endX = w - 60;
-        const endY = 40;
+          const paddingLeft = 50;
+          const paddingBottom = 45;
+         const startX = paddingLeft;
+         const startY = h - paddingBottom;
+         const endX = w - 60;
+         const endY = 40;
         const capMultiplier = Math.min(multiplier, 15);
         const relativeYFactor = (capMultiplier - 1) / 14;
         const currentX = startX + (endX - startX) * Math.min(flightProgressRef.current * 1.5, 1);
@@ -737,6 +806,7 @@ export default function Dashboard() {
   // 4. Place Bet Handler
   const handlePlaceBet = () => {
     setBetError('');
+    playClick();
     
     const isKet = user?.active_currency === 'KET';
     const minBet = isKet ? 100 : 10;
@@ -798,7 +868,7 @@ export default function Dashboard() {
       setMyBet(cashedOutBet);
       localBetRef.current = cashedOutBet;
       setCashoutSuccess({ payout, multiplier: currentMultiplier });
-      addNotification(`Gagné ! +${payout} HTG (${currentMultiplier.toFixed(2)}x)`, 'success');
+      addNotification(`Gagné ! +${payout} ${isKet ? 'KET' : 'HTG'} (${currentMultiplier.toFixed(2)}x)`, 'success');
       playCashout();
     } else {
       if (!socket || !myBet || myBet.status !== 'placed') return;
@@ -1231,10 +1301,22 @@ export default function Dashboard() {
                     <Award className="h-8 w-8 animate-bounce" />
                   </div>
                   <h3 className="font-display font-black text-3xl text-emerald-300">VICTOIRE !</h3>
-                  <p className="text-white text-lg font-bold">+{cashoutSuccess.payout} HTG</p>
+                  <p className="text-white text-lg font-bold">+{cashoutSuccess.payout} {myBet?.currency || user?.active_currency || 'HTG'}</p>
                   <p className="text-emerald-300 text-xs mt-1">Encaissé à {cashoutSuccess.multiplier}x</p>
                 </div>
               )}
+
+              {/* Mute/Unmute speaker icon button */}
+              <button 
+                onClick={handleMuteToggle}
+                className="absolute bottom-3 right-3 z-30 p-2 rounded-xl bg-slate-900/80 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800/80 transition-all active:scale-95 cursor-pointer shadow-lg backdrop-blur-md"
+              >
+                {isAudioMuted ? (
+                  <VolumeX className="h-4 w-4 text-red-400" />
+                ) : (
+                  <Volume2 className="h-4 w-4 text-emerald-400" />
+                )}
+              </button>
             </div>
 
             {/* Wagering Control Panel */}
@@ -2482,12 +2564,12 @@ export default function Dashboard() {
                   <div className="flex flex-col">
                     <span className="text-xs font-bold text-slate-300">{player.email}</span>
                     <span className="text-[10px] font-mono text-slate-500">
-                      {player.betAmount ? player.betAmount.toFixed(0) : '0'} HTG | <span className="text-indigo-400 font-semibold">{player.game === 'crash' ? 'Crash' : player.game === 'ketmesye' ? 'Ket Mesye (Sepan)' : player.game === 'snake_duel' ? 'Duel Ket Mesye' : player.game === 'koth' ? 'KOTH' : player.game === 'mines' ? 'Mines' : player.game === 'bloodmoney' ? 'Blood Money' : player.game}</span>
+                      {player.betAmount ? player.betAmount.toFixed(0) : '0'} {player.currency || 'HTG'} | <span className="text-indigo-400 font-semibold">{player.game === 'crash' ? 'Crash' : player.game === 'ketmesye' ? 'Ket Mesye (Sepan)' : player.game === 'snake_duel' ? 'Duel Ket Mesye' : player.game === 'koth' ? 'KOTH' : player.game === 'mines' ? 'Mines' : player.game === 'bloodmoney' ? 'Blood Money' : player.game}</span>
                     </span>
                   </div>
                   {player.status === 'cashed_out' || player.cashedOut ? (
                     <span className="text-[10px] font-mono font-black text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded-md border border-emerald-500/15">
-                      +{player.payoutAmount ? player.payoutAmount.toFixed(0) : '0'} HTG {player.cashoutMultiplier ? `(${player.cashoutMultiplier.toFixed(2)}x)` : ''}
+                      +{player.payoutAmount ? player.payoutAmount.toFixed(0) : '0'} {player.currency || 'HTG'} {player.cashoutMultiplier ? `(${player.cashoutMultiplier.toFixed(2)}x)` : ''}
                     </span>
                   ) : player.status === 'lost' || player.status === 'crashed' || player.status === 'dead' || player.status === 'eliminated' ? (
                     <span className="text-[10px] font-mono font-bold text-red-400 bg-red-500/10 px-2 py-1 rounded-md border border-red-500/15 uppercase">

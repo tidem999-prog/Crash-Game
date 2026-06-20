@@ -10,6 +10,9 @@ let engineGain = null;
 let bmEngineOsc = null;
 let bmEngineNoise = null;
 let bmEngineGain = null;
+let bmSirenOsc = null;
+let bmSirenMod = null;
+let bmSirenGain = null;
 
 export function getAudioContext() {
   if (typeof window === 'undefined') return null;
@@ -327,15 +330,17 @@ export function playTireScreech() {
   osc2.stop(now + 0.45);
 }
 
-// 10. Blood Money - Continuous sports car engine loop
+// 10. Blood Money - Continuous sports car engine loop + Police Sirens chase loop
 export function startBmEngineSound() {
   if (isMuted) return;
   const ctx = getAudioContext();
   if (!ctx) return;
 
-  if (bmEngineOsc || bmEngineNoise) return;
+  if (bmEngineOsc || bmEngineNoise || bmSirenOsc) return;
 
   const now = ctx.currentTime;
+  
+  // 10.1. Engine setup
   bmEngineGain = ctx.createGain();
   bmEngineGain.gain.setValueAtTime(0.001, now);
   bmEngineGain.gain.exponentialRampToValueAtTime(0.06, now + 0.3); // low engine hum volume
@@ -373,21 +378,54 @@ export function startBmEngineSound() {
 
   bmEngineGain.connect(ctx.destination);
 
+  // 10.2. Police Siren loop (plays while car is running/escaping)
+  bmSirenGain = ctx.createGain();
+  bmSirenGain.gain.setValueAtTime(0.001, now);
+  bmSirenGain.gain.exponentialRampToValueAtTime(0.035, now + 0.5); // background volume so it doesn't overwhelm the user
+
+  bmSirenOsc = ctx.createOscillator();
+  bmSirenOsc.type = 'sine';
+  bmSirenOsc.frequency.setValueAtTime(600, now);
+
+  bmSirenMod = ctx.createOscillator();
+  bmSirenMod.type = 'sine';
+  bmSirenMod.frequency.setValueAtTime(3.5, now); // initial wailing speed
+
+  const sirenModGain = ctx.createGain();
+  sirenModGain.gain.setValueAtTime(120, now); // wailing pitch range (480Hz - 720Hz)
+
+  bmSirenMod.connect(sirenModGain);
+  sirenModGain.connect(bmSirenOsc.frequency);
+
+  bmSirenOsc.connect(bmSirenGain);
+  bmSirenGain.connect(ctx.destination);
+
+  // Start all nodes
   bmEngineOsc.start(now);
   bmEngineNoise.start(now);
+  bmSirenOsc.start(now);
+  bmSirenMod.start(now);
 }
 
-// 11. Blood Money - Update sports car engine pitch
+// 11. Blood Money - Update sports car engine pitch and police siren wail speed
 export function updateBmEnginePitch(multiplier) {
-  if (isMuted || !bmEngineOsc) return;
+  if (isMuted) return;
   const ctx = getAudioContext();
   if (!ctx) return;
 
-  const targetFreq = Math.min(240, 60 + (multiplier - 1.0) * 15);
-  bmEngineOsc.frequency.setTargetAtTime(targetFreq, ctx.currentTime, 0.15);
+  if (bmEngineOsc) {
+    const targetFreq = Math.min(240, 60 + (multiplier - 1.0) * 15);
+    bmEngineOsc.frequency.setTargetAtTime(targetFreq, ctx.currentTime, 0.15);
+  }
+
+  if (bmSirenMod) {
+    // Siren wails faster and faster as police catch up (multiplier rises)
+    const targetWailFreq = Math.min(8.5, 3.5 + (multiplier - 1.0) * 0.45);
+    bmSirenMod.frequency.setTargetAtTime(targetWailFreq, ctx.currentTime, 0.2);
+  }
 }
 
-// 12. Blood Money - Stop sports car engine loop
+// 12. Blood Money - Stop sports car engine and police sirens loops
 export function stopBmEngineSound() {
   const ctx = getAudioContext();
   const now = ctx ? ctx.currentTime : 0;
@@ -399,76 +437,120 @@ export function stopBmEngineSound() {
     } catch (e) {}
   }
 
+  if (bmSirenGain && ctx) {
+    try {
+      bmSirenGain.gain.setValueAtTime(bmSirenGain.gain.value, now);
+      bmSirenGain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+    } catch (e) {}
+  }
+
   const oscToStop = bmEngineOsc;
   const noiseToStop = bmEngineNoise;
+  const sirenOscToStop = bmSirenOsc;
+  const sirenModToStop = bmSirenMod;
+
   bmEngineOsc = null;
   bmEngineNoise = null;
   bmEngineGain = null;
+  bmSirenOsc = null;
+  bmSirenMod = null;
+  bmSirenGain = null;
 
   setTimeout(() => {
     try { if (oscToStop) oscToStop.stop(); } catch (e) {}
     try { if (noiseToStop) noiseToStop.stop(); } catch (e) {}
+    try { if (sirenOscToStop) sirenOscToStop.stop(); } catch (e) {}
+    try { if (sirenModToStop) sirenModToStop.stop(); } catch (e) {}
   }, 120);
 }
 
-// 13. Blood Money - Busted siren sound
+// 13. Blood Money - Unique Busted sound (Metal Crash + Tire Skid + Descending Game Over failure synth)
 export function playBustedSound() {
-  stopBmEngineSound(); // Stop the engine loop immediately
+  stopBmEngineSound(); // Stop the engine and sirens loop immediately
 
   if (isMuted) return;
   const ctx = getAudioContext();
   if (!ctx) return;
   const now = ctx.currentTime;
 
-  // Impact crash boom
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.type = 'sawtooth';
-  osc.frequency.setValueAtTime(120, now);
-  osc.frequency.exponentialRampToValueAtTime(10, now + 0.8);
+  // 13.1. Impact crash metal boom
+  const crashOsc = ctx.createOscillator();
+  const crashGain = ctx.createGain();
+  crashOsc.type = 'sawtooth';
+  crashOsc.frequency.setValueAtTime(140, now);
+  crashOsc.frequency.exponentialRampToValueAtTime(10, now + 0.7);
 
-  const filter = ctx.createBiquadFilter();
-  filter.type = 'lowpass';
-  filter.frequency.setValueAtTime(300, now);
-  filter.frequency.exponentialRampToValueAtTime(30, now + 0.8);
+  const crashFilter = ctx.createBiquadFilter();
+  crashFilter.type = 'lowpass';
+  crashFilter.frequency.setValueAtTime(250, now);
+  crashFilter.frequency.exponentialRampToValueAtTime(20, now + 0.7);
 
-  gain.gain.setValueAtTime(0.3, now);
-  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+  crashGain.gain.setValueAtTime(0.35, now);
+  crashGain.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
 
-  osc.connect(filter);
-  filter.connect(gain);
-  gain.connect(ctx.destination);
-  osc.start(now);
-  osc.stop(now + 0.8);
+  crashOsc.connect(crashFilter);
+  crashFilter.connect(crashGain);
+  crashGain.connect(ctx.destination);
+  crashOsc.start(now);
+  crashOsc.stop(now + 0.7);
 
-  // High-speed police siren (wailing wuu-wuu sound)
-  const sirenOsc = ctx.createOscillator();
-  const sirenGain = ctx.createGain();
-  sirenOsc.type = 'sine';
-  sirenOsc.frequency.setValueAtTime(600, now);
+  // 13.2. Screeching tires halt / brake skid
+  const skidBufferSize = 0.45 * ctx.sampleRate;
+  const skidBuffer = ctx.createBuffer(1, skidBufferSize, ctx.sampleRate);
+  const skidData = skidBuffer.getChannelData(0);
+  for (let i = 0; i < skidBufferSize; i++) {
+    skidData[i] = Math.random() * 2 - 1;
+  }
+  const skidNoise = ctx.createBufferSource();
+  skidNoise.buffer = skidBuffer;
 
-  const mod = ctx.createOscillator();
-  const modGain = ctx.createGain();
-  mod.type = 'sine';
-  mod.frequency.setValueAtTime(4, now); // 4Hz wail speed
-  modGain.gain.setValueAtTime(150, now); // wail range 450Hz - 750Hz
+  const skidFilter = ctx.createBiquadFilter();
+  skidFilter.type = 'bandpass';
+  skidFilter.frequency.setValueAtTime(1800, now);
+  skidFilter.frequency.exponentialRampToValueAtTime(150, now + 0.4);
+  skidFilter.Q.setValueAtTime(4.0, now);
 
-  mod.connect(modGain);
-  modGain.connect(sirenOsc.frequency);
+  const skidGain = ctx.createGain();
+  skidGain.gain.setValueAtTime(0.12, now);
+  skidGain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
 
-  sirenGain.gain.setValueAtTime(0.001, now);
-  sirenGain.gain.linearRampToValueAtTime(0.12, now + 0.1);
-  sirenGain.gain.linearRampToValueAtTime(0.12, now + 1.2);
-  sirenGain.gain.exponentialRampToValueAtTime(0.001, now + 1.5);
+  skidNoise.connect(skidFilter);
+  skidFilter.connect(skidGain);
+  skidGain.connect(ctx.destination);
+  skidNoise.start(now);
+  skidNoise.stop(now + 0.4);
 
-  sirenOsc.connect(sirenGain);
-  sirenGain.connect(ctx.destination);
+  // 13.3. Retro arcade game over failure chords (low descending minor synth)
+  const failOsc1 = ctx.createOscillator();
+  const failOsc2 = ctx.createOscillator();
+  const failGain = ctx.createGain();
 
-  mod.start(now);
-  sirenOsc.start(now);
-  
-  mod.stop(now + 1.5);
-  sirenOsc.stop(now + 1.5);
+  failOsc1.type = 'sawtooth';
+  failOsc1.frequency.setValueAtTime(80, now + 0.12);
+  failOsc1.frequency.linearRampToValueAtTime(42, now + 0.9);
+
+  failOsc2.type = 'sawtooth';
+  failOsc2.frequency.setValueAtTime(82, now + 0.12); // detuned for growl
+  failOsc2.frequency.linearRampToValueAtTime(44, now + 0.9);
+
+  const failFilter = ctx.createBiquadFilter();
+  failFilter.type = 'lowpass';
+  failFilter.frequency.setValueAtTime(220, now + 0.12);
+  failFilter.frequency.exponentialRampToValueAtTime(50, now + 0.9);
+
+  failGain.gain.setValueAtTime(0.001, now + 0.12);
+  failGain.gain.linearRampToValueAtTime(0.22, now + 0.22);
+  failGain.gain.exponentialRampToValueAtTime(0.001, now + 0.9);
+
+  failOsc1.connect(failFilter);
+  failOsc2.connect(failFilter);
+  failFilter.connect(failGain);
+  failGain.connect(ctx.destination);
+
+  failOsc1.start(now + 0.12);
+  failOsc2.start(now + 0.12);
+  failOsc1.stop(now + 0.9);
+  failOsc2.stop(now + 0.9);
 }
 
 // 14. Blood Money - Cash Register / Money bills sweep

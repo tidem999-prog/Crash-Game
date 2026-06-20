@@ -7,6 +7,7 @@ import {
 import { 
   initAudio, playSnakeSpawn, playSnakeCashout, 
   startSnakeBoost, stopSnakeBoost, playSnakeDeath, playSnakeEat,
+  playSnakeBoostStart, playSnakeEatCash,
   getMuted, setMuted 
 } from '../utils/audio';
 
@@ -161,11 +162,32 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
           energy: pSnake.energy || 0
         });
 
-        const currentValue = pSnake.value;
-        if (currentValue > prevSnakeValueRef.current && prevSnakeValueRef.current > 0) {
-          playSnakeEat();
+        const lastSnake = snakesRef.current[mySnakeIdRef.current];
+        if (lastSnake && lastSnake.segments && lastSnake.segments[0]) {
+          const lastHead = lastSnake.segments[0];
+          const prevPellets = pelletsRef.current || [];
+          const newPelletIds = new Set(data.pellets.map(p => p.id));
+          
+          let ateNormal = false;
+          let ateCash = false;
+          
+          prevPellets.forEach(p => {
+            const dist = Math.hypot(lastHead.x - p.x, lastHead.y - p.y);
+            if (dist < 22) { // eating range
+              if (!newPelletIds.has(p.id)) {
+                if (p.isCashDrop) ateCash = true;
+                else ateNormal = true;
+              }
+            }
+          });
+          
+          if (ateCash) {
+            playSnakeEatCash();
+          } else if (ateNormal) {
+            playSnakeEat();
+          }
         }
-        prevSnakeValueRef.current = currentValue;
+        prevSnakeValueRef.current = pSnake.value;
       } else {
         prevSnakeValueRef.current = 0;
       }
@@ -277,11 +299,32 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
         prevDeathsRef.current = currentDeaths;
 
         // Duel eat pellet detection
-        const currentValue = pSnake.value;
-        if (currentValue > prevSnakeValueRef.current && prevSnakeValueRef.current > 0) {
-          playSnakeEat();
+        const lastSnake = snakesRef.current[mySnakeIdRef.current];
+        if (lastSnake && lastSnake.segments && lastSnake.segments[0]) {
+          const lastHead = lastSnake.segments[0];
+          const prevPellets = pelletsRef.current || [];
+          const newPelletIds = new Set(data.pellets.map(p => p.id));
+          
+          let ateNormal = false;
+          let ateCash = false;
+          
+          prevPellets.forEach(p => {
+            const dist = Math.hypot(lastHead.x - p.x, lastHead.y - p.y);
+            if (dist < 22) { // eating range
+              if (!newPelletIds.has(p.id)) {
+                if (p.isCashDrop) ateCash = true;
+                else ateNormal = true;
+              }
+            }
+          });
+          
+          if (ateCash) {
+            playSnakeEatCash();
+          } else if (ateNormal) {
+            playSnakeEat();
+          }
         }
-        prevSnakeValueRef.current = currentValue;
+        prevSnakeValueRef.current = pSnake.value;
       }
     });
 
@@ -1222,6 +1265,9 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
                 onTouchStart={(e) => { e.preventDefault(); handleBoostChange(true); }}
                 onTouchEnd={(e) => { e.preventDefault(); handleBoostChange(false); }}
                 onTouchCancel={(e) => { e.preventDefault(); handleBoostChange(false); }}
+                onMouseDown={(e) => { e.preventDefault(); handleBoostChange(true); }}
+                onMouseUp={(e) => { e.preventDefault(); handleBoostChange(false); }}
+                onMouseLeave={(e) => { e.preventDefault(); handleBoostChange(false); }}
               >
                 <Zap className="h-6 w-6 text-white fill-white" />
               </button>
@@ -1278,6 +1324,9 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
                 onTouchStart={(e) => { e.preventDefault(); handleBoostChange(true); }}
                 onTouchEnd={(e) => { e.preventDefault(); handleBoostChange(false); }}
                 onTouchCancel={(e) => { e.preventDefault(); handleBoostChange(false); }}
+                onMouseDown={(e) => { e.preventDefault(); handleBoostChange(true); }}
+                onMouseUp={(e) => { e.preventDefault(); handleBoostChange(false); }}
+                onMouseLeave={(e) => { e.preventDefault(); handleBoostChange(false); }}
               >
                 <Zap className="h-6 w-6 text-white fill-white" />
               </button>

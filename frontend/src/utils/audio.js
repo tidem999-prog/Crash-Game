@@ -821,3 +821,73 @@ export function playSnakeEat() {
   osc.start(now);
   osc.stop(now + 0.08);
 }
+
+// 20. KetMesye - Eat yellow cash drop sound (Sparkly double metal chime)
+export function playSnakeEatCash() {
+  if (isMuted) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+
+  // First high note
+  const osc1 = ctx.createOscillator();
+  const gain1 = ctx.createGain();
+  osc1.type = 'sine';
+  osc1.frequency.setValueAtTime(1046.50, now); // C6
+  osc1.frequency.exponentialRampToValueAtTime(1500, now + 0.1);
+
+  gain1.gain.setValueAtTime(0.001, now);
+  gain1.gain.linearRampToValueAtTime(0.12, now + 0.015);
+  gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+
+  osc1.connect(gain1);
+  gain1.connect(ctx.destination);
+  osc1.start(now);
+  osc1.stop(now + 0.12);
+
+  // Second higher note offset slightly
+  const osc2 = ctx.createOscillator();
+  const gain2 = ctx.createGain();
+  osc2.type = 'sine';
+  osc2.frequency.setValueAtTime(1318.51, now + 0.04); // E6
+  osc2.frequency.exponentialRampToValueAtTime(1800, now + 0.14);
+
+  gain2.gain.setValueAtTime(0.001, now + 0.04);
+  gain2.gain.linearRampToValueAtTime(0.12, now + 0.055);
+  gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+
+  osc2.connect(gain2);
+  gain2.connect(ctx.destination);
+  osc2.start(now + 0.04);
+  osc2.stop(now + 0.16);
+}
+
+// 21. KetMesye - Boost activation whoosh
+export function playSnakeBoostStart() {
+  if (isMuted) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(120, now);
+  osc.frequency.exponentialRampToValueAtTime(450, now + 0.15);
+
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.setValueAtTime(300, now);
+  filter.frequency.exponentialRampToValueAtTime(1200, now + 0.15);
+
+  gain.gain.setValueAtTime(0.001, now);
+  gain.gain.linearRampToValueAtTime(0.1, now + 0.03);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+
+  osc.connect(filter);
+  filter.connect(gain);
+  gain.connect(ctx.destination);
+
+  osc.start(now);
+  osc.stop(now + 0.15);
+}

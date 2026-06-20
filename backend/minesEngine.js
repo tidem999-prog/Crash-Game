@@ -379,14 +379,15 @@ const handleMinesCashout = async (socket, payload) => {
     const email = emailRes.rows[0]?.email || 'Joueur';
     const displayName = email.split('@')[0];
     activePlayersStore.cashoutPlayer(userId, 'mines', payoutAmount, game.current_multiplier);
-    activePlayersStore.notify(`${displayName} a gagné +${payoutAmount.toFixed(0)} HTG à Mines (${parseFloat(game.current_multiplier).toFixed(2)}x) !`, 'success');
+    activePlayersStore.notify(`${displayName} a gagné +${payoutAmount.toFixed(0)} ${game.currency || 'HTG'} à Mines (${parseFloat(game.current_multiplier).toFixed(2)}x) !`, 'success');
 
     socket.emit('mines_game_over', {
       status: 'cashed_out',
       payoutAmount,
       currentMultiplier: game.current_multiplier,
       gridMines: game.grid_mines,
-      serverSeed: game.server_seed
+      serverSeed: game.server_seed,
+      currency: game.currency || 'HTG'
     });
 
   } catch (err) {

@@ -106,7 +106,7 @@ const MinesGame = ({ socket, user, balance, setSelectedGame }) => {
   useEffect(() => {
     if (user) {
       if (user.active_currency === 'KET') {
-        setBetAmount('1000');
+        setBetAmount('100');
       } else {
         setBetAmount('10');
       }
@@ -117,7 +117,7 @@ const MinesGame = ({ socket, user, balance, setSelectedGame }) => {
     if (!user) return;
     const bet = parseFloat(betAmount);
     const isKet = user?.active_currency === 'KET';
-    const minBet = isKet ? 1000 : 10;
+    const minBet = isKet ? 100 : 10;
     const currencyLabel = isKet ? 'KET' : 'HTG';
 
     if (isNaN(bet) || bet < minBet) return setError(`La mise minimale est de ${minBet} ${currencyLabel}.`);
@@ -223,7 +223,7 @@ const MinesGame = ({ socket, user, balance, setSelectedGame }) => {
               </div>
               {gameState === 'idle' && (
                  <div className="grid grid-cols-4 gap-2 mt-2">
-                   {(user?.active_currency === 'KET' ? [1000, 2000, 5000, 10000] : [50, 100, 200, 500]).map(amt => (
+                   {(user?.active_currency === 'KET' ? [100, 250, 500, 1000] : [50, 100, 200, 500]).map(amt => (
                      <button
                        key={amt}
                        onClick={() => setBetAmount(amt.toString())}
@@ -426,7 +426,7 @@ const MinesGame = ({ socket, user, balance, setSelectedGame }) => {
 
             {gameState === 'idle' && (
               <div className="grid grid-cols-4 gap-2 mb-4">
-                {(user?.active_currency === 'KET' ? [1000, 2000, 5000, 10000] : [50, 100, 200, 500]).map(amt => (
+                {(user?.active_currency === 'KET' ? [100, 250, 500, 1000] : [50, 100, 200, 500]).map(amt => (
                   <button
                     key={amt}
                     onClick={() => setBetAmount(amt.toString())}

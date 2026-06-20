@@ -868,7 +868,7 @@ const initKetmesyeEngine = (socketIoInstance) => {
 
         const activeCurrency = user.active_currency || 'HTG';
         const entryWager = parseFloat(wager);
-        const minWager = activeCurrency === 'KET' ? 1000 : 125;
+        const minWager = activeCurrency === 'KET' ? 100 : 125;
 
         if (isNaN(entryWager) || entryWager < minWager) {
           await query('ROLLBACK');
@@ -1091,7 +1091,7 @@ const initKetmesyeEngine = (socketIoInstance) => {
         if (user.is_suspended) throw new Error('Votre compte est suspendu.');
         
         const activeCurrency = user.active_currency || 'HTG';
-        const minWager = activeCurrency === 'KET' ? 1000 : 150;
+        const minWager = activeCurrency === 'KET' ? 100 : 150;
         if (betAmount < minWager) {
           throw new Error(`La mise minimale est de ${minWager} ${activeCurrency}.`);
         }

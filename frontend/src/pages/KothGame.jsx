@@ -117,7 +117,7 @@ const KothGame = ({ socket, user, balance, setSelectedGame }) => {
         <div className="p-4 bg-slate-950 rounded-xl mb-6 border border-slate-800/50">
           <div className="flex justify-between items-center mb-2">
             <span className="text-slate-400 text-sm font-bold uppercase tracking-wider">Frais d'entrée</span>
-            <span className="text-white font-black text-lg">{activeCurrency === 'KET' ? '1000 KET' : '150 HTG'}</span>
+            <span className="text-white font-black text-lg">{activeCurrency === 'KET' ? '100 KET' : '150 HTG'}</span>
           </div>
           <div className="flex justify-between items-center">
             <span className="text-slate-500 text-xs font-bold uppercase tracking-wider">Ajout au Pot</span>
@@ -163,7 +163,7 @@ const KothGame = ({ socket, user, balance, setSelectedGame }) => {
                   onClick={() => handleJoinRoom(lobby.id)}
                   className="mt-auto w-full py-3 bg-slate-800 hover:bg-indigo-600 text-white font-black rounded-xl transition-all"
                 >
-                  REJOINDRE ({lobby.entryFee || (lobby.currency === 'KET' ? 1000 : 150)} {lobby.currency || 'HTG'})
+                  REJOINDRE ({lobby.entryFee || (lobby.currency === 'KET' ? 100 : 150)} {lobby.currency || 'HTG'})
                 </button>
               </div>
             ))}

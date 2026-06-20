@@ -17,17 +17,17 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
   const [duelState, setDuelState] = useState('lobby'); // lobby, waiting, playing, finished
   const [pendingDuels, setPendingDuels] = useState([]);
   const activeCurrency = user?.active_currency || 'HTG';
-  const [duelWager, setDuelWager] = useState(activeCurrency === 'KET' ? '1000' : '150');
+  const [duelWager, setDuelWager] = useState(activeCurrency === 'KET' ? '100' : '150');
   const [duelData, setDuelData] = useState(null);
   const [duelResult, setDuelResult] = useState(null);
   const [currentDuelId, setCurrentDuelId] = useState(null);
 
-  const [wager, setWager] = useState(activeCurrency === 'KET' ? 1000 : 125);
+  const [wager, setWager] = useState(activeCurrency === 'KET' ? 100 : 125);
 
   useEffect(() => {
     if (activeCurrency === 'KET') {
-      setWager(1000);
-      setDuelWager('1000');
+      setWager(100);
+      setDuelWager('100');
     } else {
       setWager(125);
       setDuelWager('150');
@@ -863,7 +863,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
 
   // Spawn Request Classic
   const handleSpawn = () => {
-    const minWager = activeCurrency === 'KET' ? 1000 : 125;
+    const minWager = activeCurrency === 'KET' ? 100 : 125;
     if (wager < minWager) {
       return addNotification(`La mise minimale est de ${minWager} ${activeCurrency}.`, "danger");
     }
@@ -903,7 +903,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
 
   // 1v1 Duel Matchmaking requests
   const handleCreateDuel = () => {
-    const minWager = activeCurrency === 'KET' ? 1000 : 150;
+    const minWager = activeCurrency === 'KET' ? 100 : 150;
     if (parseFloat(duelWager) < minWager) {
       return addNotification(`La mise minimale pour un duel est de ${minWager} ${activeCurrency}.`, "danger");
     }
@@ -1246,7 +1246,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
 
                 <div className="flex flex-col space-y-4 text-left mb-6">
                   <div>
-                    <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Mise d'entrée (Min: {activeCurrency === 'KET' ? '1000' : '125'} {activeCurrency})</label>
+                    <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Mise d'entrée (Min: {activeCurrency === 'KET' ? '100' : '125'} {activeCurrency})</label>
                     <div className="flex border border-slate-800 bg-slate-950 rounded-xl overflow-hidden mt-1.5">
                       <span className="bg-slate-900 px-3 py-2 text-xs font-bold text-slate-500 flex items-center border-r border-slate-800">{activeCurrency}</span>
                       <input
@@ -1257,7 +1257,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
                           setWager(val === '' ? '' : parseInt(val) || 0);
                         }}
                         onBlur={() => {
-                          const minWager = activeCurrency === 'KET' ? 1000 : 125;
+                          const minWager = activeCurrency === 'KET' ? 100 : 125;
                           if (!wager || wager < minWager) setWager(minWager);
                         }}
                         className="block w-full px-3 py-2 bg-transparent text-slate-200 text-sm font-bold font-mono focus:outline-none"
@@ -1266,7 +1266,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
                   </div>
 
                   <div className="grid grid-cols-4 gap-2">
-                    {(activeCurrency === 'KET' ? [1000, 2000, 5000, 10000] : [125, 250, 625, 1250]).map(val => (
+                    {(activeCurrency === 'KET' ? [100, 250, 500, 1000] : [125, 250, 625, 1250]).map(val => (
                       <button
                         key={val}
                         onClick={() => setWager(val)}
@@ -1307,7 +1307,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
 
                     <div className="flex flex-col space-y-4 mb-6">
                       <div>
-                        <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Mise du duel (Min: {activeCurrency === 'KET' ? '1000' : '150'} {activeCurrency})</label>
+                        <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Mise du duel (Min: {activeCurrency === 'KET' ? '100' : '150'} {activeCurrency})</label>
                         <div className="flex border border-slate-800 bg-slate-950 rounded-xl overflow-hidden mt-1.5">
                           <span className="bg-slate-900 px-3 py-2 text-xs font-bold text-slate-500 flex items-center border-r border-slate-800">{activeCurrency}</span>
                           <input
@@ -1320,7 +1320,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
                       </div>
 
                       <div className="grid grid-cols-3 gap-2">
-                        {(activeCurrency === 'KET' ? [1000, 2000, 5000] : [150, 300, 750]).map(val => (
+                        {(activeCurrency === 'KET' ? [100, 250, 500] : [150, 300, 750]).map(val => (
                           <button
                             key={val}
                             onClick={() => setDuelWager(val.toString())}

@@ -105,9 +105,9 @@ const handleMinesStart = async (socket, payload) => {
     let newKetBalance = parseFloat(user.ket_balance || 0);
 
     if (activeCurrency === 'KET') {
-      if (betAmount < 1000) {
+      if (betAmount < 100) {
         await query('ROLLBACK');
-        return socket.emit('mines_error', 'La mise minimale en KET est de 1 000 KET.');
+        return socket.emit('mines_error', 'La mise minimale en KET est de 100 KET.');
       }
       if (newKetBalance < betAmount) {
         await query('ROLLBACK');

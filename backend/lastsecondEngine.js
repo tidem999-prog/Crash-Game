@@ -589,8 +589,8 @@ const initLastsecondEngine = (socketIoInstance) => {
         let newKetBalance = parseFloat(user.ket_balance || 0);
 
         if (activeCurrency === 'KET') {
-          if (amount < 1000) {
-            return socket.emit('lastsecond:bet:error', { message: 'La mise minimale en KET est de 1 000 KET.' });
+          if (amount < 100) {
+            return socket.emit('lastsecond:bet:error', { message: 'La mise minimale en KET est de 100 KET.' });
           }
           if (newKetBalance < amount) {
             return socket.emit('lastsecond:bet:error', { message: 'Solde de KET insuffisant.' });

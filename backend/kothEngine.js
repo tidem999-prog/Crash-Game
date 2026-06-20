@@ -57,7 +57,7 @@ const initKothEngine = (socketIo) => {
         if (user.is_suspended) throw new Error('Votre compte est suspendu.');
 
         const activeCurrency = user.active_currency || 'HTG';
-        const entryFee = activeCurrency === 'KET' ? 1000.00 : 150.00;
+        const entryFee = activeCurrency === 'KET' ? 100.00 : 150.00;
         const balance = parseFloat(activeCurrency === 'KET' ? (user.ket_balance || 0) : user.balance);
 
         if (balance < entryFee) throw new Error(`Solde insuffisant (${entryFee} ${activeCurrency} requis).`);
@@ -148,7 +148,7 @@ const initKothEngine = (socketIo) => {
           throw new Error('Devise incompatible avec ce tournoi.');
         }
 
-        const entryFee = room.entryFee || (room.currency === 'KET' ? 1000.00 : 150.00);
+        const entryFee = room.entryFee || (room.currency === 'KET' ? 100.00 : 150.00);
         const balance = parseFloat(activeCurrency === 'KET' ? (user.ket_balance || 0) : user.balance);
 
         if (balance < entryFee) throw new Error(`Solde insuffisant (${entryFee} ${activeCurrency} requis).`);
@@ -410,7 +410,7 @@ const endGameWinner = async (roomId, winnerPlayer) => {
   if (!room) return;
 
   const activeCurrency = room.currency || 'HTG';
-  const entryFee = room.entryFee || (activeCurrency === 'KET' ? 1000 : 150);
+  const entryFee = room.entryFee || (activeCurrency === 'KET' ? 100 : 150);
 
   try {
     await query('BEGIN');
@@ -458,7 +458,7 @@ const endGameNoWinner = async (roomId) => {
   if (!room) return;
 
   const activeCurrency = room.currency || 'HTG';
-  const entryFee = room.entryFee || (activeCurrency === 'KET' ? 1000 : 150);
+  const entryFee = room.entryFee || (activeCurrency === 'KET' ? 100 : 150);
 
   try {
     await query(`UPDATE koth_rooms SET status = 'finished' WHERE id = $1`, [roomId]);
@@ -518,7 +518,7 @@ const cancelRoom = async (roomId, reason) => {
   if (!room) return;
 
   const activeCurrency = room.currency || 'HTG';
-  const entryFee = room.entryFee || (activeCurrency === 'KET' ? 1000 : 150);
+  const entryFee = room.entryFee || (activeCurrency === 'KET' ? 100 : 150);
 
   try {
     await query('BEGIN');

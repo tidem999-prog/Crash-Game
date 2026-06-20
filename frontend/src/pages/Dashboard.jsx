@@ -112,11 +112,11 @@ export default function Dashboard() {
       
       // Adjust default betAmount when currency toggles
       if (user.active_currency === 'KET') {
-        if (betAmount < 1000) {
-          setBetAmount(1000);
+        if (betAmount < 100) {
+          setBetAmount(100);
         }
       } else {
-        if (betAmount >= 1000) {
+        if (betAmount >= 100) {
           setBetAmount(10);
         }
       }
@@ -716,7 +716,7 @@ export default function Dashboard() {
     setBetError('');
     
     const isKet = user?.active_currency === 'KET';
-    const minBet = isKet ? 1000 : 10;
+    const minBet = isKet ? 100 : 10;
     const currentBalance = isKet ? (user?.ket_balance || 0) : (user?.balance || 0);
     const currencyLabel = isKet ? 'KET' : 'HTG';
 
@@ -1220,7 +1220,7 @@ export default function Dashboard() {
                 {/* Bet Amount Control */}
                 <div className="flex flex-col justify-center">
                   <label className="text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">
-                    {user?.active_currency === 'KET' ? 'Montant (Min: 1000 KET)' : 'Montant (Min: 10 HTG)'}
+                    {user?.active_currency === 'KET' ? 'Montant (Min: 100 KET)' : 'Montant (Min: 10 HTG)'}
                   </label>
                   <div className="relative rounded-xl overflow-hidden flex border border-slate-800 bg-slate-900/40">
                     <span className="bg-slate-900 px-2 sm:px-3 py-1 sm:py-2 text-slate-500 text-xs sm:text-sm font-bold flex items-center">
@@ -1234,7 +1234,7 @@ export default function Dashboard() {
                         setBetAmount(val === '' ? '' : parseInt(val) || 0);
                       }}
                       onBlur={() => {
-                        const minVal = user?.active_currency === 'KET' ? 1000 : 10;
+                        const minVal = user?.active_currency === 'KET' ? 100 : 10;
                         if (!betAmount || betAmount < minVal) setBetAmount(minVal);
                       }}
                       disabled={myBet && myBet.status === 'placed'}
@@ -1242,7 +1242,7 @@ export default function Dashboard() {
                     />
                     <button 
                       onClick={() => {
-                        const minVal = user?.active_currency === 'KET' ? 1000 : 10;
+                        const minVal = user?.active_currency === 'KET' ? 100 : 10;
                         setBetAmount(prev => Math.max(minVal, Math.round((parseInt(prev) || 0) / 2)));
                       }}
                       disabled={myBet && myBet.status === 'placed'}

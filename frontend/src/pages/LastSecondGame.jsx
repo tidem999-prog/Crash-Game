@@ -219,7 +219,7 @@ export default function LastSecondGame({ socket, onBackToLobby, addNotification 
   useEffect(() => {
     if (user) {
       if (user.active_currency === 'KET') {
-        setBetAmount(1000);
+        setBetAmount(100);
       } else {
         setBetAmount(10);
       }
@@ -873,7 +873,7 @@ export default function LastSecondGame({ socket, onBackToLobby, addNotification 
           <div className="space-y-4">
             <div>
               <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">
-                Montant de la mise ({isKet ? 'Min: 1000 KET' : 'Min: 10 HTG'})
+                Montant de la mise ({isKet ? 'Min: 100 KET' : 'Min: 10 HTG'})
               </label>
               <div className="relative rounded-xl overflow-hidden flex border border-slate-800 bg-slate-950/40">
                 <span className="bg-slate-900/60 px-3 py-2 text-slate-500 text-xs font-bold flex items-center border-r border-slate-800">
@@ -887,7 +887,7 @@ export default function LastSecondGame({ socket, onBackToLobby, addNotification 
                     setBetAmount(val === '' ? '' : parseInt(val) || 0);
                   }}
                   onBlur={() => {
-                    const minVal = isKet ? 1000 : 10;
+                    const minVal = isKet ? 100 : 10;
                     if (!betAmount || betAmount < minVal) setBetAmount(minVal);
                   }}
                   disabled={myBet && myBet.status === 'placed'}
@@ -895,7 +895,7 @@ export default function LastSecondGame({ socket, onBackToLobby, addNotification 
                 />
                 <button 
                   onClick={() => {
-                    const minVal = isKet ? 1000 : 10;
+                    const minVal = isKet ? 100 : 10;
                     setBetAmount(prev => Math.max(minVal, Math.round((parseInt(prev) || 0) / 2)));
                   }}
                   disabled={myBet && myBet.status === 'placed'}

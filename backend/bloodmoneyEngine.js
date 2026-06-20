@@ -424,8 +424,8 @@ const initBloodmoneyEngine = (socketIoInstance) => {
         let newKetBalance = parseFloat(user.ket_balance || 0);
 
         if (activeCurrency === 'KET') {
-          if (amount < 1000) {
-            throw new Error('La mise minimale en KET est de 1 000 KET.');
+          if (amount < 100) {
+            throw new Error('La mise minimale en KET est de 100 KET.');
           }
           if (newKetBalance < amount) {
             throw new Error('Solde de KET insuffisant.');

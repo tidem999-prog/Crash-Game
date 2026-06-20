@@ -169,7 +169,7 @@ export default function BloodmoneyGame({ socket, setSelectedGame }) {
   useEffect(() => {
     if (user) {
       if (user.active_currency === 'KET') {
-        setBetAmount(1000);
+        setBetAmount(100);
       } else {
         setBetAmount(10);
       }
@@ -180,7 +180,7 @@ export default function BloodmoneyGame({ socket, setSelectedGame }) {
   const handlePlaceBet = () => {
     if (!socket || !socket.connected) return;
     const isKet = user?.active_currency === 'KET';
-    const minBet = isKet ? 1000 : 10;
+    const minBet = isKet ? 100 : 10;
     const currencyLabel = isKet ? 'KET' : 'HTG';
     const currentBalance = isKet ? (user?.ket_balance || 0) : (user?.balance || 0);
 
@@ -561,7 +561,7 @@ export default function BloodmoneyGame({ socket, setSelectedGame }) {
                 type="number"
                 value={betAmount}
                 onChange={(e) => {
-                  const limit = user?.active_currency === 'KET' ? 1000 : 10;
+                  const limit = user?.active_currency === 'KET' ? 100 : 10;
                   setBetAmount(Math.max(limit, parseInt(e.target.value) || 0));
                 }}
                 disabled={myBet && myBet.status === 'placed'}
@@ -569,7 +569,7 @@ export default function BloodmoneyGame({ socket, setSelectedGame }) {
               />
               <button 
                 onClick={() => {
-                  const limit = user?.active_currency === 'KET' ? 1000 : 10;
+                  const limit = user?.active_currency === 'KET' ? 100 : 10;
                   setBetAmount(prev => Math.max(limit, Math.round((parseInt(prev) || 0) / 2)));
                 }}
                 disabled={myBet && myBet.status === 'placed'}

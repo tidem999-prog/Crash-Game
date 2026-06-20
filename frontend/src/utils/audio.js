@@ -891,3 +891,151 @@ export function playSnakeBoostStart() {
   osc.start(now);
   osc.stop(now + 0.15);
 }
+
+// 22. Mines - Start game sound (Descending/ascending synth chime)
+export function playMinesStart() {
+  if (isMuted) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+
+  const notes = [261.63, 329.63, 392.00, 523.25]; // C4, E4, G4, C5
+  notes.forEach((freq, idx) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(freq, now + idx * 0.05);
+
+    gain.gain.setValueAtTime(0.001, now + idx * 0.05);
+    gain.gain.linearRampToValueAtTime(0.08, now + idx * 0.05 + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.05 + 0.15);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    
+    osc.start(now + idx * 0.05);
+    osc.stop(now + idx * 0.05 + 0.15);
+  });
+}
+
+// 23. Mines - Diamond Reveal sound (Bright sparkly magic chime)
+export function playMinesRevealSafe() {
+  if (isMuted) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(880, now); // A5
+  osc.frequency.exponentialRampToValueAtTime(1760, now + 0.18); // A6 sweep up
+
+  gain.gain.setValueAtTime(0.001, now);
+  gain.gain.linearRampToValueAtTime(0.12, now + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+
+  // Add a subtle high bandpass filter to make it feel sparkly/glassy
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'highpass';
+  filter.frequency.setValueAtTime(600, now);
+
+  osc.connect(filter);
+  filter.connect(gain);
+  gain.connect(ctx.destination);
+
+  osc.start(now);
+  osc.stop(now + 0.18);
+}
+
+// 24. Mines - Bomb Reveal sound (Dull sub-bass explosion boom + low noise crash)
+export function playMinesRevealBomb() {
+  if (isMuted) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+
+  // 1. Low bass boom
+  const boom = ctx.createOscillator();
+  const boomGain = ctx.createGain();
+  boom.type = 'sine';
+  boom.frequency.setValueAtTime(80, now);
+  boom.frequency.exponentialRampToValueAtTime(10, now + 0.8);
+
+  boomGain.gain.setValueAtTime(0.35, now);
+  boomGain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+
+  boom.connect(boomGain);
+  boomGain.connect(ctx.destination);
+  boom.start(now);
+  boom.stop(now + 0.8);
+
+  // 2. Dusty low rumble noise
+  const bufferSize = 0.8 * ctx.sampleRate;
+  const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const output = noiseBuffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) {
+    output[i] = Math.random() * 2 - 1;
+  }
+  const noise = ctx.createBufferSource();
+  noise.buffer = noiseBuffer;
+
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.setValueAtTime(150, now);
+  filter.frequency.exponentialRampToValueAtTime(20, now + 0.8);
+
+  const noiseGain = ctx.createGain();
+  noiseGain.gain.setValueAtTime(0.25, now);
+  noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+
+  noise.connect(filter);
+  filter.connect(noiseGain);
+  noiseGain.connect(ctx.destination);
+  noise.start(now);
+  noise.stop(now + 0.8);
+}
+
+// 25. Mines - Cash out sound (Ka-ching registers + coin chimes cascade)
+export function playMinesCashout() {
+  if (isMuted) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+
+  // High metallic coin bell ding
+  const bell = ctx.createOscillator();
+  const bellGain = ctx.createGain();
+  bell.type = 'sine';
+  bell.frequency.setValueAtTime(1567.98, now); // G6
+
+  bellGain.gain.setValueAtTime(0.001, now);
+  bellGain.gain.linearRampToValueAtTime(0.12, now + 0.01);
+  bellGain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+
+  bell.connect(bellGain);
+  bellGain.connect(ctx.destination);
+  bell.start(now);
+  bell.stop(now + 0.22);
+
+  // Cascade of 3 smaller metallic notes
+  const notes = [880.00, 1046.50, 1318.51]; // A5, C6, E6
+  notes.forEach((freq, idx) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, now + 0.04 + idx * 0.05);
+
+    gain.gain.setValueAtTime(0.001, now + 0.04 + idx * 0.05);
+    gain.gain.linearRampToValueAtTime(0.08, now + 0.04 + idx * 0.05 + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04 + idx * 0.05 + 0.15);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    
+    osc.start(now + 0.04 + idx * 0.05);
+    osc.stop(now + 0.04 + idx * 0.05 + 0.15);
+  });
+}

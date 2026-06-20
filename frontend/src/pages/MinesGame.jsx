@@ -1,5 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Gem, Bomb, Play, Banknote, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Gem, Bomb, Play, Banknote, AlertTriangle, Volume2, VolumeX } from 'lucide-react';
+import { 
+  initAudio, playMinesStart, playMinesRevealSafe, 
+  playMinesRevealBomb, playMinesCashout,
+  getMuted, setMuted
+} from '../utils/audio';
 
 const MinesGame = ({ socket, user, balance, setSelectedGame }) => {
   const [gameState, setGameState] = useState('idle'); // idle, playing, won, lost, cashed_out
@@ -17,6 +22,27 @@ const MinesGame = ({ socket, user, balance, setSelectedGame }) => {
   
   const [timeLeft, setTimeLeft] = useState(4.0);
   const timerRef = useRef(null);
+
+  // Sound States
+  const [isAudioMuted, setIsAudioMuted] = useState(getMuted());
+
+  const handleMuteToggle = () => {
+    const muted = !isAudioMuted;
+    setIsAudioMuted(muted);
+    setMuted(muted);
+  };
+
+  useEffect(() => {
+    const handleGesture = () => {
+      initAudio();
+    };
+    window.addEventListener('click', handleGesture);
+    window.addEventListener('touchstart', handleGesture);
+    return () => {
+      window.removeEventListener('click', handleGesture);
+      window.removeEventListener('touchstart', handleGesture);
+    };
+  }, []);
 
   const startVisualTimer = () => {
     setTimeLeft(4.0);
@@ -52,6 +78,7 @@ const MinesGame = ({ socket, user, balance, setSelectedGame }) => {
         setNextMultiplier((1 / prob) * 0.40);
         setError(null);
         startVisualTimer();
+        playMinesStart();
       };
 
       const onRecovered = (data) => {
@@ -70,13 +97,16 @@ const MinesGame = ({ socket, user, balance, setSelectedGame }) => {
         setCurrentMultiplier(data.currentMultiplier);
         setNextMultiplier(data.nextMultiplier);
         startVisualTimer();
+        playMinesRevealSafe();
       };
 
       const onGameOver = (data) => {
         setGameState(data.status); // 'lost', 'cashed_out', 'won'
         setGridMines(data.gridMines || []);
         if (data.status === 'cashed_out' || data.status === 'won') {
-          // Optional: Add some sound effect or local animation
+          playMinesCashout();
+        } else if (data.status === 'lost') {
+          playMinesRevealBomb();
         }
         setGameData(prev => prev ? { ...prev, serverSeed: data.serverSeed } : null);
         stopVisualTimer();
@@ -331,7 +361,7 @@ const MinesGame = ({ socket, user, balance, setSelectedGame }) => {
           </div>
 
           {/* 5x5 Grid */}
-          <div className="bg-slate-900/60 p-3 sm:p-6 rounded-3xl border border-slate-800 shadow-2xl backdrop-blur-sm max-w-md w-full">
+          <div className="bg-slate-900/60 p-3 pb-14 sm:p-6 sm:pb-20 rounded-3xl border border-slate-800 shadow-2xl backdrop-blur-sm max-w-md w-full relative">
             <div className="grid grid-cols-5 gap-2 sm:gap-3">
               {[...Array(25)].map((_, index) => {
                 const isRevealed = revealedTiles.includes(index);
@@ -394,6 +424,24 @@ const MinesGame = ({ socket, user, balance, setSelectedGame }) => {
                 );
               })}
             </div>
+
+            {/* Glassmorphic volume toggle button */}
+            <button 
+              onClick={handleMuteToggle}
+              className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 z-30 p-2 sm:p-2.5 rounded-xl bg-slate-950/60 hover:bg-slate-900/80 border border-slate-800/80 text-slate-400 hover:text-white transition-all active:scale-95 cursor-pointer shadow-lg backdrop-blur-md flex items-center space-x-1.5"
+            >
+              {isAudioMuted ? (
+                <>
+                  <VolumeX className="h-4 w-4 text-red-400" />
+                  <span className="text-[10px] font-black text-red-400/80 uppercase tracking-wider hidden sm:inline">MUET</span>
+                </>
+              ) : (
+                <>
+                  <Volume2 className="h-4 w-4 text-cyan-400 animate-pulse" />
+                  <span className="text-[10px] font-black text-cyan-400/80 uppercase tracking-wider hidden sm:inline">SON</span>
+                </>
+              )}
+            </button>
           </div>
 
           {/* Mobile Controls (Hidden on Desktop) */}

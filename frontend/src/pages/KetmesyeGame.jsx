@@ -1,6 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Award, Play, AlertTriangle, ArrowLeft, Trophy, Shield, Coins, Sparkles, HelpCircle, Zap, Clock, Skull } from 'lucide-react';
+import { 
+  Award, Play, AlertTriangle, ArrowLeft, Trophy, Shield, Coins, Sparkles, 
+  HelpCircle, Zap, Clock, Skull, Volume2, VolumeX 
+} from 'lucide-react';
+import { 
+  initAudio, playSnakeSpawn, playSnakeCashout, 
+  startSnakeBoost, stopSnakeBoost, playSnakeDeath, playSnakeEat,
+  getMuted, setMuted 
+} from '../utils/audio';
 
 export default function KetmesyeGame({ socket, onBackToLobby, addNotification, onPlayStateChange, initialMode }) {
   const { user, refreshBalance, updateBalance } = useAuth();
@@ -56,10 +64,45 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
   const pelletsRef = useRef([]);
   const localLoopRef = useRef(null);
   const mySnakeIdRef = useRef(null);
+  
+  // Sound states and refs
+  const [isAudioMuted, setIsAudioMuted] = useState(getMuted());
+  const prevDeathsRef = useRef(0);
+  const prevSnakeValueRef = useRef(0);
+
+  const handleMuteToggle = () => {
+    const muted = !isAudioMuted;
+    setIsAudioMuted(muted);
+    setMuted(muted);
+    if (muted) {
+      stopSnakeBoost();
+    }
+  };
+
+  useEffect(() => {
+    const handleGesture = () => {
+      initAudio();
+    };
+    window.addEventListener('click', handleGesture);
+    window.addEventListener('touchstart', handleGesture);
+    return () => {
+      window.removeEventListener('click', handleGesture);
+      window.removeEventListener('touchstart', handleGesture);
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      stopSnakeBoost();
+    };
+  }, []);
 
   useEffect(() => {
     if (onPlayStateChange) {
       onPlayStateChange(isPlaying);
+    }
+    if (!isPlaying) {
+      stopSnakeBoost();
     }
   }, [isPlaying, onPlayStateChange]);
 
@@ -117,6 +160,14 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
           length: pSnake.segments.length,
           energy: pSnake.energy || 0
         });
+
+        const currentValue = pSnake.value;
+        if (currentValue > prevSnakeValueRef.current && prevSnakeValueRef.current > 0) {
+          playSnakeEat();
+        }
+        prevSnakeValueRef.current = currentValue;
+      } else {
+        prevSnakeValueRef.current = 0;
       }
     });
 
@@ -131,8 +182,10 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
         length: 5,
         energy: 100
       });
+      prevSnakeValueRef.current = data.initialValue;
       updateBalance(data.newBalance, data.currency || activeCurrency);
       addNotification(`Vous avez rejoint l'arène avec ${data.wager} ${data.currency || activeCurrency} !`, 'success');
+      playSnakeSpawn();
     });
 
     socket.on('ketmesye_death', (data) => {
@@ -145,8 +198,10 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
       });
       mySnakeIdRef.current = null;
       setMySnake(null);
+      prevSnakeValueRef.current = 0;
       refreshBalance();
       addNotification(`Votre serpent a été éliminé ! Perte : ${data.valueLost.toFixed(2)} ${data.currency || activeCurrency}.`, 'danger');
+      playSnakeDeath();
     });
 
     socket.on('ketmesye_cashout_success', (data) => {
@@ -160,8 +215,10 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
       });
       mySnakeIdRef.current = null;
       setMySnake(null);
+      prevSnakeValueRef.current = 0;
       updateBalance(data.newBalance, data.currency || activeCurrency);
       addNotification(`Retrait réussi ! +${data.payout.toFixed(2)} ${data.currency || activeCurrency}`, 'success');
+      playSnakeCashout();
     });
 
     socket.on('ketmesye_kill', (data) => {
@@ -187,6 +244,9 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
         setDuelState('playing');
         mySnakeIdRef.current = socket.id;
         socket.emit('ketmesye_claim_duel_spot', { userId: user.id, duelId: data.duelId });
+        prevDeathsRef.current = 0;
+        prevSnakeValueRef.current = 0;
+        playSnakeSpawn();
       }
     });
 
@@ -205,6 +265,23 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
           length: pSnake.segments.length,
           energy: pSnake.energy || 0
         });
+
+        // Duel death/respawn detection
+        const currentDeaths = pSnake.deaths || 0;
+        if (currentDeaths > prevDeathsRef.current) {
+          playSnakeDeath();
+          setTimeout(() => {
+            playSnakeSpawn();
+          }, 220);
+        }
+        prevDeathsRef.current = currentDeaths;
+
+        // Duel eat pellet detection
+        const currentValue = pSnake.value;
+        if (currentValue > prevSnakeValueRef.current && prevSnakeValueRef.current > 0) {
+          playSnakeEat();
+        }
+        prevSnakeValueRef.current = currentValue;
       }
     });
 
@@ -214,6 +291,8 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
       setDuelResult(data);
       mySnakeIdRef.current = null;
       setMySnake(null);
+      prevDeathsRef.current = 0;
+      prevSnakeValueRef.current = 0;
       refreshBalance();
     });
 
@@ -365,6 +444,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
               }
             }
             pls.splice(i, 1);
+            playSnakeEat();
 
             if (!pellet.isCashDrop) {
               pls.push({
@@ -471,7 +551,9 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
       length: 5,
       energy: 100
     });
+    prevSnakeValueRef.current = initialValue;
     addNotification(`[Mode Démo] Spawn réussi !`, 'success');
+    playSnakeSpawn();
   };
 
   const handleLocalDeath = (me) => {
@@ -499,7 +581,9 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
     delete snakesRef.current[mySnakeIdRef.current];
     mySnakeIdRef.current = null;
     setMySnake(null);
+    prevSnakeValueRef.current = 0;
     addNotification("[Mode Démo] Vous êtes mort !", "danger");
+    playSnakeDeath();
   };
 
   const handleLocalCashout = () => {
@@ -522,7 +606,9 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
     delete snakesRef.current[myId];
     mySnakeIdRef.current = null;
     setMySnake(null);
+    prevSnakeValueRef.current = 0;
     addNotification(`[Mode Démo] Retrait réussi : +${payout} HTG`, 'success');
+    playSnakeCashout();
   };
 
   // --- RENDERING CANVAS DRAW LOOP ---
@@ -788,6 +874,12 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
     if (lastBoostEmitRef.current === isBoosting || !isPlaying) return;
     lastBoostEmitRef.current = isBoosting;
 
+    if (isBoosting) {
+      startSnakeBoost();
+    } else {
+      stopSnakeBoost();
+    }
+
     const myId = mySnakeIdRef.current;
     if (myId && snakesRef.current[myId]) {
       snakesRef.current[myId].isBoosting = isBoosting;
@@ -1042,6 +1134,19 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
             onTouchCancel={handleTouchEnd}
             className="block w-full h-full cursor-crosshair touch-none" 
           />
+
+          {/* Mute/Unmute speaker icon button */}
+          <button 
+            onClick={handleMuteToggle}
+            className="absolute bottom-3 left-3 z-30 p-2 rounded-xl bg-slate-900/80 border border-slate-800 text-slate-400 hover:text-white hover:bg-slate-800/80 transition-all active:scale-95 cursor-pointer shadow-lg backdrop-blur-md"
+            title={isAudioMuted ? "Activer le son" : "Couper le son"}
+          >
+            {isAudioMuted ? (
+              <VolumeX className="h-4 w-4 text-red-400" />
+            ) : (
+              <Volume2 className="h-4 w-4 text-emerald-400" />
+            )}
+          </button>
 
           {/* DUEL HUD (Time & Player Profiles) */}
           {isPlaying && gameMode === 'duel' && duelData && (

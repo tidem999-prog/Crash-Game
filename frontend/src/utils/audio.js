@@ -14,6 +14,10 @@ let bmSirenOsc = null;
 let bmSirenMod = null;
 let bmSirenGain = null;
 
+// Ketmesye (Snake) boost nodes references
+let snakeBoostOsc = null;
+let snakeBoostGain = null;
+
 export function getAudioContext() {
   if (typeof window === 'undefined') return null;
   if (!audioCtx) {
@@ -41,6 +45,7 @@ export function setMuted(muted) {
   if (isMuted) {
     stopEngineSound();
     stopBmEngineSound();
+    stopSnakeBoost();
   }
 }
 
@@ -602,4 +607,217 @@ export function playBmCashout() {
   
   noise.start(now + 0.05);
   noise.stop(now + 0.22);
+}
+
+// 15. KetMesye - Spawn sound (Retro arcade teleport/arpeggio)
+export function playSnakeSpawn() {
+  if (isMuted) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'triangle';
+  osc.frequency.setValueAtTime(220, now);
+  osc.frequency.exponentialRampToValueAtTime(880, now + 0.35);
+
+  // Add LFO for a cool retro teleport sci-fi effect
+  const lfo = ctx.createOscillator();
+  const lfoGain = ctx.createGain();
+  lfo.type = 'sine';
+  lfo.frequency.setValueAtTime(30, now); // fast vibrato
+  lfoGain.gain.setValueAtTime(25, now);
+
+  lfo.connect(lfoGain);
+  lfoGain.connect(osc.frequency);
+
+  gain.gain.setValueAtTime(0.001, now);
+  gain.gain.linearRampToValueAtTime(0.15, now + 0.05);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+
+  lfo.start(now);
+  osc.start(now);
+  lfo.stop(now + 0.35);
+  osc.stop(now + 0.35);
+}
+
+// 16. KetMesye - Cashout sound (Retro digital coin arpeggio C-E-G-C)
+export function playSnakeCashout() {
+  if (isMuted) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+
+  const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+  notes.forEach((freq, idx) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(freq, now + idx * 0.07);
+
+    gain.gain.setValueAtTime(0.001, now + idx * 0.07);
+    gain.gain.linearRampToValueAtTime(0.06, now + idx * 0.07 + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.07 + 0.12);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    
+    osc.start(now + idx * 0.07);
+    osc.stop(now + idx * 0.07 + 0.12);
+  });
+}
+
+// 17. KetMesye - Continuous speed boost sound
+export function startSnakeBoost() {
+  if (isMuted) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
+  if (snakeBoostOsc) return; // already boosting
+
+  const now = ctx.currentTime;
+  snakeBoostGain = ctx.createGain();
+  snakeBoostGain.gain.setValueAtTime(0.001, now);
+  snakeBoostGain.gain.linearRampToValueAtTime(0.08, now + 0.15); // fade in
+
+  snakeBoostOsc = ctx.createOscillator();
+  snakeBoostOsc.type = 'triangle';
+  snakeBoostOsc.frequency.setValueAtTime(140, now);
+  
+  // Modulate frequency to make a sci-fi rocket buzz
+  const mod = ctx.createOscillator();
+  const modGain = ctx.createGain();
+  mod.type = 'sawtooth';
+  mod.frequency.setValueAtTime(45, now); // buzz frequency
+  modGain.gain.setValueAtTime(30, now);
+
+  mod.connect(modGain);
+  modGain.connect(snakeBoostOsc.frequency);
+
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'bandpass';
+  filter.frequency.setValueAtTime(400, now);
+  filter.Q.setValueAtTime(3.0, now);
+
+  snakeBoostOsc.connect(filter);
+  filter.connect(snakeBoostGain);
+  snakeBoostGain.connect(ctx.destination);
+
+  mod.start(now);
+  snakeBoostOsc.start(now);
+
+  // Keep a reference to stop them
+  snakeBoostOsc.modNode = mod;
+}
+
+export function stopSnakeBoost() {
+  const ctx = getAudioContext();
+  const now = ctx ? ctx.currentTime : 0;
+
+  if (snakeBoostGain && ctx) {
+    try {
+      snakeBoostGain.gain.setValueAtTime(snakeBoostGain.gain.value, now);
+      snakeBoostGain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+    } catch (e) {}
+  }
+
+  const oscToStop = snakeBoostOsc;
+  snakeBoostOsc = null;
+  snakeBoostGain = null;
+
+  setTimeout(() => {
+    try {
+      if (oscToStop) {
+        oscToStop.stop();
+        if (oscToStop.modNode) oscToStop.modNode.stop();
+      }
+    } catch (e) {}
+  }, 120);
+}
+
+// 18. KetMesye - Death sound (Retro explosion crash + pitch sweep down)
+export function playSnakeDeath() {
+  stopSnakeBoost(); // stop boost if active
+
+  if (isMuted) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+
+  // Noise explosion
+  const bufferSize = 0.8 * ctx.sampleRate;
+  const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const output = noiseBuffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) {
+    output[i] = Math.random() * 2 - 1;
+  }
+  const noise = ctx.createBufferSource();
+  noise.buffer = noiseBuffer;
+
+  const noiseFilter = ctx.createBiquadFilter();
+  noiseFilter.type = 'lowpass';
+  noiseFilter.frequency.setValueAtTime(1000, now);
+  noiseFilter.frequency.exponentialRampToValueAtTime(40, now + 0.65);
+
+  const noiseGain = ctx.createGain();
+  noiseGain.gain.setValueAtTime(0.22, now);
+  noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
+
+  noise.connect(noiseFilter);
+  noiseFilter.connect(noiseGain);
+  noiseGain.connect(ctx.destination);
+  noise.start(now);
+  noise.stop(now + 0.65);
+
+  // Deep descending growl oscillator
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(250, now);
+  osc.frequency.exponentialRampToValueAtTime(30, now + 0.65);
+
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.setValueAtTime(300, now);
+  filter.frequency.exponentialRampToValueAtTime(40, now + 0.65);
+
+  gain.gain.setValueAtTime(0.2, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.65);
+
+  osc.connect(filter);
+  filter.connect(gain);
+  gain.connect(ctx.destination);
+
+  osc.start(now);
+  osc.stop(now + 0.65);
+}
+
+// 19. KetMesye - Eat coin/orbe sound (High pitch bubble pop/beep)
+export function playSnakeEat() {
+  if (isMuted) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(950, now);
+  osc.frequency.exponentialRampToValueAtTime(1400, now + 0.08); // brief frequency sweep up for crispness
+
+  gain.gain.setValueAtTime(0.001, now);
+  gain.gain.linearRampToValueAtTime(0.12, now + 0.015);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+
+  osc.start(now);
+  osc.stop(now + 0.08);
 }

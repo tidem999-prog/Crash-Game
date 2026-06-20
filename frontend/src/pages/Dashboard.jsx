@@ -12,6 +12,7 @@ import MinesGame from './MinesGame';
 import KothGame from './KothGame';
 import BloodmoneyGame from './BloodmoneyGame';
 import LastSecondGame from './LastSecondGame';
+import { initAudio, playTakeoff, playCrash, playCashout } from '../utils/audio';
 
 export default function Dashboard() {
   const { user, refreshBalance, updateBalance, updateProfile, convertKet } = useAuth();
@@ -166,6 +167,8 @@ export default function Dashboard() {
     setMultiplier(1.00);
     setCashoutSuccess(null);
     
+    playTakeoff();
+    
     const startTime = Date.now();
     if (localLoopRef.current) clearInterval(localLoopRef.current);
 
@@ -194,6 +197,7 @@ export default function Dashboard() {
         localBetRef.current = cashedOutBet;
         setCashoutSuccess({ payout, multiplier: autoMult });
         addNotification(`Gagné (Auto) ! +${payout} ${isKet ? 'KET' : 'HTG'} (${autoMult.toFixed(2)}x)`, 'success');
+        playCashout();
       }
 
       // Check crash
@@ -202,6 +206,7 @@ export default function Dashboard() {
         setGameStatus('crashed');
         setMultiplier(target);
         addNotification(`L'avion s'est écrasé à ${target.toFixed(2)}x`, 'danger');
+        playCrash();
         
         // Save history
         setGameHistory(prev => [target, ...prev.slice(0, 9)]);
@@ -229,6 +234,18 @@ export default function Dashboard() {
       if (localLoopRef.current) {
         clearInterval(localLoopRef.current);
       }
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleGesture = () => {
+      initAudio();
+    };
+    window.addEventListener('click', handleGesture);
+    window.addEventListener('touchstart', handleGesture);
+    return () => {
+      window.removeEventListener('click', handleGesture);
+      window.removeEventListener('touchstart', handleGesture);
     };
   }, []);
 
@@ -283,6 +300,10 @@ export default function Dashboard() {
       setGameHistory(data.history || []);
       setOnlineUsersCount(data.onlineUsersCount || 0);
 
+      if (data.status === 'flying' && prevStatusRef.current !== 'flying') {
+        playTakeoff();
+      }
+
       // Only reset active bet states when transitioning from another state (e.g. crashed) to 'waiting'
       if (data.status === 'waiting' && prevStatusRef.current !== 'waiting') {
         setMyBet(null);
@@ -302,6 +323,7 @@ export default function Dashboard() {
       setMultiplier(parseFloat(data.crashMultiplier));
       addNotification(`L'avion s'est écrasé à ${data.crashMultiplier}x`, 'danger');
       refreshBalance(); // Refresh final balance
+      playCrash();
     });
 
     newSocket.on('bet_success', (data) => {
@@ -324,6 +346,7 @@ export default function Dashboard() {
       setCashoutSuccess({ payout: data.payout, multiplier: data.multiplier });
       updateBalance(data.newBalance);
       addNotification(`Gagné ! +${data.payout} HTG (${data.multiplier}x)`, 'success');
+      playCashout();
     });
 
     newSocket.on('cashout_error', (data) => {
@@ -776,6 +799,7 @@ export default function Dashboard() {
       localBetRef.current = cashedOutBet;
       setCashoutSuccess({ payout, multiplier: currentMultiplier });
       addNotification(`Gagné ! +${payout} HTG (${currentMultiplier.toFixed(2)}x)`, 'success');
+      playCashout();
     } else {
       if (!socket || !myBet || myBet.status !== 'placed') return;
       socket.emit('cash_out', { userId: user.id });

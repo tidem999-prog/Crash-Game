@@ -153,11 +153,13 @@ const Competitions = ({ onNotificationAdded }) => {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
         <div>
-          <h1 className="text-4xl font-display font-black text-white flex items-center gap-3">
-            <Trophy className="text-yellow-500 animate-pulse" size={36} />
-            Centre de <span className="text-purple-500">Compétitions</span>
-          </h1>
-          <p className="text-slate-400 mt-1">Compétez pour des prize pools réels et ouvrez des coffres légendaires basés sur votre XP.</p>
+          <div className="flex items-center gap-3 mb-2">
+            <Trophy className="text-yellow-500 animate-pulse shrink-0" size={36} />
+            <h1 className="text-3xl sm:text-4xl font-display font-black text-white leading-tight">
+              Centre de <span className="text-purple-500">Compétitions</span>
+            </h1>
+          </div>
+          <p className="text-slate-400 text-xs sm:text-sm mt-1">Compétez pour des prize pools réels et ouvrez des coffres légendaires basés sur votre XP.</p>
         </div>
         <button 
           onClick={loadAllData} 
@@ -173,46 +175,46 @@ const Competitions = ({ onNotificationAdded }) => {
       <div className="flex border-b border-slate-800 mb-6 overflow-x-auto scrollbar-none gap-2">
         <button
           onClick={() => setActiveSubTab('leaderboards')}
-          className={`px-6 py-3 font-display font-black text-lg transition-all border-b-2 flex items-center gap-2 whitespace-nowrap ${
+          className={`px-3 sm:px-6 py-2 sm:py-3 font-display font-black text-sm sm:text-lg transition-all border-b-2 flex items-center gap-1.5 sm:gap-2 whitespace-nowrap ${
             activeSubTab === 'leaderboards' 
               ? 'border-purple-500 text-purple-400' 
               : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
-          <Award size={20} />
+          <Award size={18} />
           Leaderboards XP
         </button>
         <button
           onClick={() => setActiveSubTab('battle')}
-          className={`px-6 py-3 font-display font-black text-lg transition-all border-b-2 flex items-center gap-2 whitespace-nowrap ${
+          className={`px-3 sm:px-6 py-2 sm:py-3 font-display font-black text-sm sm:text-lg transition-all border-b-2 flex items-center gap-1.5 sm:gap-2 whitespace-nowrap ${
             activeSubTab === 'battle' 
               ? 'border-purple-500 text-purple-400' 
               : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
-          <Gem size={20} />
+          <Gem size={18} />
           XP Battle (Volume)
         </button>
         <button
           onClick={() => setActiveSubTab('chests')}
-          className={`px-6 py-3 font-display font-black text-lg transition-all border-b-2 flex items-center gap-2 whitespace-nowrap ${
+          className={`px-3 sm:px-6 py-2 sm:py-3 font-display font-black text-sm sm:text-lg transition-all border-b-2 flex items-center gap-1.5 sm:gap-2 whitespace-nowrap ${
             activeSubTab === 'chests' 
               ? 'border-purple-500 text-purple-400' 
               : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
-          <Sparkles size={20} />
+          <Sparkles size={18} />
           Lucky XP Chests
         </button>
         <button
           onClick={() => setActiveSubTab('history')}
-          className={`px-6 py-3 font-display font-black text-lg transition-all border-b-2 flex items-center gap-2 whitespace-nowrap ${
+          className={`px-3 sm:px-6 py-2 sm:py-3 font-display font-black text-sm sm:text-lg transition-all border-b-2 flex items-center gap-1.5 sm:gap-2 whitespace-nowrap ${
             activeSubTab === 'history' 
               ? 'border-purple-500 text-purple-400' 
               : 'border-transparent text-slate-400 hover:text-slate-200'
           }`}
         >
-          <Coins size={20} />
+          <Coins size={18} />
           Historique & Gains
         </button>
       </div>
@@ -226,12 +228,12 @@ const Competitions = ({ onNotificationAdded }) => {
             
             {/* Leaderboard sub-navigation if leaderboards */}
             {activeSubTab === 'leaderboards' && (
-              <div className="bg-slate-900/60 backdrop-blur-md rounded-2xl p-2 border border-slate-800 flex gap-2">
+              <div className="bg-slate-900/60 backdrop-blur-md rounded-2xl p-1.5 sm:p-2 border border-slate-800 flex gap-1.5 sm:gap-2">
                 {['daily', 'weekly', 'monthly'].map(type => (
                   <button
                     key={type}
                     onClick={() => setLeaderboardType(type)}
-                    className={`flex-1 py-2 rounded-xl text-sm font-black capitalize transition-all ${
+                    className={`flex-1 py-2 rounded-xl text-xs sm:text-sm font-black capitalize transition-all ${
                       leaderboardType === type
                         ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/20'
                         : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/40'
@@ -244,39 +246,39 @@ const Competitions = ({ onNotificationAdded }) => {
             )}
 
             {/* Competition Card Info */}
-            <div className="bg-gradient-to-br from-slate-900/80 to-purple-950/10 backdrop-blur-md rounded-3xl p-6 border border-slate-800 flex flex-col gap-6 shadow-xl relative overflow-hidden">
+            <div className="bg-gradient-to-br from-slate-900/80 to-purple-950/10 backdrop-blur-md rounded-3xl p-4 sm:p-6 border border-slate-800 flex flex-col gap-4 sm:gap-6 shadow-xl relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/5 rounded-full blur-3xl" />
               
               <div>
                 <span className="px-3 py-1 bg-purple-500/10 text-purple-300 text-xs font-black rounded-full border border-purple-500/20 uppercase tracking-widest">
                   {activeSubTab === 'battle' ? 'Volume des Mises' : `${leaderboardType} XP`}
                 </span>
-                <h2 className="text-2xl font-display font-black text-white mt-3">
+                <h2 className="text-xl sm:text-2xl font-display font-black text-white mt-3">
                   {activeSubTab === 'battle' ? 'XP Battle Arena' : `Leaderboard ${leaderboardType === 'daily' ? 'Journalier' : leaderboardType === 'weekly' ? 'Hebdomadaire' : 'Mensuel'}`}
                 </h2>
-                <p className="text-slate-400 text-sm mt-1">
+                <p className="text-slate-400 text-xs sm:text-sm mt-1">
                   {activeSubTab === 'battle' 
                     ? 'Cumulez le volume de mises le plus élevé en HTG sur la période.' 
                     : 'Gagnez un maximum de points XP en plaçant des mises réelles en HTG.'}
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-slate-950/40 rounded-2xl p-4 border border-slate-850">
-                  <div className="text-slate-500 text-xs flex items-center gap-1.5">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                <div className="bg-slate-950/40 rounded-2xl p-3 sm:p-4 border border-slate-850">
+                  <div className="text-slate-500 text-[10px] sm:text-xs flex items-center gap-1.5">
                     <Coins size={14} className="text-purple-400" />
                     Cagnotte Globale
                   </div>
-                  <div className="text-xl font-display font-black text-white mt-1">
+                  <div className="text-base sm:text-xl font-display font-black text-white mt-1">
                     {activeLeaderboard ? `${activeLeaderboard.prize_pool.toLocaleString('fr-FR')} HTG` : '-- HTG'}
                   </div>
                 </div>
-                <div className="bg-slate-950/40 rounded-2xl p-4 border border-slate-850">
-                  <div className="text-slate-500 text-xs flex items-center gap-1.5">
+                <div className="bg-slate-950/40 rounded-2xl p-3 sm:p-4 border border-slate-850">
+                  <div className="text-slate-500 text-[10px] sm:text-xs flex items-center gap-1.5">
                     <Clock size={14} className="text-purple-400" />
                     Temps Restant
                   </div>
-                  <div className="text-xl font-display font-black text-white mt-1 tracking-tight">
+                  <div className="text-base sm:text-xl font-display font-black text-white mt-1 tracking-tight">
                     {activeLeaderboard ? timeRemaining[activeLeaderboard.id] || 'Calcul...' : '--'}
                   </div>
                 </div>
@@ -284,24 +286,24 @@ const Competitions = ({ onNotificationAdded }) => {
 
               {/* Connected User standing */}
               {activeLeaderboard && activeLeaderboard.userStanding && (
-                <div className="bg-slate-950/60 rounded-2xl p-5 border border-purple-500/25 shadow-lg shadow-purple-500/5 flex flex-col gap-3">
-                  <h3 className="text-xs font-black text-purple-400 uppercase tracking-wider">Votre Statut</h3>
+                <div className="bg-slate-950/60 rounded-2xl p-4 sm:p-5 border border-purple-500/25 shadow-lg shadow-purple-500/5 flex flex-col gap-2.5 sm:gap-3">
+                  <h3 className="text-[10px] sm:text-xs font-black text-purple-400 uppercase tracking-wider">Votre Statut</h3>
                   
                   <div className="flex justify-between items-center">
-                    <span className="text-slate-400 text-sm">Votre Position</span>
-                    <span className="text-lg font-black text-white">
+                    <span className="text-slate-400 text-xs sm:text-sm">Votre Position</span>
+                    <span className="text-base sm:text-lg font-black text-white">
                       {activeLeaderboard.userStanding.rank ? `#${activeLeaderboard.userStanding.rank}` : 'Non Classé'}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-slate-400 text-sm">Votre Score</span>
-                    <span className="text-sm font-black text-white">
+                    <span className="text-slate-400 text-xs sm:text-sm">Votre Score</span>
+                    <span className="text-xs sm:text-sm font-black text-white">
                       {activeLeaderboard.userStanding.score.toLocaleString('fr-FR')} {activeSubTab === 'battle' ? 'HTG' : 'XP'}
                     </span>
                   </div>
                   <div className="flex justify-between items-center pt-2 border-t border-slate-850">
-                    <span className="text-slate-400 text-sm">Gain Estimé</span>
-                    <span className="text-lg font-display font-black text-green-400">
+                    <span className="text-slate-400 text-xs sm:text-sm">Gain Estimé</span>
+                    <span className="text-base sm:text-lg font-display font-black text-green-400">
                       {activeLeaderboard.userStanding.estimatedPayout.toLocaleString('fr-FR')} HTG
                     </span>
                   </div>
@@ -325,23 +327,23 @@ const Competitions = ({ onNotificationAdded }) => {
             {activeLeaderboard && activeLeaderboard.leaderboard && activeLeaderboard.leaderboard.length > 0 ? (
               <>
                 {/* Visual Podium for top 3 */}
-                <div className="flex justify-center items-end gap-3 sm:gap-6 py-6 border-b border-slate-850 overflow-hidden">
+                <div className="flex justify-center items-end gap-2.5 sm:gap-6 py-6 border-b border-slate-850 overflow-hidden">
                   
                   {/* Rank 2 */}
                   {activeLeaderboard.leaderboard[1] && (
-                    <div className="flex flex-col items-center w-24 sm:w-32 animate-fade-in">
+                    <div className="flex flex-col items-center flex-1 min-w-0 max-w-[110px] sm:max-w-[130px] animate-fade-in">
                       <div className="relative mb-2">
-                        <div className="w-12 h-12 rounded-full border-2 border-slate-300 flex items-center justify-center font-bold text-slate-200 text-lg bg-slate-900 bg-gradient-to-br from-slate-700/20 to-slate-900 shadow-lg">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-slate-300 flex items-center justify-center font-bold text-slate-200 text-sm sm:text-lg bg-slate-900 bg-gradient-to-br from-slate-700/20 to-slate-900 shadow-lg">
                           2
                         </div>
                       </div>
-                      <span className="text-xs text-slate-400 font-bold max-w-full truncate text-center mb-1">
+                      <span className="text-[10px] sm:text-xs text-slate-400 font-bold w-full truncate text-center mb-1">
                         {activeLeaderboard.leaderboard[1].username}
                       </span>
-                      <span className="text-xs font-black text-slate-300 bg-slate-800/60 px-2 py-0.5 rounded-full border border-slate-750">
+                      <span className="text-[10px] sm:text-xs font-black text-slate-300 bg-slate-800/60 px-1.5 sm:px-2 py-0.5 rounded-full border border-slate-750 truncate max-w-full">
                         {activeLeaderboard.leaderboard[1].score.toLocaleString('fr-FR')}
                       </span>
-                      <div className="h-20 w-full bg-slate-700/25 border-t border-slate-650 rounded-t-xl mt-3 flex items-center justify-center font-display font-black text-slate-400 text-sm">
+                      <div className="h-16 sm:h-20 w-full bg-slate-700/25 border-t border-slate-650 rounded-t-xl mt-3 flex items-center justify-center font-display font-black text-slate-400 text-xs sm:text-sm">
                         2nd
                       </div>
                     </div>
@@ -349,20 +351,20 @@ const Competitions = ({ onNotificationAdded }) => {
 
                   {/* Rank 1 */}
                   {activeLeaderboard.leaderboard[0] && (
-                    <div className="flex flex-col items-center w-28 sm:w-36 animate-fade-in">
+                    <div className="flex flex-col items-center flex-1 min-w-0 max-w-[120px] sm:max-w-[150px] animate-fade-in">
                       <div className="relative mb-2">
-                        <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-2xl text-yellow-500 animate-bounce">👑</div>
-                        <div className="w-16 h-16 rounded-full border-4 border-amber-500 flex items-center justify-center font-bold text-amber-300 text-2xl bg-slate-900 bg-gradient-to-br from-amber-500/20 to-slate-900 shadow-lg shadow-amber-500/10">
+                        <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-xl sm:text-2xl text-yellow-500 animate-bounce">👑</div>
+                        <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full border-2 sm:border-4 border-amber-500 flex items-center justify-center font-bold text-amber-300 text-base sm:text-2xl bg-slate-900 bg-gradient-to-br from-amber-500/20 to-slate-900 shadow-lg shadow-amber-500/10">
                           1
                         </div>
                       </div>
-                      <span className="text-sm text-slate-200 font-black max-w-full truncate text-center mb-1">
+                      <span className="text-xs sm:text-sm text-slate-200 font-black w-full truncate text-center mb-1">
                         {activeLeaderboard.leaderboard[0].username}
                       </span>
-                      <span className="text-xs font-black text-amber-300 bg-amber-550/15 px-2.5 py-0.5 rounded-full border border-amber-500/30 shadow-lg shadow-amber-500/5">
+                      <span className="text-[10px] sm:text-xs font-black text-amber-300 bg-amber-550/15 px-2 py-0.5 rounded-full border border-amber-500/30 shadow-lg shadow-amber-500/5 truncate max-w-full">
                         {activeLeaderboard.leaderboard[0].score.toLocaleString('fr-FR')}
                       </span>
-                      <div className="h-28 w-full bg-amber-500/15 border-t-2 border-amber-550 rounded-t-2xl mt-3 flex items-center justify-center font-display font-black text-amber-300 text-base shadow-inner">
+                      <div className="h-20 sm:h-28 w-full bg-amber-500/15 border-t-2 border-amber-550 rounded-t-2xl mt-3 flex items-center justify-center font-display font-black text-amber-300 text-sm sm:text-base shadow-inner">
                         King
                       </div>
                     </div>
@@ -370,19 +372,19 @@ const Competitions = ({ onNotificationAdded }) => {
 
                   {/* Rank 3 */}
                   {activeLeaderboard.leaderboard[2] && (
-                    <div className="flex flex-col items-center w-24 sm:w-32 animate-fade-in">
+                    <div className="flex flex-col items-center flex-1 min-w-0 max-w-[110px] sm:max-w-[130px] animate-fade-in">
                       <div className="relative mb-2">
-                        <div className="w-12 h-12 rounded-full border-2 border-amber-700 flex items-center justify-center font-bold text-amber-600 text-lg bg-slate-900 bg-gradient-to-br from-amber-800/20 to-slate-900 shadow-lg">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 border-amber-700 flex items-center justify-center font-bold text-amber-600 text-sm sm:text-lg bg-slate-900 bg-gradient-to-br from-amber-800/20 to-slate-900 shadow-lg">
                           3
                         </div>
                       </div>
-                      <span className="text-xs text-slate-400 font-bold max-w-full truncate text-center mb-1">
+                      <span className="text-[10px] sm:text-xs text-slate-400 font-bold w-full truncate text-center mb-1">
                         {activeLeaderboard.leaderboard[2].username}
                       </span>
-                      <span className="text-xs font-black text-amber-600 bg-slate-800/60 px-2 py-0.5 rounded-full border border-slate-750">
+                      <span className="text-[10px] sm:text-xs font-black text-amber-600 bg-slate-800/60 px-1.5 sm:px-2 py-0.5 rounded-full border border-slate-750 truncate max-w-full">
                         {activeLeaderboard.leaderboard[2].score.toLocaleString('fr-FR')}
                       </span>
-                      <div className="h-16 w-full bg-amber-700/20 border-t border-amber-750 rounded-t-xl mt-3 flex items-center justify-center font-display font-black text-amber-750 text-xs">
+                      <div className="h-12 sm:h-16 w-full bg-amber-700/20 border-t border-amber-750 rounded-t-xl mt-3 flex items-center justify-center font-display font-black text-amber-750 text-[10px] sm:text-xs">
                         3rd
                       </div>
                     </div>

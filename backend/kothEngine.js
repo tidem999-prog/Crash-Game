@@ -427,6 +427,18 @@ const endGameWinner = async (roomId, winnerPlayer) => {
     
     await query('COMMIT');
     
+    // Record net platform revenue for KOTH game (with winner)
+    if (activeCurrency === 'HTG') {
+      const playerCount = Object.keys(room.players).length;
+      const totalEntryFees = playerCount * entryFee;
+      const payoutWinner = room.potTotal;
+      const netRevenue = totalEntryFees - payoutWinner;
+      if (netRevenue !== 0) {
+        const { recordPlatformRevenue } = require('./utils/competitions');
+        await recordPlatformRevenue(netRevenue, 'HTG', 'koth');
+      }
+    }
+    
     // Process progression settlements
     const players = Object.values(room.players);
     for (const p of players) {
@@ -470,6 +482,16 @@ const endGameNoWinner = async (roomId) => {
     Object.values(room.players).forEach(p => {
       activePlayersStore.losePlayer(p.id, 'koth', 'eliminated');
     });
+
+    // Record net platform revenue for KOTH game (no winner)
+    if (activeCurrency === 'HTG') {
+      const playerCount = Object.keys(room.players).length;
+      const totalEntryFees = playerCount * entryFee;
+      if (totalEntryFees > 0) {
+        const { recordPlatformRevenue } = require('./utils/competitions');
+        await recordPlatformRevenue(totalEntryFees, 'HTG', 'koth');
+      }
+    }
 
     // Process progression settlements (all lose)
     const players = Object.values(room.players);

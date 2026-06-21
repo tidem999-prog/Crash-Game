@@ -1,4 +1,5 @@
 const { query } = require('../db');
+const { checkAndResolveCompetitions } = require('./competitions');
 
 const LEVELS = [
   { level: 1, xpRequired: 0, badge: 'Bronze' },
@@ -41,6 +42,38 @@ const processWager = async (userId, wagerAmount, currency) => {
       [userId]
     );
 
+    // Run lazy verification to resolve any expired competitions on the fly
+    await checkAndResolveCompetitions();
+
+    // Handle Active Competitions
+    const activeComps = await query("SELECT id, type FROM competitions WHERE status = 'active'");
+    for (const comp of activeComps.rows) {
+      if (comp.type === 'xp_battle') {
+        if (currency === 'HTG') {
+          // Track total wager volume in HTG for XP Battle
+          await query(
+            `INSERT INTO user_competition_stats (user_id, competition_id, wager_volume)
+             VALUES ($1, $2, $3)
+             ON CONFLICT (user_id, competition_id)
+             DO UPDATE SET wager_volume = user_competition_stats.wager_volume + $3`,
+            [userId, comp.id, numericWager]
+          );
+        }
+      } else {
+        // Daily, Weekly, Monthly Leaderboards track XP
+        if (currency === 'HTG') {
+          const xpEarnedForComp = parseFloat((numericWager / 100).toFixed(4));
+          await query(
+            `INSERT INTO user_competition_stats (user_id, competition_id, xp_gained)
+             VALUES ($1, $2, $3)
+             ON CONFLICT (user_id, competition_id)
+             DO UPDATE SET xp_gained = user_competition_stats.xp_gained + $3`,
+            [userId, comp.id, xpEarnedForComp]
+          );
+        }
+      }
+    }
+
     // Only HTG currency wagers earn XP
     if (currency === 'HTG') {
       const xpEarned = parseFloat((numericWager / 100).toFixed(4));
@@ -61,6 +94,35 @@ const processWager = async (userId, wagerAmount, currency) => {
         [xpEarned, userId]
       );
       
+      // Check for Lucky Chest Milestone unlocks
+      const chestRes = await query("SELECT xp_milestone FROM user_chests WHERE user_id = $1", [userId]);
+      const awardedMilestones = new Set(chestRes.rows.map(r => parseInt(r.xp_milestone)));
+
+      const qualifying = [];
+      if (newXp >= 100) qualifying.push(100);
+      if (newXp >= 250) qualifying.push(250);
+      if (newXp >= 500) qualifying.push(500);
+      const maxThousand = Math.floor(newXp / 1000);
+      for (let k = 1; k <= maxThousand; k++) {
+        qualifying.push(k * 1000);
+      }
+
+      for (const milestone of qualifying) {
+        if (!awardedMilestones.has(milestone)) {
+          // Award chest
+          await query(
+            "INSERT INTO user_chests (user_id, xp_milestone) VALUES ($1, $2)",
+            [userId, milestone]
+          );
+          
+          const chestMsg = `Félicitations ! Vous avez débloqué un Lucky XP Chest pour avoir franchi le palier de ${milestone} XP. Rendez-vous dans le Centre de Compétitions pour l'ouvrir !`;
+          await query(
+            "INSERT INTO notifications (user_id, type, message) VALUES ($1, 'lucky_chest_unlocked', $2)",
+            [userId, chestMsg]
+          );
+        }
+      }
+
       // Check if user leveled up
       if (newLevelInfo.level > oldLevelInfo.level) {
         // Leveled up! Add notification

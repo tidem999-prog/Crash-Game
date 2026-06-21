@@ -314,6 +314,114 @@ const initializeDatabase = async () => {
     `);
     console.log('Database: Table "ls_bets" checked/created.');
 
+    // 8.12 Create Competition Configs Table
+    await query(`
+      CREATE TABLE IF NOT EXISTS comp_configs (
+        key VARCHAR(50) PRIMARY KEY,
+        percentage_revenue DECIMAL(5, 2) NOT NULL,
+        min_prize_pool DECIMAL(12, 2) NOT NULL,
+        max_prize_pool DECIMAL(12, 2) NOT NULL,
+        winner_count INT NOT NULL,
+        payout_distribution JSONB NOT NULL,
+        extra_settings JSONB DEFAULT '{}'::jsonb
+      );
+    `);
+    console.log('Database: Table "comp_configs" checked/created.');
+
+    // 8.13 Create Competitions Table
+    await query(`
+      CREATE TABLE IF NOT EXISTS competitions (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        type VARCHAR(20) NOT NULL CHECK (type IN ('daily', 'weekly', 'monthly', 'xp_battle')),
+        start_time TIMESTAMP NOT NULL,
+        end_time TIMESTAMP NOT NULL,
+        status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'completed')),
+        calculated_revenue DECIMAL(12, 2) DEFAULT 0.00,
+        prize_pool DECIMAL(12, 2) DEFAULT 0.00,
+        winners_data JSONB DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('Database: Table "competitions" checked/created.');
+
+    // 8.14 Create User Competition Stats Table
+    await query(`
+      CREATE TABLE IF NOT EXISTS user_competition_stats (
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        competition_id UUID REFERENCES competitions(id) ON DELETE CASCADE,
+        xp_gained DECIMAL(12, 4) DEFAULT 0.0000,
+        wager_volume DECIMAL(12, 2) DEFAULT 0.00,
+        PRIMARY KEY (user_id, competition_id)
+      );
+    `);
+    console.log('Database: Table "user_competition_stats" checked/created.');
+
+    // 8.15 Create Platform Revenue Table
+    await query(`
+      CREATE TABLE IF NOT EXISTS platform_revenue (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        amount DECIMAL(12, 4) NOT NULL,
+        source VARCHAR(50) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('Database: Table "platform_revenue" checked/created.');
+
+    // 8.16 Create User Chests Table
+    await query(`
+      CREATE TABLE IF NOT EXISTS user_chests (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        xp_milestone INT NOT NULL,
+        reward_type VARCHAR(20),
+        reward_value VARCHAR(100),
+        opened_at TIMESTAMP DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('Database: Table "user_chests" checked/created.');
+
+    // Seed default competition configurations if empty
+    const configCheck = await query("SELECT COUNT(*) FROM comp_configs");
+    if (parseInt(configCheck.rows[0].count) === 0) {
+      // 1. Daily XP config
+      await query(
+        `INSERT INTO comp_configs (key, percentage_revenue, min_prize_pool, max_prize_pool, winner_count, payout_distribution) 
+         VALUES ('daily_xp', 5.00, 50.00, 2000.00, 10, '[30, 20, 15, 10, 8, 5, 4, 3, 3, 2]'::jsonb)`
+      );
+      // 2. Weekly XP config
+      await query(
+        `INSERT INTO comp_configs (key, percentage_revenue, min_prize_pool, max_prize_pool, winner_count, payout_distribution) 
+         VALUES ('weekly_xp', 5.00, 250.00, 15000.00, 20, '[20, 14, 11, 9, 8, 6, 5, 4, 3.5, 3.5, 2.5, 2, 2, 1.5, 1.5, 1.5, 1.5, 1.5, 1, 1]'::jsonb)`
+      );
+      // 3. Monthly XP config
+      await query(
+        `INSERT INTO comp_configs (key, percentage_revenue, min_prize_pool, max_prize_pool, winner_count, payout_distribution) 
+         VALUES ('monthly_xp', 5.00, 1000.00, 50000.00, 50, '[12, 8, 6, 5, 4.5, 4, 3.5, 3, 2.5, 2.5, 2, 2, 1.8, 1.8, 1.6, 1.6, 1.4, 1.4, 1.2, 1.2, 1, 1, 1, 1, 1, 0.8, 0.8, 0.8, 0.8, 0.8, 0.6, 0.6, 0.6, 0.6, 0.6, 0.5, 0.5, 0.5, 0.5, 0.5, 0.4, 0.4, 0.4, 0.4, 0.4, 0.3, 0.3, 0.3, 0.3, 0.3]'::jsonb)`
+      );
+      // 4. XP Battle config
+      await query(
+        `INSERT INTO comp_configs (key, percentage_revenue, min_prize_pool, max_prize_pool, winner_count, payout_distribution) 
+         VALUES ('xp_battle', 2.00, 100.00, 10000.00, 10, '[]'::jsonb)`
+      );
+      // 5. Lucky XP Chest config
+      await query(
+        `INSERT INTO comp_configs (key, percentage_revenue, min_prize_pool, max_prize_pool, winner_count, payout_distribution, extra_settings) 
+         VALUES ('lucky_chest', 0.00, 0.00, 0.00, 0, '[]'::jsonb, '{
+           "probabilities": {"ket": 0.70, "htg": 0.25, "rare": 0.05},
+           "ket_rewards": [500, 1000, 2500, 5000, 10000],
+           "htg_rewards": [10, 25, 50],
+           "rare_rewards": [
+             {"type": "ticket", "name": "Ticket XP Battle"},
+             {"type": "badge", "name": "Badge Temporaire Exclusif"},
+             {"type": "frame", "name": "Cadre de Profil Exclusif"},
+             {"type": "title", "name": "Titre Spécial Temporaire"}
+           ]
+         }'::jsonb)`
+      );
+      console.log('Database: Default competition configurations seeded.');
+    }
+
     // 9. Seed Admin User
     const adminCheck = await query("SELECT * FROM users WHERE role = 'admin' LIMIT 1");
     if (adminCheck.rows.length === 0) {

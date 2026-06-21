@@ -354,6 +354,24 @@ const handleGoalEnd = async () => {
       }
     }
 
+    // Record net platform revenue for Last Second game (goal resolution)
+    let roundNetRevenue = 0;
+    for (const userId of Object.keys(activeBets)) {
+      const bet = activeBets[userId];
+      if (bet.currency === 'HTG' || !bet.currency) {
+        let payout = 0;
+        if (bet.bet_type === 'goal') {
+          const winMultiplier = bet.cashedOut ? bet.cashed_out_at : finalMultiplier;
+          payout = parseFloat((bet.amount * winMultiplier).toFixed(2));
+        }
+        roundNetRevenue += (parseFloat(bet.amount) - payout);
+      }
+    }
+    if (roundNetRevenue !== 0) {
+      const { recordPlatformRevenue } = require('./utils/competitions');
+      await recordPlatformRevenue(roundNetRevenue, 'HTG', 'lastsecond');
+    }
+
     await query('COMMIT');
   } catch (err) {
     await query('ROLLBACK');
@@ -458,6 +476,23 @@ const handleNoGoalEnd = async () => {
           });
         }
       }
+    }
+
+    // Record net platform revenue for Last Second game (no goal end)
+    let roundNetRevenue = 0;
+    for (const userId of Object.keys(activeBets)) {
+      const bet = activeBets[userId];
+      if (bet.currency === 'HTG' || !bet.currency) {
+        let payout = 0;
+        if (bet.bet_type === 'no_goal') {
+          payout = parseFloat((bet.amount * finalMultiplier).toFixed(2));
+        }
+        roundNetRevenue += (parseFloat(bet.amount) - payout);
+      }
+    }
+    if (roundNetRevenue !== 0) {
+      const { recordPlatformRevenue } = require('./utils/competitions');
+      await recordPlatformRevenue(roundNetRevenue, 'HTG', 'lastsecond');
     }
 
     await query('COMMIT');

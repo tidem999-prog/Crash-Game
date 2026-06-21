@@ -30,6 +30,10 @@ const startMinesTimer = (socket, userId, gameId) => {
         
         // Process progression settlement (awards KET on HTG losses)
         await processBetSettlement(userId, parseFloat(game.bet_amount), 0.00, game.currency || 'HTG', 'mines');
+        
+        const { recordPlatformRevenue } = require('./utils/competitions');
+        await recordPlatformRevenue(parseFloat(game.bet_amount), game.currency || 'HTG', 'mines');
+
         socket.emit('mines_game_over', {
           status: 'lost_timeout',
           gridMines: game.grid_mines,
@@ -225,6 +229,9 @@ const handleMinesReveal = async (socket, payload) => {
       // Process progression settlement (awards KET on HTG losses)
       await processBetSettlement(userId, parseFloat(game.bet_amount), 0.00, game.currency || 'HTG', 'mines');
       
+      const { recordPlatformRevenue } = require('./utils/competitions');
+      await recordPlatformRevenue(parseFloat(game.bet_amount), game.currency || 'HTG', 'mines');
+      
       const emailRes = await query('SELECT email FROM users WHERE id = $1', [userId]);
       const email = emailRes.rows[0]?.email || 'Joueur';
       const displayName = email.split('@')[0];
@@ -278,6 +285,9 @@ const handleMinesReveal = async (socket, payload) => {
 
       // Process progression settlement (awards KET on HTG wins)
       await processBetSettlement(userId, parseFloat(game.bet_amount), payoutAmount, game.currency || 'HTG', 'mines');
+
+      const { recordPlatformRevenue } = require('./utils/competitions');
+      await recordPlatformRevenue(parseFloat(game.bet_amount) - payoutAmount, game.currency || 'HTG', 'mines');
 
       io.emit('balance_update', { userId, newBalance: balances.balance, newKetBalance: balances.ket_balance });
 
@@ -372,6 +382,9 @@ const handleMinesCashout = async (socket, payload) => {
 
     // Process progression settlement (awards KET on HTG wins)
     await processBetSettlement(userId, parseFloat(game.bet_amount), payoutAmount, game.currency || 'HTG', 'mines');
+
+    const { recordPlatformRevenue } = require('./utils/competitions');
+    await recordPlatformRevenue(parseFloat(game.bet_amount) - payoutAmount, game.currency || 'HTG', 'mines');
 
     io.emit('balance_update', { userId, newBalance: balances.balance, newKetBalance: balances.ket_balance });
 

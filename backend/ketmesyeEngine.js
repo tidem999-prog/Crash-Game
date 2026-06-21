@@ -215,6 +215,9 @@ const tickSandbox = async (currency) => {
         );
         // Process progression settlement (awards KET on HTG losses)
         await processBetSettlement(snake.userId, snake.wager, 0.00, snake.currency || 'HTG', 'ketmesye');
+        
+        const { recordPlatformRevenue } = require('./utils/competitions');
+        await recordPlatformRevenue(parseFloat(snake.wager), snake.currency || 'HTG', 'ketmesye');
       } catch (err) {
         console.error('Error logging snake death in DB:', err);
       }
@@ -746,6 +749,14 @@ const resolveDuel = async (duelId, disconnectWinnerId = null) => {
     // Process progression settlements (awards KET on HTG duel win/loss)
     await processBetSettlement(winnerId, duel.betAmount, payout, activeCurrency, 'snake_duel');
     await processBetSettlement(loserId, duel.betAmount, 0.00, activeCurrency, 'snake_duel');
+
+    if (activeCurrency === 'HTG') {
+      const netRevenue = (2 * parseFloat(duel.betAmount)) - parseFloat(payout);
+      if (netRevenue !== 0) {
+        const { recordPlatformRevenue } = require('./utils/competitions');
+        await recordPlatformRevenue(netRevenue, 'HTG', 'snake_duel');
+      }
+    }
   } catch (err) {
     await query('ROLLBACK');
     console.error('Ketmesye Resolve Duel Error:', err);
@@ -1043,6 +1054,9 @@ const initKetmesyeEngine = (socketIoInstance) => {
         // Process progression settlement (awards KET on HTG wins)
         await processBetSettlement(snake.userId, snake.wager, payout, currency, 'ketmesye');
 
+        const { recordPlatformRevenue } = require('./utils/competitions');
+        await recordPlatformRevenue(parseFloat(snake.wager) - payout, currency, 'ketmesye');
+
         socket.leave(`ketmesye_sandbox_${currency}`);
 
         // Notify user of cashout success
@@ -1326,6 +1340,9 @@ const initKetmesyeEngine = (socketIoInstance) => {
           );
           // Process progression settlement (awards KET on HTG losses)
           await processBetSettlement(snake.userId, snake.wager, 0.00, currency, 'ketmesye');
+          
+          const { recordPlatformRevenue } = require('./utils/competitions');
+          await recordPlatformRevenue(parseFloat(snake.wager), currency, 'ketmesye');
         } catch (err) {
           console.error('Error updating bet row on disconnect:', err);
         }

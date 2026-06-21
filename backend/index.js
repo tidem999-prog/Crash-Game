@@ -9,6 +9,7 @@ const authRoutes = require('./routes/auth');
 const transactionRoutes = require('./routes/transactions');
 const adminRoutes = require('./routes/admin');
 const rewardsRoutes = require('./routes/rewards');
+const competitionsRoutes = require('./routes/competitions');
 
 const app = express();
 
@@ -52,6 +53,7 @@ app.use('/api/auth', ensureDb, authRoutes);
 app.use('/api/transactions', ensureDb, transactionRoutes);
 app.use('/api/admin', ensureDb, adminRoutes);
 app.use('/api/rewards', ensureDb, rewardsRoutes);
+app.use('/api/competitions', ensureDb, competitionsRoutes);
 
 // Serve frontend static files if they exist (production build)
 const distPath = path.join(__dirname, '../frontend/dist');
@@ -111,6 +113,18 @@ if (isVercel) {
 
   (async () => {
     await initializeDatabase();
+
+    const { initCompetitions, checkAndResolveCompetitions } = require('./utils/competitions');
+    await initCompetitions(io);
+
+    // Periodic competition checker (every 1 minute)
+    setInterval(async () => {
+      try {
+        await checkAndResolveCompetitions(io);
+      } catch (err) {
+        console.error('Periodic competition checker error:', err);
+      }
+    }, 60 * 1000);
 
     // Periodic inactivity checker (every 1 hour)
     const { checkInactivityAndClean } = require('./utils/progression');

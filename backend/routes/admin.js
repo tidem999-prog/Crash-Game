@@ -147,6 +147,11 @@ router.post('/transactions/:id/approve', async (req, res) => {
       }
     } else {
       console.log(`Admin: Approved withdrawal of ${tx.amount} HTG for user ID ${tx.user_id}`);
+      const feeAmount = parseFloat(tx.fee);
+      if (feeAmount > 0) {
+        const { recordPlatformRevenue } = require('../utils/competitions');
+        await recordPlatformRevenue(feeAmount, 'HTG', 'withdrawal_fee');
+      }
     }
 
     await query('COMMIT');
@@ -466,6 +471,48 @@ router.get('/user-bets', async (req, res) => {
   } catch (err) {
     console.error('Admin user bets search error:', err);
     res.status(500).json({ error: 'Erreur lors de la recherche des activités.' });
+  }
+});
+
+// 12. Get Competition Configurations
+router.get('/competitions/config', async (req, res) => {
+  try {
+    const configRes = await query("SELECT * FROM comp_configs ORDER BY key ASC");
+    res.json(configRes.rows);
+  } catch (err) {
+    console.error('Error fetching admin competition configurations:', err);
+    res.status(500).json({ error: 'Erreur lors de la récupération des configurations de compétitions.' });
+  }
+});
+
+// 13. Update Competition Configuration
+router.post('/competitions/config', async (req, res) => {
+  const { key, percentage_revenue, min_prize_pool, max_prize_pool, winner_count, payout_distribution, extra_settings } = req.body;
+  
+  if (!key) {
+    return res.status(400).json({ error: 'La clé de configuration est requise.' });
+  }
+
+  try {
+    await query(
+      `UPDATE comp_configs 
+       SET percentage_revenue = $1, min_prize_pool = $2, max_prize_pool = $3, 
+           winner_count = $4, payout_distribution = $5, extra_settings = $6 
+       WHERE key = $7`,
+      [
+        parseFloat(percentage_revenue),
+        parseFloat(min_prize_pool),
+        parseFloat(max_prize_pool),
+        parseInt(winner_count),
+        JSON.stringify(payout_distribution),
+        JSON.stringify(extra_settings || {}),
+        key
+      ]
+    );
+    res.json({ message: `Configuration de compétition '${key}' mise à jour.` });
+  } catch (err) {
+    console.error('Error updating admin competition configuration:', err);
+    res.status(500).json({ error: 'Erreur lors de la mise à jour de la configuration de compétition.' });
   }
 });
 

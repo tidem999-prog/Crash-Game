@@ -12,6 +12,7 @@ import MinesGame from './MinesGame';
 import KothGame from './KothGame';
 import BloodmoneyGame from './BloodmoneyGame';
 import LastSecondGame from './LastSecondGame';
+import Competitions from './Competitions';
 import { initAudio, playTakeoff, playCrash, playCashout, playClick, startEngineSound, stopEngineSound, updateEnginePitch, setMuted } from '../utils/audio';
 
 export default function Dashboard() {
@@ -2515,6 +2516,11 @@ export default function Dashboard() {
 
             </div>
           )
+        )}
+
+        {/* Tab content 8: COMPETITIONS */}
+        {activeTab === 'competitions' && (
+          <Competitions onNotificationAdded={addNotification} />
         )}
 
       </div>

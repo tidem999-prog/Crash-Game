@@ -277,6 +277,20 @@ const handleCrashPhase = async () => {
       }
     }
 
+    // Record net platform revenue for Crash game
+    let roundNetRevenue = 0;
+    for (const userId of Object.keys(activeBets)) {
+      const bet = activeBets[userId];
+      if (bet.currency === 'HTG' || !bet.currency) {
+        const payout = bet.cashedOut ? parseFloat(bet.payoutAmount) : 0.00;
+        roundNetRevenue += (parseFloat(bet.betAmount) - payout);
+      }
+    }
+    if (roundNetRevenue !== 0) {
+      const { recordPlatformRevenue } = require('./utils/competitions');
+      await recordPlatformRevenue(roundNetRevenue, 'HTG', 'crash');
+    }
+
     if (io) {
       io.emit('game_crash', { crashMultiplier: targetCrashMultiplier });
     }

@@ -354,6 +354,20 @@ const handleCrashPhase = async () => {
       }
     }
 
+    // Record net platform revenue for Blood Money game
+    let roundNetRevenue = 0;
+    for (const userId of Object.keys(activeBets)) {
+      const bet = activeBets[userId];
+      if (bet.currency === 'HTG' || !bet.currency) {
+        const payout = (bet.cashedOut || bet.status === 'refunded') ? parseFloat(bet.payoutAmount || 0) : 0.00;
+        roundNetRevenue += (parseFloat(bet.betAmount) - payout);
+      }
+    }
+    if (roundNetRevenue !== 0) {
+      const { recordPlatformRevenue } = require('./utils/competitions');
+      await recordPlatformRevenue(roundNetRevenue, 'HTG', 'bloodmoney');
+    }
+
     if (io) {
       io.emit('game:crashed', { crashPoint: targetCrashMultiplier, serverSeed: gameState.serverSeed });
     }

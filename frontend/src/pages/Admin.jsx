@@ -23,6 +23,8 @@ export default function Admin() {
   const [visibleTransactionsCount, setVisibleTransactionsCount] = useState(15);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [compConfigs, setCompConfigs] = useState([]);
+  const [editingConfig, setEditingConfig] = useState(null);
   const [actionLoading, setActionLoading] = useState(null); // stores transaction ID being processed
   const [adminError, setAdminError] = useState('');
   const [adminSuccess, setAdminSuccess] = useState('');
@@ -62,6 +64,9 @@ export default function Admin() {
 
       const usersData = await apiRequest('/api/admin/users');
       setUsers(usersData);
+
+      const configsData = await apiRequest('/api/admin/competitions/config');
+      setCompConfigs(configsData);
     } catch (err) {
       setAdminError(err.message || 'Erreur lors du chargement des données administratives.');
     } finally {
@@ -127,6 +132,40 @@ export default function Admin() {
       await fetchAdminData();
     } catch (err) {
       setAdminError(err.message || 'Erreur lors de la réinitialisation.');
+    }
+  };
+
+  const handleSaveConfig = async (e) => {
+    e.preventDefault();
+    setAdminError('');
+    setAdminSuccess('');
+    try {
+      let parsedDist = editingConfig.payout_distribution;
+      if (typeof parsedDist === 'string') {
+        parsedDist = parsedDist.split(',').map(n => parseFloat(n.trim())).filter(n => !isNaN(n));
+      }
+      
+      let parsedExtra = editingConfig.extra_settings;
+      if (typeof parsedExtra === 'string') {
+        parsedExtra = JSON.parse(parsedExtra);
+      }
+
+      await apiRequest('/api/admin/competitions/config', {
+        method: 'POST',
+        body: JSON.stringify({
+          ...editingConfig,
+          payout_distribution: parsedDist,
+          extra_settings: parsedExtra
+        })
+      });
+
+      setAdminSuccess(`La configuration de compétition '${editingConfig.key}' a été enregistrée.`);
+      setEditingConfig(null);
+      
+      const configsData = await apiRequest('/api/admin/competitions/config');
+      setCompConfigs(configsData);
+    } catch (err) {
+      setAdminError(err.message || 'Erreur lors de la sauvegarde de la configuration.');
     }
   };
 
@@ -578,7 +617,150 @@ export default function Admin() {
 
       </div>
 
+      {/* Configuration des Compétitions */}
+      <div className="glass-panel p-6 rounded-3xl space-y-6">
+        <h3 className="font-display font-black text-lg text-slate-200 border-b border-slate-900 pb-3 flex items-center space-x-2">
+          <TrendingUp className="h-5 w-5 text-purple-400" />
+          <span>Configuration des Compétitions (Prize Pools réels)</span>
+        </h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {compConfigs.map(cfg => (
+            <div key={cfg.key} className="bg-slate-950/40 p-5 rounded-2xl border border-slate-900 flex flex-col justify-between gap-4">
+              <div>
+                <span className="text-xs font-black text-purple-400 uppercase tracking-widest block">{cfg.key.replace('_', ' ')}</span>
+                
+                <div className="space-y-2 mt-4 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Pourcentage Revenu:</span>
+                    <span className="font-bold text-white">{cfg.percentage_revenue}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Prize Pool Min/Max:</span>
+                    <span className="font-bold text-white">{parseFloat(cfg.min_prize_pool).toFixed(0)} / {parseFloat(cfg.max_prize_pool).toFixed(0)} HTG</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Gagnants payés:</span>
+                    <span className="font-bold text-white">{cfg.winner_count}</span>
+                  </div>
+                </div>
+              </div>
 
+              <button
+                onClick={() => setEditingConfig({
+                  ...cfg,
+                  payout_distribution: Array.isArray(cfg.payout_distribution) ? cfg.payout_distribution.join(', ') : cfg.payout_distribution,
+                  extra_settings: typeof cfg.extra_settings === 'object' ? JSON.stringify(cfg.extra_settings, null, 2) : cfg.extra_settings
+                })}
+                className="w-full py-2.5 bg-indigo-600/10 hover:bg-indigo-600 text-indigo-400 hover:text-white font-bold rounded-xl text-xs border border-indigo-500/20 transition-all text-center"
+              >
+                Modifier la configuration
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Config Editor Modal */}
+      {editingConfig && (
+        <div className="fixed inset-0 bg-slate-950/95 flex items-center justify-center p-4 z-50 backdrop-blur-md">
+          <form onSubmit={handleSaveConfig} className="glass-panel p-6 rounded-3xl max-w-lg w-full relative space-y-4 max-h-[90vh] overflow-y-auto">
+            <button
+              type="button"
+              onClick={() => setEditingConfig(null)}
+              className="absolute top-4 right-4 text-slate-500 hover:text-slate-300 text-lg font-bold p-2 hover:bg-slate-800 rounded-full h-8 w-8 flex items-center justify-center transition-colors"
+            >
+              ✕
+            </button>
+            <h4 className="font-display font-black text-lg text-slate-200 mb-2">Modifier Configuration: {editingConfig.key.toUpperCase()}</h4>
+            
+            <div className="space-y-3 text-sm">
+              {editingConfig.key !== 'lucky_chest' && (
+                <>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-slate-400 font-bold uppercase">Pourcentage des revenus nets (%)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      required
+                      value={editingConfig.percentage_revenue}
+                      onChange={(e) => setEditingConfig({ ...editingConfig, percentage_revenue: e.target.value })}
+                      className="bg-slate-950 border border-slate-800 text-white text-sm rounded-xl px-4 py-2 w-full focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs text-slate-400 font-bold uppercase">Prize Pool Minimum (HTG)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        required
+                        value={editingConfig.min_prize_pool}
+                        onChange={(e) => setEditingConfig({ ...editingConfig, min_prize_pool: e.target.value })}
+                        className="bg-slate-950 border border-slate-800 text-white text-sm rounded-xl px-4 py-2 w-full focus:outline-none focus:border-indigo-500"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs text-slate-400 font-bold uppercase">Prize Pool Maximum (HTG)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        required
+                        value={editingConfig.max_prize_pool}
+                        onChange={(e) => setEditingConfig({ ...editingConfig, max_prize_pool: e.target.value })}
+                        className="bg-slate-950 border border-slate-800 text-white text-sm rounded-xl px-4 py-2 w-full focus:outline-none focus:border-indigo-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-slate-400 font-bold uppercase">Nombre de gagnants payés</label>
+                    <input
+                      type="number"
+                      required
+                      value={editingConfig.winner_count}
+                      onChange={(e) => setEditingConfig({ ...editingConfig, winner_count: e.target.value })}
+                      className="bg-slate-950 border border-slate-800 text-white text-sm rounded-xl px-4 py-2 w-full focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="text-xs text-slate-400 font-bold uppercase">Distribution des gains (ex: 30, 20, 15... en %)</label>
+                    <input
+                      type="text"
+                      required
+                      value={editingConfig.payout_distribution}
+                      onChange={(e) => setEditingConfig({ ...editingConfig, payout_distribution: e.target.value })}
+                      className="bg-slate-950 border border-slate-800 text-white text-sm rounded-xl px-4 py-2 w-full focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                </>
+              )}
+
+              {editingConfig.key === 'lucky_chest' && (
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-slate-400 font-bold uppercase">Configurations Avancées (JSON)</label>
+                  <textarea
+                    rows="10"
+                    required
+                    value={editingConfig.extra_settings}
+                    onChange={(e) => setEditingConfig({ ...editingConfig, extra_settings: e.target.value })}
+                    className="bg-slate-950 border border-slate-800 text-white text-xs rounded-xl px-4 py-2 w-full focus:outline-none focus:border-indigo-500 font-mono"
+                  />
+                </div>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-3 bg-indigo-650 hover:bg-indigo-600 text-white font-bold rounded-xl text-sm transition-all"
+            >
+              Enregistrer
+            </button>
+          </form>
+        </div>
+      )}
 
       {/* Screenshot Viewer Overlay Modal */}
       {selectedScreenshot && (

@@ -12,7 +12,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import Terms from './pages/Terms';
 import ChatWidget from './components/ChatWidget';
-import { LogOut, User, RefreshCw, Landmark, ShieldAlert, Gamepad2, MessageCircle, Award, Coins } from 'lucide-react';
+import { LogOut, User, RefreshCw, Landmark, ShieldAlert, Gamepad2, MessageCircle, Award, Coins, Trophy } from 'lucide-react';
 
 // Protected Route for normal users
 const ProtectedRoute = ({ children }) => {
@@ -233,6 +233,10 @@ const Navbar = () => {
             <span className="nav-item-icon"><Gamepad2 className="h-5 w-5" /></span>
             <span className="nav-item-label">Jeu</span>
           </button>
+          <button className="sidebar-nav-item" onClick={() => navigateTo('/dashboard?tab=competitions')}>
+            <span className="nav-item-icon"><Trophy className="h-5 w-5 text-yellow-500" /></span>
+            <span className="nav-item-label">Compétitions</span>
+          </button>
           <button className="sidebar-nav-item" onClick={() => navigateTo('/dashboard?tab=deposit')}>
             <span className="nav-item-icon"><Landmark className="h-5 w-5" /></span>
             <span className="nav-item-label">Dépôt</span>
@@ -306,6 +310,10 @@ const Navbar = () => {
           <button className="sidebar-nav-item" onClick={() => navigateTo('/dashboard?tab=profile')}>
             <span className="nav-item-icon"><User className="h-5 w-5" /></span>
             <span className="nav-item-label">Informations du profil</span>
+          </button>
+          <button className="sidebar-nav-item" onClick={() => navigateTo('/dashboard?tab=competitions')}>
+            <span className="nav-item-icon"><Trophy className="h-5 w-5 text-yellow-500" /></span>
+            <span className="nav-item-label">Centre de Compétitions</span>
           </button>
           <button className="sidebar-nav-item" onClick={() => navigateTo('/dashboard?tab=rewards')}>
             <span className="nav-item-icon"><Award className="h-5 w-5 text-pink-400" /></span>

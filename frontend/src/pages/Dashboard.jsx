@@ -2816,15 +2816,15 @@ export default function Dashboard() {
             <div className="grid grid-cols-3 gap-1.5 text-center bg-slate-950/60 p-2.5 rounded-xl border border-slate-900">
               <div className="flex flex-col">
                 <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wider">Cash</span>
-                <span className="text-[10px] font-bold text-white font-mono">{user.balance.toFixed(2)} G</span>
+                <span className="text-[10px] font-bold text-white font-mono">{(user?.balance ?? 0).toFixed(2)} G</span>
               </div>
               <div className="flex flex-col border-l border-slate-900">
                 <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wider">Bonus</span>
-                <span className="text-[10px] font-bold text-indigo-400 font-mono">{user.bonus_balance.toFixed(2)} G</span>
+                <span className="text-[10px] font-bold text-indigo-400 font-mono">{(user?.bonus_balance ?? 0).toFixed(2)} G</span>
               </div>
               <div className="flex flex-col border-l border-slate-900">
                 <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wider">Locked</span>
-                <span className="text-[10px] font-bold text-purple-400 font-mono">{user.locked_winnings.toFixed(2)} G</span>
+                <span className="text-[10px] font-bold text-purple-400 font-mono">{(user?.locked_winnings ?? 0).toFixed(2)} G</span>
               </div>
             </div>
 
@@ -2833,7 +2833,7 @@ export default function Dashboard() {
               <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider">
                 <span className="text-slate-400">Progression Wager (10x)</span>
                 <span className="text-white font-mono">
-                  {Math.round(user.wager_requirement_progress)} / {Math.round(user.wager_requirement_required)} G
+                  {Math.round(user?.wager_requirement_progress ?? 0)} / {Math.round(user?.wager_requirement_required ?? 0)} G
                 </span>
               </div>
 
@@ -2842,16 +2842,16 @@ export default function Dashboard() {
                 <div
                   className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-300"
                   style={{
-                    width: `${Math.min(100, Math.round((user.wager_requirement_progress / user.wager_requirement_required) * 100))}%`
+                    width: `${Math.min(100, Math.round(((user?.wager_requirement_progress ?? 0) / (user?.wager_requirement_required ?? 1)) * 100))}%`
                   }}
                 ></div>
               </div>
 
               <div className="flex justify-between items-center text-[9px] text-slate-500 pt-0.5">
-                <span>{Math.min(100, Math.round((user.wager_requirement_progress / user.wager_requirement_required) * 100))}% complété</span>
+                <span>{Math.min(100, Math.round(((user?.wager_requirement_progress ?? 0) / (user?.wager_requirement_required ?? 1)) * 100))}% complété</span>
                 <span className="flex items-center text-slate-400 font-semibold bg-slate-950 px-2 py-0.5 rounded-full border border-slate-850">
                   <Clock className="h-3 w-3 mr-1" />
-                  {user.bonus_expires_at ? (() => {
+                  {user?.bonus_expires_at ? (() => {
                     const diffMs = new Date(user.bonus_expires_at) - new Date();
                     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
                     const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));

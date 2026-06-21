@@ -1705,6 +1705,96 @@ export default function Dashboard() {
               <p className="text-sm text-slate-400 mt-1">Créditez votre compte manuellement en effectuant un transfert sur nos numéros officiels.</p>
             </div>
 
+            {/* Promo Banner / Info Block */}
+            <div className="relative overflow-hidden bg-gradient-to-br from-indigo-950/45 via-purple-950/40 to-slate-900/80 border border-indigo-500/20 rounded-2xl p-5 sm:p-6 shadow-2xl">
+              {/* Glow effects */}
+              <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
+              <div className="absolute bottom-0 left-0 w-36 h-36 bg-purple-500/10 rounded-full blur-2xl -ml-12 -mb-12 pointer-events-none"></div>
+              
+              <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4 pb-4 border-b border-slate-800/60">
+                <div>
+                  <div className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 text-[10px] font-black tracking-wider uppercase mb-2">
+                    <Award className="h-3 w-3 animate-pulse text-indigo-400" />
+                    <span>Programme de Bonus KetArena</span>
+                  </div>
+                  <h4 className="font-display font-black text-lg text-white">Multipliez vos chances de gains !</h4>
+                  <p className="text-xs text-slate-400 mt-1">Déposez un minimum de <strong className="text-indigo-400 font-bold">500 HTG</strong> pour débloquer votre cadeau de dépôt exclusif.</p>
+                </div>
+                <div className="shrink-0 flex items-center bg-slate-900/80 border border-slate-800/80 px-4 py-2.5 rounded-xl">
+                  <Coins className="h-5 w-5 text-indigo-400 mr-2" />
+                  <div>
+                    <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider">Dépôt Minimum requis</p>
+                    <p className="font-mono font-black text-sm text-slate-200">500 HTG</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-5 text-xs">
+                {/* Option A Card */}
+                <div className="bg-slate-950/40 border border-slate-850 p-4 rounded-xl flex flex-col justify-between hover:border-indigo-500/10 transition-colors">
+                  <div>
+                    <div className="flex items-center space-x-2 mb-2.5">
+                      <div className="h-6 w-6 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center font-bold text-indigo-400">A</div>
+                      <h5 className="font-bold text-slate-200">Option A : Bonus sur Dépôt</h5>
+                    </div>
+                    <ul className="space-y-2 text-slate-400 pl-1">
+                      <li className="flex items-start">
+                        <span className="text-indigo-400 mr-2 font-bold">•</span>
+                        <span><strong className="text-slate-300 font-semibold">Premier Dépôt :</strong> +100% de bonus sur votre compte.</span>
+                      </li>
+                      <li className="flex items-start">
+                        <span className="text-indigo-400 mr-2 font-bold">•</span>
+                        <span><strong className="text-slate-300 font-semibold">Recharges régulières :</strong> +25% de bonus à chaque dépôt.</span>
+                      </li>
+                      <li className="flex items-start">
+                        <span className="text-indigo-400 mr-2 font-bold">•</span>
+                        <span><strong className="text-indigo-400 font-bold">Bonus VIP :</strong> +50% de bonus à partir du Niveau 5.</span>
+                      </li>
+                    </ul>
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-slate-900 flex items-center space-x-1.5 text-[10px] text-slate-500">
+                    <Clock className="h-3 w-3 shrink-0" />
+                    <span>Wager 10x • Validité de 7 jours • Retraits bloqués si actif</span>
+                  </div>
+                </div>
+
+                {/* Option B Card */}
+                <div className="bg-slate-950/40 border border-slate-850 p-4 rounded-xl flex flex-col justify-between hover:border-purple-500/10 transition-colors">
+                  <div>
+                    <div className="flex items-center space-x-2 mb-2.5">
+                      <div className="h-6 w-6 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center font-bold text-purple-400">B</div>
+                      <h5 className="font-bold text-slate-200">Option B : Booster XP</h5>
+                    </div>
+                    <ul className="space-y-2 text-slate-400 pl-1">
+                      <li className="flex items-start">
+                        <span className="text-purple-400 mr-2 font-bold">•</span>
+                        <span><strong className="text-slate-300 font-semibold">Multiplicateur XP :</strong> +50% de vitesse d'accumulation d'XP.</span>
+                      </li>
+                      <li className="flex items-start">
+                        <span className="text-purple-400 mr-2 font-bold">•</span>
+                        <span><strong className="text-slate-300 font-semibold">Jeux éligibles :</strong> Valable sur toutes les mises réelles du site.</span>
+                      </li>
+                      <li className="flex items-start">
+                        <span className="text-purple-400 mr-2 font-bold">•</span>
+                        <span><strong className="text-purple-400 font-bold">Progression VIP :</strong> Montez de niveau plus vite pour débloquer de plus gros bonus permanents.</span>
+                      </li>
+                    </ul>
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-slate-900 flex items-center space-x-1.5 text-[10px] text-slate-500">
+                    <Flame className="h-3 w-3 shrink-0 text-amber-500" />
+                    <span>Durée : 24 heures • Aucun Wager • Pas de restriction de retrait</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 p-3 bg-indigo-950/20 border border-indigo-500/10 rounded-xl flex items-start space-x-2.5">
+                <ShieldAlert className="h-4 w-4 text-indigo-400 shrink-0 mt-0.5" />
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  <span className="text-slate-200 font-bold">Comment ça marche ?</span> Une fois votre dépôt validé par notre équipe, une fenêtre apparaîtra sur votre tableau de bord vous demandant de choisir votre bonus. Vous avez un délai de 7 jours après la validation pour réclamer votre choix.
+                </p>
+              </div>
+            </div>
+
             {/* Payment instructions */}
             <div className="grid grid-cols-2 gap-3 sm:gap-4">
               

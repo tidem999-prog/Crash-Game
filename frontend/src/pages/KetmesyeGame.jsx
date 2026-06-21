@@ -554,7 +554,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
   };
 
   const handleLocalJoin = () => {
-    const currentBalance = activeCurrency === 'KET' ? parseFloat(user.ket_balance || 0) : parseFloat(user.balance);
+    const currentBalance = activeCurrency === 'KET' ? parseFloat(user.ket_balance || 0) : (parseFloat(user.balance || 0) + parseFloat(user.bonus_balance || 0) + parseFloat(user.locked_winnings || 0));
     if (wager > currentBalance) {
       return addNotification("Solde insuffisant.", "danger");
     }
@@ -638,7 +638,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
     if (!me) return;
 
     const payout = me.value;
-    const currentBalance = activeCurrency === 'KET' ? parseFloat(user.ket_balance || 0) : parseFloat(user.balance);
+    const currentBalance = activeCurrency === 'KET' ? parseFloat(user.ket_balance || 0) : (parseFloat(user.balance || 0) + parseFloat(user.bonus_balance || 0) + parseFloat(user.locked_winnings || 0));
     updateBalance(currentBalance + payout, activeCurrency);
 
     setCashoutStats({
@@ -1006,7 +1006,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
       return addNotification(`La mise minimale est de ${minWager} ${activeCurrency}.`, "danger");
     }
 
-    const currentBalance = activeCurrency === 'KET' ? parseFloat(user.ket_balance || 0) : parseFloat(user.balance);
+    const currentBalance = activeCurrency === 'KET' ? parseFloat(user.ket_balance || 0) : (parseFloat(user.balance || 0) + parseFloat(user.bonus_balance || 0) + parseFloat(user.locked_winnings || 0));
     if (wager > currentBalance) {
       return addNotification("Solde insuffisant pour cette mise.", "danger");
     }
@@ -1045,7 +1045,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
     if (parseFloat(duelWager) < minWager) {
       return addNotification(`La mise minimale pour un duel est de ${minWager} ${activeCurrency}.`, "danger");
     }
-    const currentBalance = activeCurrency === 'KET' ? parseFloat(user.ket_balance || 0) : parseFloat(user.balance);
+    const currentBalance = activeCurrency === 'KET' ? parseFloat(user.ket_balance || 0) : (parseFloat(user.balance || 0) + parseFloat(user.bonus_balance || 0) + parseFloat(user.locked_winnings || 0));
     if (parseFloat(duelWager) > currentBalance) {
       return addNotification("Solde insuffisant.", "danger");
     }

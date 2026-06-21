@@ -6,6 +6,7 @@ const { query } = require('../db');
 const { authenticateToken } = require('../middleware/auth');
 const { sendEmail } = require('../utils/email');
 const { getLevelInfo } = require('../utils/progression');
+const { checkAndResolveBonus } = require('../utils/bonus');
 
 // Signup
 router.post('/signup', async (req, res) => {
@@ -115,7 +116,7 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Identifiants invalides.' });
     }
 
-    const user = result.rows[0];
+    let user = result.rows[0];
 
     if (user.is_suspended) {
       return res.status(403).json({ error: 'Ce compte a été suspendu pour suspicion de fraude.' });
@@ -129,6 +130,16 @@ router.post('/login', async (req, res) => {
     if (!isMatch) {
       return res.status(400).json({ error: 'Identifiants invalides.' });
     }
+
+    // Lazy check & resolve any expired active bonus before completing login
+    await checkAndResolveBonus(null, user.id);
+    const userUpdatedRes = await query('SELECT * FROM users WHERE id = $1', [user.id]);
+    user = userUpdatedRes.rows[0];
+
+    const choicesRes = await query(
+      "SELECT id, deposit_amount, bonus_type, potential_bonus FROM user_bonus_choices WHERE user_id = $1 AND status = 'pending'",
+      [user.id]
+    );
 
     const token = jwt.sign(
       { id: user.id, email: user.email, role: user.role },
@@ -147,7 +158,19 @@ router.post('/login', async (req, res) => {
         active_currency: user.active_currency || 'HTG',
         first_name: user.first_name || '',
         last_name: user.last_name || '',
-        referral_code: user.referral_code
+        referral_code: user.referral_code,
+        bonus_balance: parseFloat(user.bonus_balance || 0),
+        locked_winnings: parseFloat(user.locked_winnings || 0),
+        wager_requirement_required: parseFloat(user.wager_requirement_required || 0),
+        wager_requirement_progress: parseFloat(user.wager_requirement_progress || 0),
+        bonus_expires_at: user.bonus_expires_at,
+        xp_booster_expires_at: user.xp_booster_expires_at,
+        pendingBonusChoices: choicesRes.rows.map(r => ({
+          id: r.id,
+          depositAmount: parseFloat(r.deposit_amount),
+          bonusType: r.bonus_type,
+          potentialBonus: parseFloat(r.potential_bonus)
+        }))
       }
     });
 
@@ -292,8 +315,12 @@ router.post('/reset-password', async (req, res) => {
 // Get Current User Profile
 router.get('/me', authenticateToken, async (req, res) => {
   try {
+    await checkAndResolveBonus(null, req.user.id);
+
     const result = await query(
-      'SELECT id, email, role, balance, ket_balance, active_currency, first_name, last_name, is_suspended, referral_code FROM users WHERE id = $1',
+      `SELECT id, email, role, balance, ket_balance, active_currency, first_name, last_name, is_suspended, referral_code,
+              bonus_balance, locked_winnings, wager_requirement_required, wager_requirement_progress, bonus_expires_at, xp_booster_expires_at
+       FROM users WHERE id = $1`,
       [req.user.id]
     );
     if (result.rows.length === 0) {
@@ -306,6 +333,11 @@ router.get('/me', authenticateToken, async (req, res) => {
       return res.status(403).json({ error: 'Ce compte a été suspendu pour suspicion de fraude.' });
     }
 
+    const choicesRes = await query(
+      "SELECT id, deposit_amount, bonus_type, potential_bonus FROM user_bonus_choices WHERE user_id = $1 AND status = 'pending'",
+      [req.user.id]
+    );
+
     res.json({
       user: {
         id: user.id,
@@ -316,7 +348,19 @@ router.get('/me', authenticateToken, async (req, res) => {
         active_currency: user.active_currency || 'HTG',
         first_name: user.first_name || '',
         last_name: user.last_name || '',
-        referral_code: user.referral_code
+        referral_code: user.referral_code,
+        bonus_balance: parseFloat(user.bonus_balance || 0),
+        locked_winnings: parseFloat(user.locked_winnings || 0),
+        wager_requirement_required: parseFloat(user.wager_requirement_required || 0),
+        wager_requirement_progress: parseFloat(user.wager_requirement_progress || 0),
+        bonus_expires_at: user.bonus_expires_at,
+        xp_booster_expires_at: user.xp_booster_expires_at,
+        pendingBonusChoices: choicesRes.rows.map(r => ({
+          id: r.id,
+          depositAmount: parseFloat(r.deposit_amount),
+          bonusType: r.bonus_type,
+          potentialBonus: parseFloat(r.potential_bonus)
+        }))
       }
     });
 

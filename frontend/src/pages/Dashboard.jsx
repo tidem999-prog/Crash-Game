@@ -97,6 +97,14 @@ export default function Dashboard() {
   // Notifications / Toasts
   const [notifications, setNotifications] = useState([]);
 
+  // Bonus & XP Booster claims
+  const [claimLoading, setClaimLoading] = useState(false);
+  const [claimError, setClaimError] = useState('');
+  const [selectedRewardOption, setSelectedRewardOption] = useState(null); // 'bonus' or 'booster'
+
+  // Withdrawal warning modal
+  const [showWdWarning, setShowWdWarning] = useState(false);
+
   const [socketStatus, setSocketStatus] = useState('connecting'); // 'connecting', 'connected', 'disconnected'
   const activeTabRef = useRef(activeTab);
   const selectedGameRef = useRef(selectedGame);
@@ -130,7 +138,9 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (user) {
-      userBalanceRef.current = user.active_currency === 'KET' ? user.ket_balance : user.balance;
+      userBalanceRef.current = user.active_currency === 'KET' 
+        ? parseFloat(user.ket_balance || 0) 
+        : (parseFloat(user.balance || 0) + parseFloat(user.bonus_balance || 0) + parseFloat(user.locked_winnings || 0));
       userIdRef.current = user.id;
       setFirstName(user.first_name || '');
       setLastName(user.last_name || '');
@@ -429,7 +439,7 @@ export default function Dashboard() {
 
     newSocket.on('balance_update', (data) => {
       if (userIdRef.current && userIdRef.current === data.userId) {
-        updateBalance(data.newBalance);
+        updateBalance(data);
       }
     });
 
@@ -811,7 +821,9 @@ export default function Dashboard() {
     
     const isKet = user?.active_currency === 'KET';
     const minBet = isKet ? 100 : 10;
-    const currentBalance = isKet ? (user?.ket_balance || 0) : (user?.balance || 0);
+    const currentBalance = isKet 
+      ? (user?.ket_balance || 0) 
+      : ((user?.balance || 0) + (user?.bonus_balance || 0) + (user?.locked_winnings || 0));
     const currencyLabel = isKet ? 'KET' : 'HTG';
 
     if (betAmount < minBet) {
@@ -856,7 +868,7 @@ export default function Dashboard() {
       const currentMultiplier = multiplier;
       const payout = parseFloat((bet.amount * currentMultiplier).toFixed(2));
       const isKet = bet.currency === 'KET';
-      const currentBal = isKet ? (user?.ket_balance || 0) : (user?.balance || 0);
+      const currentBal = isKet ? (user?.ket_balance || 0) : ((user?.balance || 0) + (user?.bonus_balance || 0) + (user?.locked_winnings || 0));
       const newBal = currentBal + payout;
       updateBalance(newBal, isKet ? 'KET' : 'HTG');
       
@@ -932,6 +944,26 @@ export default function Dashboard() {
     }
   };
 
+  const handleClaimRewardChoice = async (choice) => {
+    if (!user || !user.pendingBonusChoices || user.pendingBonusChoices.length === 0) return;
+    const choiceId = user.pendingBonusChoices[0].id;
+    setClaimLoading(true);
+    setClaimError('');
+    try {
+      const data = await apiRequest(`/api/competitions/bonus-choices/${choiceId}/claim`, {
+        method: 'POST',
+        body: { choice }
+      });
+      addNotification(data.message, 'success');
+      setSelectedRewardOption(null);
+      await refreshBalance();
+    } catch (err) {
+      setClaimError(err.message || 'Une erreur est survenue.');
+    } finally {
+      setClaimLoading(false);
+    }
+  };
+
   // 7. Withdrawal Form Handler
   const handleWithdrawSubmit = async (e) => {
     e.preventDefault();
@@ -951,16 +983,29 @@ export default function Dashboard() {
       return setWdError('Veuillez saisir un numéro de téléphone.');
     }
 
+    // Intercept with Warning if active bonus/locked winnings exist
+    const hasActiveBonus = parseFloat(user?.bonus_balance || 0) > 0 || parseFloat(user?.locked_winnings || 0) > 0;
+    if (hasActiveBonus) {
+      setShowWdWarning(true);
+      return;
+    }
+
+    await executeWithdraw(false);
+  };
+
+  const executeWithdraw = async (confirmCancelBonus = false) => {
+    const amt = parseFloat(wdAmount);
     setWdLoading(true);
     try {
       const data = await apiRequest('/api/transactions/withdraw', {
         method: 'POST',
-        body: { amount: amt, phone_number: wdPhone, provider: wdProvider }
+        body: { amount: amt, phone_number: wdPhone, provider: wdProvider, confirmCancelBonus }
       });
       setWdSuccess(`Demande enregistrée. ${(amt - amt * 0.1).toFixed(2)} HTG (après 10% de frais) seront transférés.`);
       updateBalance(data.newBalance);
       setWdAmount('');
       setWdPhone('');
+      setShowWdWarning(false);
     } catch (err) {
       setWdError(err.message || 'Échec de la demande.');
     } finally {
@@ -1009,6 +1054,181 @@ export default function Dashboard() {
   return (
     <div className={`max-w-7xl mx-auto w-full px-4 py-6 sm:px-6 lg:px-8 grid grid-cols-1 ${selectedGame === 'ketmesye' && activeTab === 'play' ? '' : 'lg:grid-cols-4'} gap-6 relative`}>
       
+      {/* Fullscreen Reward Choice Overlay */}
+      {user?.pendingBonusChoices && user.pendingBonusChoices.length > 0 && (
+        <div className="fixed inset-0 bg-slate-955/95 backdrop-blur-xl flex items-center justify-center p-4 z-50 overflow-y-auto animate-fade-in">
+          <div className="max-w-3xl w-full bg-slate-900 border border-slate-800 rounded-3xl p-6 md:p-8 shadow-2xl relative overflow-hidden my-8">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+            <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            <div className="text-center space-y-2 mb-6 relative z-10">
+              <h2 className="font-display font-black text-xl md:text-2xl text-white tracking-wide uppercase">
+                🎁 RÉCOMPENSE DE DÉPÔT DISPONIBLE !
+              </h2>
+              <p className="text-[11px] md:text-xs text-slate-400 max-w-lg mx-auto leading-relaxed">
+                Félicitations pour votre dépôt de <strong className="text-white">{user.pendingBonusChoices[0].depositAmount.toLocaleString('fr-FR')} HTG</strong>.
+                Choisissez votre récompense ci-dessous. Attention, cette décision est définitive et ne peut pas être annulée.
+              </p>
+            </div>
+
+            {claimError && (
+              <div className="mb-4 p-3 bg-red-955/35 border border-red-500/35 rounded-xl text-red-400 text-[10px] font-bold animate-shake">
+                {claimError}
+              </div>
+            )}
+
+            <div className="grid md:grid-cols-2 gap-4 mb-6 relative z-10">
+              {/* Option A: Bonus Dépôt */}
+              <button
+                type="button"
+                onClick={() => setSelectedRewardOption('bonus')}
+                className={`text-left p-5 rounded-2xl border transition-all duration-300 flex flex-col justify-between cursor-pointer group ${
+                  selectedRewardOption === 'bonus'
+                    ? 'border-indigo-500 bg-indigo-500/10 shadow-[0_0_15px_rgba(99,102,241,0.25)] transform scale-[1.02]'
+                    : 'border-slate-800 bg-slate-950/40 text-slate-450 hover:border-slate-700 hover:bg-slate-900/10'
+                }`}
+              >
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <div className={`p-2.5 rounded-xl border ${
+                      selectedRewardOption === 'bonus'
+                        ? 'bg-indigo-500/20 border-indigo-500/30 text-indigo-400'
+                        : 'bg-slate-850 border-slate-700 text-slate-400'
+                    }`}>
+                      <Coins className="h-5 w-5" />
+                    </div>
+                    <span className="text-[9px] font-black uppercase tracking-wider bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 px-2.5 py-0.5 rounded-full">
+                      OPTION A
+                    </span>
+                  </div>
+
+                  <h3 className="font-display font-black text-sm text-white group-hover:text-indigo-400 transition-colors">
+                    {user.pendingBonusChoices[0].bonusType === 'first_deposit' ? 'Bonus Premier Dépôt 100%' :
+                     user.pendingBonusChoices[0].bonusType === 'vip_recharge' ? 'Bonus VIP Recharge 50%' : 'Bonus Recharge 25%'}
+                  </h3>
+
+                  <p className="text-[11px] text-slate-400 leading-normal">
+                    Créditez <strong className="text-white">{user.pendingBonusChoices[0].potentialBonus.toLocaleString('fr-FR')} HTG</strong> supplémentaires sur votre solde bonus.
+                  </p>
+
+                  <div className="bg-slate-955 rounded-xl p-2.5 border border-slate-850 text-[9px] text-slate-500 leading-normal space-y-1">
+                    <p>🎯 <strong className="text-slate-400 font-bold">Wager Requirement:</strong> 10x conditions de mise.</p>
+                    <p>💰 <strong className="text-slate-400 font-bold">Total requis:</strong> {(user.pendingBonusChoices[0].potentialBonus * 10).toLocaleString('fr-FR')} HTG de mise.</p>
+                    <p>⏱️ <strong className="text-slate-400 font-bold">Validité:</strong> 7 jours.</p>
+                  </div>
+                </div>
+              </button>
+
+              {/* Option B: XP Booster */}
+              <button
+                type="button"
+                onClick={() => setSelectedRewardOption('booster')}
+                className={`text-left p-5 rounded-2xl border transition-all duration-300 flex flex-col justify-between cursor-pointer group ${
+                  selectedRewardOption === 'booster'
+                    ? 'border-purple-500 bg-purple-500/10 shadow-[0_0_15px_rgba(168,85,247,0.25)] transform scale-[1.02]'
+                    : 'border-slate-800 bg-slate-950/40 text-slate-450 hover:border-slate-700 hover:bg-slate-900/10'
+                }`}
+              >
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <div className={`p-2.5 rounded-xl border ${
+                      selectedRewardOption === 'booster'
+                        ? 'bg-purple-500/20 border-purple-500/30 text-purple-400'
+                        : 'bg-slate-850 border-slate-700 text-slate-400'
+                    }`}>
+                      <Flame className="h-5 w-5" />
+                    </div>
+                    <span className="text-[9px] font-black uppercase tracking-wider bg-purple-500/20 text-purple-400 border border-purple-500/30 px-2.5 py-0.5 rounded-full">
+                      OPTION B
+                    </span>
+                  </div>
+
+                  <h3 className="font-display font-black text-sm text-white group-hover:text-purple-400 transition-colors">
+                    XP Booster x2 (7 jours)
+                  </h3>
+
+                  <p className="text-[11px] text-slate-400 leading-normal">
+                    Doublez l'XP généré par toutes vos mises sur Ketarena pendant les 7 prochains jours.
+                  </p>
+
+                  <div className="bg-slate-955 rounded-xl p-2.5 border border-slate-850 text-[9px] text-slate-500 leading-normal space-y-1">
+                    <p>⚡ <strong className="text-slate-400 font-bold">XP Multiplier:</strong> x2.0 XP sur tous les wagers HTG.</p>
+                    <p>🏆 <strong className="text-slate-400 font-bold">Leaderboards:</strong> Grimpez deux fois plus vite dans les compétitions.</p>
+                    <p>🎁 <strong className="text-slate-400 font-bold">Coffres:</strong> Débloquez les coffres Lucky XP Chest ultra-rapidement.</p>
+                  </div>
+                </div>
+              </button>
+            </div>
+
+            <div className="flex flex-col items-center space-y-2 relative z-10">
+              <button
+                type="button"
+                onClick={() => handleClaimRewardChoice(selectedRewardOption)}
+                disabled={!selectedRewardOption || claimLoading}
+                className="px-8 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:opacity-50 text-white font-black rounded-xl text-xs transition-all shadow-lg active:scale-95 flex items-center space-x-2 cursor-pointer"
+              >
+                {claimLoading ? (
+                  <>
+                    <div className="h-3 w-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <span>CHARGEMENT...</span>
+                  </>
+                ) : (
+                  <span>ACTIVER MA RÉCOMPENSE</span>
+                )}
+              </button>
+              <p className="text-[9px] text-slate-550">
+                En activant, vous acceptez les règles générales des bonus Ketarena.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Withdrawal Warning Modal */}
+      {showWdWarning && (
+        <div className="fixed inset-0 bg-slate-955/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-5 text-center animate-pop-in relative">
+            <div className="mx-auto w-14 h-14 bg-red-500/10 border border-red-500/20 text-red-500 rounded-full flex items-center justify-center shadow-md">
+              <ShieldAlert className="h-7 w-7" />
+            </div>
+
+            <div className="space-y-2">
+              <h3 className="font-display font-black text-base text-white uppercase">
+                ⚠️ ATTENTION : RETRAIT AVEC BONUS ACTIF
+              </h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Vous avez un bonus actif sur votre compte :
+              </p>
+              <div className="bg-slate-955 rounded-xl p-2.5 border border-slate-850 text-xs font-mono font-bold text-slate-300 space-y-1">
+                <p>🎁 Solde Bonus : <span className="text-red-400">{(user?.bonus_balance || 0).toFixed(2)} HTG</span></p>
+                <p>🔒 Gains Bloqués : <span className="text-red-400">{(user?.locked_winnings || 0).toFixed(2)} HTG</span></p>
+              </div>
+              <p className="text-[10px] text-red-400/90 leading-relaxed font-bold">
+                Effectuer ce retrait annulera définitivement et immédiatement votre bonus actif ainsi que vos gains bloqués.
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowWdWarning(false)}
+                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-350 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+              >
+                ANNULER LE RETRAIT
+              </button>
+              <button
+                type="button"
+                onClick={() => executeWithdraw(true)}
+                disabled={wdLoading}
+                className="flex-1 py-2.5 bg-red-650 hover:bg-red-550 disabled:opacity-50 text-white font-bold rounded-xl text-xs transition-all shadow-md cursor-pointer"
+              >
+                {wdLoading ? 'CHARGEMENT...' : 'CONFIRMER ET PERDRE LE BONUS'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Toast Notifications */}
       <div className="fixed top-20 right-4 z-50 flex flex-col space-y-2 max-w-sm w-full">
         {notifications.map(n => (
@@ -2529,6 +2749,97 @@ export default function Dashboard() {
       {!(selectedGame === 'ketmesye' && activeTab === 'play') && (
         <div className="space-y-6">
         
+        {/* Active XP Booster Badge */}
+        {user?.xp_booster_expires_at && new Date(user.xp_booster_expires_at) > new Date() && (
+          <div className="glass-panel p-5 rounded-3xl bg-gradient-to-br from-yellow-500/10 via-purple-500/5 to-yellow-500/10 border border-yellow-500/20 flex items-center justify-between shadow-lg shadow-yellow-500/5 animate-pulse-slow">
+            <div className="flex items-center space-x-3">
+              <div className="bg-yellow-500/20 p-2.5 rounded-xl text-yellow-500 border border-yellow-500/30">
+                <Flame className="h-5 w-5" />
+              </div>
+              <div>
+                <h4 className="font-display font-black text-xs text-white uppercase tracking-wider">
+                  ⚡ XP BOOSTER X2 ACTIF !
+                </h4>
+                <p className="text-[9px] text-slate-400 mt-0.5">
+                  XP multiplié par 2.0 sur tous vos wagers.
+                </p>
+              </div>
+            </div>
+            <span className="text-[9px] font-bold text-yellow-400 bg-yellow-500/15 px-2.5 py-1 rounded-full border border-yellow-500/25">
+              {Math.max(0, Math.ceil((new Date(user.xp_booster_expires_at) - new Date()) / (1000 * 60 * 60 * 24)))}j restants
+            </span>
+          </div>
+        )}
+
+        {/* Active Bonus & Wager Requirement Tracking Card */}
+        {user?.wager_requirement_required > 0 && (
+          <div className="glass-panel p-5 rounded-3xl bg-gradient-to-br from-slate-900/40 via-indigo-950/5 to-slate-900/40 border border-slate-800 shadow-xl space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <div className="bg-indigo-650/15 p-2 rounded-xl text-indigo-400 border border-indigo-500/25">
+                  <Coins className="h-4 w-4" />
+                </div>
+                <h4 className="font-display font-black text-xs text-white uppercase tracking-wider">
+                  🎁 BONUS DE DÉPÔT ACTIF
+                </h4>
+              </div>
+              <span className="text-[9px] font-black text-indigo-400 bg-indigo-500/15 px-2 py-0.5 rounded-md border border-indigo-550/20 animate-pulse">
+                ACTIVE
+              </span>
+            </div>
+
+            {/* Balances detailed breakdown */}
+            <div className="grid grid-cols-3 gap-1.5 text-center bg-slate-950/60 p-2.5 rounded-xl border border-slate-900">
+              <div className="flex flex-col">
+                <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wider">Cash</span>
+                <span className="text-[10px] font-bold text-white font-mono">{user.balance.toFixed(2)} G</span>
+              </div>
+              <div className="flex flex-col border-l border-slate-900">
+                <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wider">Bonus</span>
+                <span className="text-[10px] font-bold text-indigo-400 font-mono">{user.bonus_balance.toFixed(2)} G</span>
+              </div>
+              <div className="flex flex-col border-l border-slate-900">
+                <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wider">Locked</span>
+                <span className="text-[10px] font-bold text-purple-400 font-mono">{user.locked_winnings.toFixed(2)} G</span>
+              </div>
+            </div>
+
+            {/* Wager Requirement Progress */}
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider">
+                <span className="text-slate-400">Progression Wager (10x)</span>
+                <span className="text-white font-mono">
+                  {Math.round(user.wager_requirement_progress)} / {Math.round(user.wager_requirement_required)} G
+                </span>
+              </div>
+
+              {/* Progress bar */}
+              <div className="h-2 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-850">
+                <div
+                  className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-300"
+                  style={{
+                    width: `${Math.min(100, Math.round((user.wager_requirement_progress / user.wager_requirement_required) * 100))}%`
+                  }}
+                ></div>
+              </div>
+
+              <div className="flex justify-between items-center text-[9px] text-slate-500 pt-0.5">
+                <span>{Math.min(100, Math.round((user.wager_requirement_progress / user.wager_requirement_required) * 100))}% complété</span>
+                <span className="flex items-center text-slate-400 font-semibold bg-slate-950 px-2 py-0.5 rounded-full border border-slate-850">
+                  <Clock className="h-3 w-3 mr-1" />
+                  {user.bonus_expires_at ? (() => {
+                    const diffMs = new Date(user.bonus_expires_at) - new Date();
+                    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+                    const diffHours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    if (diffDays > 0) return `${diffDays}j ${diffHours}h restants`;
+                    return `${diffHours}h restantes`;
+                  })() : 'Expiré'}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Admin Control Widget */}
         {user && user.role === 'admin' && (
           <div className="glass-panel p-5 rounded-3xl bg-purple-950/20 border border-purple-500/25 flex flex-col space-y-3">

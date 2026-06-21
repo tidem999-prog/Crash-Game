@@ -230,7 +230,7 @@ export default function BloodmoneyGame({ socket, setSelectedGame }) {
     const isKet = user?.active_currency === 'KET';
     const minBet = isKet ? 100 : 10;
     const currencyLabel = isKet ? 'KET' : 'HTG';
-    const currentBalance = isKet ? (user?.ket_balance || 0) : (user?.balance || 0);
+    const currentBalance = isKet ? (user?.ket_balance || 0) : ((user?.balance || 0) + (user?.bonus_balance || 0) + (user?.locked_winnings || 0));
 
     if (betAmount < minBet) return setBetError(`La mise minimale est de ${minBet} ${currencyLabel}.`);
     if (betAmount > currentBalance) return setBetError('Solde insuffisant.');

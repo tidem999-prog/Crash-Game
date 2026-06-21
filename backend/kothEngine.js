@@ -1,6 +1,7 @@
 const { query } = require('./db');
 const activePlayersStore = require('./activePlayersStore');
 const { processWager, processBetSettlement } = require('./utils/progression');
+const { deductWager, creditPayout, broadcastBalanceUpdate } = require('./utils/bonus');
 
 let io;
 
@@ -58,15 +59,13 @@ const initKothEngine = (socketIo) => {
 
         const activeCurrency = user.active_currency || 'HTG';
         const entryFee = activeCurrency === 'KET' ? 100.00 : 150.00;
-        const balance = parseFloat(activeCurrency === 'KET' ? (user.ket_balance || 0) : user.balance);
 
-        if (balance < entryFee) throw new Error(`Solde insuffisant (${entryFee} ${activeCurrency} requis).`);
-
-        // Escrow deduction
-        if (activeCurrency === 'KET') {
-          await query('UPDATE users SET ket_balance = ket_balance - $1 WHERE id = $2', [entryFee, userId]);
-        } else {
-          await query('UPDATE users SET balance = balance - $1 WHERE id = $2', [entryFee, userId]);
+        let fundedByBonus = false;
+        try {
+          const deductRes = await deductWager(null, userId, entryFee, activeCurrency);
+          fundedByBonus = deductRes.fundedByBonus;
+        } catch (deductErr) {
+          throw new Error(deductErr.message);
         }
         
         const potContribution = entryFee * (1 - PLATFORM_FEE_PCT);
@@ -92,7 +91,7 @@ const initKothEngine = (socketIo) => {
           potTotal: potContribution,
           round: 0,
           players: {
-            [socket.id]: { id: userId, email, alive: true, currentChoice: null }
+            [socket.id]: { id: userId, email, alive: true, currentChoice: null, fundedByBonus }
           },
           doors: [],
           timer: null,
@@ -107,6 +106,8 @@ const initKothEngine = (socketIo) => {
         broadcastLobbies();
         activePlayersStore.addPlayer(userId, email, 'koth', entryFee, activeCurrency);
         activePlayersStore.notify(`${email.split('@')[0]} a rejoint la partie King of the Hill !`, 'info');
+
+        await broadcastBalanceUpdate(io, userId);
 
         // Start Lobby Timer
         startLobbyCountdown(roomId);
@@ -149,14 +150,12 @@ const initKothEngine = (socketIo) => {
         }
 
         const entryFee = room.entryFee || (room.currency === 'KET' ? 100.00 : 150.00);
-        const balance = parseFloat(activeCurrency === 'KET' ? (user.ket_balance || 0) : user.balance);
-
-        if (balance < entryFee) throw new Error(`Solde insuffisant (${entryFee} ${activeCurrency} requis).`);
-
-        if (activeCurrency === 'KET') {
-          await query('UPDATE users SET ket_balance = ket_balance - $1 WHERE id = $2', [entryFee, userId]);
-        } else {
-          await query('UPDATE users SET balance = balance - $1 WHERE id = $2', [entryFee, userId]);
+        let fundedByBonus = false;
+        try {
+          const deductRes = await deductWager(null, userId, entryFee, activeCurrency);
+          fundedByBonus = deductRes.fundedByBonus;
+        } catch (deductErr) {
+          throw new Error(deductErr.message);
         }
         
         const potContribution = entryFee * (1 - PLATFORM_FEE_PCT);
@@ -172,7 +171,7 @@ const initKothEngine = (socketIo) => {
 
         // Update in-memory
         room.potTotal += potContribution;
-        room.players[socket.id] = { id: userId, email, alive: true, currentChoice: null };
+        room.players[socket.id] = { id: userId, email, alive: true, currentChoice: null, fundedByBonus };
         activePlayers[socket.id] = roomId;
         
         socket.join(`koth_${roomId}`);
@@ -182,6 +181,8 @@ const initKothEngine = (socketIo) => {
         broadcastLobbies();
         activePlayersStore.addPlayer(userId, email, 'koth', entryFee, activeCurrency);
         activePlayersStore.notify(`${email.split('@')[0]} a rejoint la partie King of the Hill !`, 'info');
+
+        await broadcastBalanceUpdate(io, userId);
 
       } catch (err) {
         await query('ROLLBACK');
@@ -416,16 +417,15 @@ const endGameWinner = async (roomId, winnerPlayer) => {
     await query('BEGIN');
     
     // Pay winner atomically
-    if (activeCurrency === 'KET') {
-      await query('UPDATE users SET ket_balance = ket_balance + $1 WHERE id = $2', [room.potTotal, winnerPlayer.id]);
-    } else {
-      await query('UPDATE users SET balance = balance + $1 WHERE id = $2', [room.potTotal, winnerPlayer.id]);
-    }
+    // Pay winner atomically
+    await creditPayout(null, winnerPlayer.id, room.potTotal, activeCurrency, winnerPlayer.fundedByBonus);
     await query(`UPDATE koth_rooms SET status = 'finished', winner_id = $1 WHERE id = $2`, [winnerPlayer.id, roomId]);
     
     await logAudit(winnerPlayer.id, roomId, room.potTotal, 'WIN_POT_DISTRIBUTION');
     
     await query('COMMIT');
+    
+    await broadcastBalanceUpdate(io, winnerPlayer.id);
     
     // Record net platform revenue for KOTH game (with winner)
     if (activeCurrency === 'HTG') {
@@ -548,16 +548,15 @@ const cancelRoom = async (roomId, reason) => {
     // Refund everyone
     const players = Object.values(room.players);
     for (const p of players) {
-      if (activeCurrency === 'KET') {
-        await query('UPDATE users SET ket_balance = ket_balance + $1 WHERE id = $2', [entryFee, p.id]);
-      } else {
-        await query('UPDATE users SET balance = balance + $1 WHERE id = $2', [entryFee, p.id]);
-      }
+      await creditPayout(null, p.id, entryFee, activeCurrency, p.fundedByBonus);
       await logAudit(p.id, roomId, entryFee, 'REFUND_CANCELLED_ROOM');
     }
 
     await query(`UPDATE koth_rooms SET status = 'cancelled' WHERE id = $1`, [roomId]);
     await query('COMMIT');
+    for (const p of Object.values(room.players)) {
+      await broadcastBalanceUpdate(io, p.id);
+    }
     Object.values(room.players).forEach(p => {
       activePlayersStore.removePlayer(p.id, 'koth');
     });

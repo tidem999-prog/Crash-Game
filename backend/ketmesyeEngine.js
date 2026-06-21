@@ -1,6 +1,7 @@
 const { query } = require('./db');
 const activePlayersStore = require('./activePlayersStore');
 const { processWager, processBetSettlement } = require('./utils/progression');
+const { deductWager, creditPayout, broadcastBalanceUpdate } = require('./utils/bonus');
 
 let io;
 
@@ -340,7 +341,7 @@ const spawnDuelPellets = (duel, count) => {
   }
 };
 
-const setupKetmesyeDuel = (duelId, playerA_id, playerB_id, betAmount, currency) => {
+const setupKetmesyeDuel = (duelId, playerA_id, playerB_id, betAmount, currency, playerAFundedByBonus, playerBFundedByBonus) => {
   const roomId = `ketmesye_duel_${duelId}`;
   activeDuels[duelId] = {
     id: duelId,
@@ -354,7 +355,9 @@ const setupKetmesyeDuel = (duelId, playerA_id, playerB_id, betAmount, currency) 
     timeLeft: GAME_DURATION_MS,
     startedAt: null,
     timer: null,
-    currency
+    currency,
+    playerAFundedByBonus,
+    playerBFundedByBonus
   };
 
   spawnDuelPellets(activeDuels[duelId], 60);
@@ -685,11 +688,8 @@ const resolveDuel = async (duelId, disconnectWinnerId = null) => {
 
     if (isTie) {
       // Refund both
-      if (activeCurrency === 'KET') {
-        await query('UPDATE users SET ket_balance = ket_balance + $1 WHERE id IN ($2, $3)', [duel.betAmount, duel.playerA_id, duel.playerB_id]);
-      } else {
-        await query('UPDATE users SET balance = balance + $1 WHERE id IN ($2, $3)', [duel.betAmount, duel.playerA_id, duel.playerB_id]);
-      }
+      await creditPayout(null, duel.playerA_id, duel.betAmount, activeCurrency, duel.playerAFundedByBonus);
+      await creditPayout(null, duel.playerB_id, duel.betAmount, activeCurrency, duel.playerBFundedByBonus);
       await query(`UPDATE duels SET status = 'finished' WHERE id = $1`, [duelId]);
       
       // Log audit
@@ -708,11 +708,8 @@ const resolveDuel = async (duelId, disconnectWinnerId = null) => {
       activePlayersStore.notify(`Le duel de serpent s'est terminé par une égalité !`, 'info');
     } else {
       // Pay winner
-      if (activeCurrency === 'KET') {
-        await query('UPDATE users SET ket_balance = ket_balance + $1 WHERE id = $2', [payout, winnerId]);
-      } else {
-        await query('UPDATE users SET balance = balance + $1 WHERE id = $2', [payout, winnerId]);
-      }
+      const winnerFundedByBonus = (winnerId === duel.playerA_id) ? duel.playerAFundedByBonus : duel.playerBFundedByBonus;
+      await creditPayout(null, winnerId, payout, activeCurrency, winnerFundedByBonus);
       await query(`UPDATE duels SET status = 'finished', winner_id = $1, player_a_score = $2, player_b_score = $3 WHERE id = $4`, [
         winnerId, pA ? pA.value : 0, pB ? pB.value : 0, duelId
       ]);
@@ -728,15 +725,17 @@ const resolveDuel = async (duelId, disconnectWinnerId = null) => {
       );
 
       // Insert winning bet and losing bet records
+      const winnerFunded = (winnerId === duel.playerA_id) ? duel.playerAFundedByBonus : duel.playerBFundedByBonus;
+      const loserFunded = (loserId === duel.playerA_id) ? duel.playerAFundedByBonus : duel.playerBFundedByBonus;
       await query(
-        `INSERT INTO bets (user_id, game_id, bet_amount, cashout_multiplier, payout_amount, is_won, currency) 
-         VALUES ($1, null, $2, $3, $4, true, $5)`,
-        [winnerId, duel.betAmount, 1.80, payout, activeCurrency]
+        `INSERT INTO bets (user_id, game_id, bet_amount, cashout_multiplier, payout_amount, is_won, currency, funded_by_bonus) 
+         VALUES ($1, null, $2, $3, $4, true, $5, $6)`,
+        [winnerId, duel.betAmount, 1.80, payout, activeCurrency, !!winnerFunded]
       );
       await query(
-        `INSERT INTO bets (user_id, game_id, bet_amount, cashout_multiplier, payout_amount, is_won, currency) 
-         VALUES ($1, null, $2, 0.00, 0.00, false, $3)`,
-        [loserId, duel.betAmount, activeCurrency]
+        `INSERT INTO bets (user_id, game_id, bet_amount, cashout_multiplier, payout_amount, is_won, currency, funded_by_bonus) 
+         VALUES ($1, null, $2, 0.00, 0.00, false, $3, $4)`,
+        [loserId, duel.betAmount, activeCurrency, !!loserFunded]
       );
 
       io.to(duel.roomId).emit('ketmesye_duel_over', { reason, winnerId, payoutAmount: payout, currency: activeCurrency });
@@ -745,6 +744,9 @@ const resolveDuel = async (duelId, disconnectWinnerId = null) => {
     }
 
     await query('COMMIT');
+
+    await broadcastBalanceUpdate(io, duel.playerA_id);
+    await broadcastBalanceUpdate(io, duel.playerB_id);
 
     // Process progression settlements (awards KET on HTG duel win/loss)
     await processBetSettlement(winnerId, duel.betAmount, payout, activeCurrency, 'snake_duel');
@@ -779,19 +781,15 @@ const cancelDuel = async (duelId, reason = 'Jeu annulé.') => {
 
   try {
     await query('BEGIN');
-    if (activeCurrency === 'KET') {
-      await query('UPDATE users SET ket_balance = ket_balance + $1 WHERE id = $2', [duel.betAmount, duel.playerA_id]);
-      if (duel.playerB_id) {
-        await query('UPDATE users SET ket_balance = ket_balance + $1 WHERE id = $2', [duel.betAmount, duel.playerB_id]);
-      }
-    } else {
-      await query('UPDATE users SET balance = balance + $1 WHERE id = $2', [duel.betAmount, duel.playerA_id]);
-      if (duel.playerB_id) {
-        await query('UPDATE users SET balance = balance + $1 WHERE id = $2', [duel.betAmount, duel.playerB_id]);
-      }
+    await creditPayout(null, duel.playerA_id, duel.betAmount, activeCurrency, duel.playerAFundedByBonus);
+    if (duel.playerB_id) {
+      await creditPayout(null, duel.playerB_id, duel.betAmount, activeCurrency, duel.playerBFundedByBonus);
     }
     await query(`UPDATE duels SET status = 'cancelled' WHERE id = $1`, [duelId]);
     await query('COMMIT');
+
+    await broadcastBalanceUpdate(io, duel.playerA_id);
+    if (duel.playerB_id) await broadcastBalanceUpdate(io, duel.playerB_id);
 
     io.to(duel.roomId).emit('ketmesye_duel_cancelled', { reason });
     activePlayersStore.removePlayer(duel.playerA_id, 'snake_duel');
@@ -816,17 +814,14 @@ const cancelPendingDuel = async (duelId, reason = 'Jeu annulé.') => {
 
   try {
     await query('BEGIN');
-    if (activeCurrency === 'KET') {
-      await query('UPDATE users SET ket_balance = ket_balance + $1 WHERE id = $2', [pending.betAmount, pending.playerAId]);
-    } else {
-      await query('UPDATE users SET balance = balance + $1 WHERE id = $2', [pending.betAmount, pending.playerAId]);
-    }
+    await creditPayout(null, pending.playerAId, pending.betAmount, activeCurrency, pending.playerAFundedByBonus);
     await query(`UPDATE duels SET status = 'cancelled' WHERE id = $1`, [duelId]);
     await query(
       `INSERT INTO audit_logs (user_id, game_id, game_type, amount, action) VALUES ($1, $2, 'snake_duel', $3, 'escrow_refund')`,
       [pending.playerAId, duelId, pending.betAmount]
     );
     await query('COMMIT');
+    await broadcastBalanceUpdate(io, pending.playerAId);
     activePlayersStore.removePlayer(pending.playerAId, 'snake_duel');
 
     const creatorSocket = io.sockets.sockets.get(pending.socketId);
@@ -886,25 +881,20 @@ const initKetmesyeEngine = (socketIoInstance) => {
           return socket.emit('ketmesye_error', { message: `La mise minimale pour spawn est de ${minWager} ${activeCurrency}.` });
         }
 
-        const balance = parseFloat(activeCurrency === 'KET' ? (user.ket_balance || 0) : user.balance);
-        if (balance < entryWager) {
+        let fundedByBonus = false;
+        try {
+          const deductRes = await deductWager(null, userId, entryWager, activeCurrency);
+          fundedByBonus = deductRes.fundedByBonus;
+        } catch (deductErr) {
           await query('ROLLBACK');
-          return socket.emit('ketmesye_error', { message: 'Solde insuffisant.' });
-        }
-
-        // Deduct entry fee
-        const newBalance = balance - entryWager;
-        if (activeCurrency === 'KET') {
-          await query('UPDATE users SET ket_balance = $1 WHERE id = $2', [newBalance, userId]);
-        } else {
-          await query('UPDATE users SET balance = $1 WHERE id = $2', [newBalance, userId]);
+          return socket.emit('ketmesye_error', { message: deductErr.message });
         }
 
         // Insert bet row into DB (is_won = false initially)
         const betRes = await query(
-          `INSERT INTO bets (user_id, game_id, bet_amount, cashout_multiplier, payout_amount, is_won, currency) 
-           VALUES ($1, null, $2, null, 0.00, false, $3) RETURNING id`,
-          [userId, entryWager, activeCurrency]
+          `INSERT INTO bets (user_id, game_id, bet_amount, cashout_multiplier, payout_amount, is_won, currency, funded_by_bonus) 
+           VALUES ($1, null, $2, null, 0.00, false, $3, $4) RETURNING id`,
+          [userId, entryWager, activeCurrency, fundedByBonus]
         );
         const betId = betRes.rows[0].id;
 
@@ -950,22 +940,28 @@ const initKetmesyeEngine = (socketIoInstance) => {
           betId,
           isBoosting: false,
           energy: 100,
-          currency: activeCurrency
+          currency: activeCurrency,
+          fundedByBonus
         };
 
         // Join room specific to this sandbox currency
         socket.join(`ketmesye_sandbox_${activeCurrency}`);
 
+        const userBalancesRes = await query('SELECT balance, ket_balance FROM users WHERE id = $1', [userId]);
+        const finalNewBalance = activeCurrency === 'KET' ? parseFloat(userBalancesRes.rows[0]?.ket_balance || 0) : parseFloat(userBalancesRes.rows[0]?.balance || 0);
+
         socket.emit('ketmesye_join_success', {
           wager: entryWager,
           initialValue,
-          newBalance,
+          newBalance: finalNewBalance,
           currency: activeCurrency
         });
 
         console.log(`Ketmesye: ${email} joined with ${entryWager} ${activeCurrency} wager.`);
         activePlayersStore.addPlayer(userId, email, 'ketmesye', entryWager, activeCurrency);
         activePlayersStore.notify(`${email.split('@')[0]} a rejoint l'arène de KetMesye avec ${entryWager} ${activeCurrency} !`, 'info');
+
+        await broadcastBalanceUpdate(io, userId);
 
       } catch (err) {
         await query('ROLLBACK');
@@ -1021,17 +1017,7 @@ const initKetmesyeEngine = (socketIoInstance) => {
         await query('BEGIN');
 
         // Credit user balance
-        if (currency === 'KET') {
-          await query(
-            "UPDATE users SET ket_balance = ket_balance + $1 WHERE id = $2",
-            [payout, snake.userId]
-          );
-        } else {
-          await query(
-            "UPDATE users SET balance = balance + $1 WHERE id = $2",
-            [payout, snake.userId]
-          );
-        }
+        await creditPayout(null, snake.userId, payout, currency, snake.fundedByBonus);
 
         // Update bet record as won with calculated payout multiplier
         const multiplier = parseFloat((payout / snake.wager).toFixed(2));
@@ -1041,13 +1027,6 @@ const initKetmesyeEngine = (socketIoInstance) => {
            WHERE id = $3`,
           [multiplier, payout, snake.betId]
         );
-
-        // Fetch new balance
-        const balanceRes = await query(
-          currency === 'KET' ? 'SELECT ket_balance FROM users WHERE id = $1' : 'SELECT balance FROM users WHERE id = $1',
-          [snake.userId]
-        );
-        const newBalance = parseFloat(currency === 'KET' ? balanceRes.rows[0].ket_balance : balanceRes.rows[0].balance);
 
         await query('COMMIT');
 
@@ -1059,11 +1038,18 @@ const initKetmesyeEngine = (socketIoInstance) => {
 
         socket.leave(`ketmesye_sandbox_${currency}`);
 
+        // Fetch new balance
+        const balanceRes = await query(
+          currency === 'KET' ? 'SELECT ket_balance FROM users WHERE id = $1' : 'SELECT balance FROM users WHERE id = $1',
+          [snake.userId]
+        );
+        const finalNewBalance = parseFloat(currency === 'KET' ? balanceRes.rows[0].ket_balance : balanceRes.rows[0].balance);
+
         // Notify user of cashout success
         socket.emit('ketmesye_cashout_success', {
           payout,
           multiplier,
-          newBalance,
+          newBalance: finalNewBalance,
           currency,
           timeSurvived: Math.floor((Date.now() - snake.spawnTime) / 1000),
           eliminations: snake.eliminations
@@ -1079,6 +1065,8 @@ const initKetmesyeEngine = (socketIoInstance) => {
         console.log(`Ketmesye: ${snake.email} cashed out +${payout} ${currency}.`);
         activePlayersStore.cashoutPlayer(snake.userId, 'ketmesye', payout, multiplier);
         activePlayersStore.notify(`${snake.email.split('@')[0]} a encaissé +${payout.toFixed(0)} ${currency} de l'arène KetMesye !`, 'success');
+
+        await broadcastBalanceUpdate(io, snake.userId);
 
         // Remove from memory
         delete snakes[currency][socket.id];
@@ -1110,20 +1098,18 @@ const initKetmesyeEngine = (socketIoInstance) => {
           throw new Error(`La mise minimale est de ${minWager} ${activeCurrency}.`);
         }
 
-        const balance = parseFloat(activeCurrency === 'KET' ? (user.ket_balance || 0) : user.balance);
-        if (balance < betAmount) throw new Error('Solde insuffisant.');
-
-        // Deduct
-        if (activeCurrency === 'KET') {
-          await query('UPDATE users SET ket_balance = ket_balance - $1 WHERE id = $2', [betAmount, userId]);
-        } else {
-          await query('UPDATE users SET balance = balance - $1 WHERE id = $2', [betAmount, userId]);
+        let fundedByBonus = false;
+        try {
+          const deductRes = await deductWager(null, userId, betAmount, activeCurrency);
+          fundedByBonus = deductRes.fundedByBonus;
+        } catch (deductErr) {
+          throw new Error(deductErr.message);
         }
         
         // Insert duel row
         const duelRes = await query(
-          `INSERT INTO duels (player_a_id, bet_amount, status, currency) VALUES ($1, $2, 'pending', $3) RETURNING id`,
-          [userId, betAmount, activeCurrency]
+          `INSERT INTO duels (player_a_id, bet_amount, status, currency, player_a_funded_by_bonus) VALUES ($1, $2, 'pending', $3, $4) RETURNING id`,
+          [userId, betAmount, activeCurrency, fundedByBonus]
         );
         const duelId = duelRes.rows[0].id;
 
@@ -1144,10 +1130,12 @@ const initKetmesyeEngine = (socketIoInstance) => {
           creatorEmail: user.email,
           playerAId: userId,
           socketId: socket.id,
-          currency: activeCurrency
+          currency: activeCurrency,
+          playerAFundedByBonus: fundedByBonus
         };
 
         socket.emit('ketmesye_duel_created', { duelId, betAmount });
+        await broadcastBalanceUpdate(io, userId);
         broadcastPendingDuels();
       } catch (err) {
         await query('ROLLBACK');
@@ -1180,18 +1168,16 @@ const initKetmesyeEngine = (socketIoInstance) => {
           throw new Error('Vous ne pouvez pas rejoindre votre propre duel.');
         }
 
-        const balance = parseFloat(activeCurrency === 'KET' ? (user.ket_balance || 0) : user.balance);
-        if (balance < pending.betAmount) throw new Error('Solde insuffisant.');
-
-        // Deduct
-        if (activeCurrency === 'KET') {
-          await query('UPDATE users SET ket_balance = ket_balance - $1 WHERE id = $2', [pending.betAmount, userId]);
-        } else {
-          await query('UPDATE users SET balance = balance - $1 WHERE id = $2', [pending.betAmount, userId]);
+        let fundedByBonus = false;
+        try {
+          const deductRes = await deductWager(null, userId, pending.betAmount, activeCurrency);
+          fundedByBonus = deductRes.fundedByBonus;
+        } catch (deductErr) {
+          throw new Error(deductErr.message);
         }
 
         // Update duel row
-        await query(`UPDATE duels SET player_b_id = $1, status = 'active' WHERE id = $2`, [userId, duelId]);
+        await query(`UPDATE duels SET player_b_id = $1, status = 'active', player_b_funded_by_bonus = $3 WHERE id = $2`, [userId, duelId, fundedByBonus]);
 
         // Log escrow
         await query(
@@ -1207,7 +1193,8 @@ const initKetmesyeEngine = (socketIoInstance) => {
         delete pendingDuels[duelId];
 
         // Setup activeDuel state
-        setupKetmesyeDuel(duelId, pending.playerAId, userId, pending.betAmount, activeCurrency);
+        setupKetmesyeDuel(duelId, pending.playerAId, userId, pending.betAmount, activeCurrency, pending.playerAFundedByBonus, fundedByBonus);
+        await broadcastBalanceUpdate(io, userId);
         broadcastPendingDuels();
       } catch (err) {
         await query('ROLLBACK');
@@ -1239,6 +1226,7 @@ const initKetmesyeEngine = (socketIoInstance) => {
 
       const initialValue = parseFloat((duel.betAmount * 0.90).toFixed(2));
 
+      const fundedByBonus = isPlayerA ? duel.playerAFundedByBonus : duel.playerBFundedByBonus;
       duel.snakes[socket.id] = {
         id: socket.id,
         userId,
@@ -1255,7 +1243,8 @@ const initKetmesyeEngine = (socketIoInstance) => {
         isInvincible: true,
         spawnTime: Date.now(),
         isBoosting: false,
-        energy: 100
+        energy: 100,
+        fundedByBonus
       };
 
       // Set user email

@@ -1,5 +1,6 @@
 const { query } = require('../db');
 const { checkAndResolveCompetitions } = require('./competitions');
+const { checkAndResolveBonus } = require('./bonus');
 
 const LEVELS = [
   { level: 1, xpRequired: 0, badge: 'Bronze' },
@@ -45,6 +46,21 @@ const processWager = async (userId, wagerAmount, currency) => {
     // Run lazy verification to resolve any expired competitions on the fly
     await checkAndResolveCompetitions();
 
+    // Run lazy verification to resolve expired bonuses
+    await checkAndResolveBonus(null, userId);
+
+    // Fetch user details for XP Booster, wager requirement, and locked winnings
+    const userRes = await query(
+      "SELECT xp, xp_booster_expires_at, wager_requirement_progress, wager_requirement_required, locked_winnings FROM users WHERE id = $1",
+      [userId]
+    );
+    if (userRes.rows.length === 0) return;
+
+    const user = userRes.rows[0];
+    const boosterExpires = user.xp_booster_expires_at;
+    const isBoosterActive = boosterExpires && new Date(boosterExpires) > new Date();
+    const xpMultiplier = isBoosterActive ? 2.0 : 1.0;
+
     // Handle Active Competitions
     const activeComps = await query("SELECT id, type FROM competitions WHERE status = 'active'");
     for (const comp of activeComps.rows) {
@@ -62,7 +78,7 @@ const processWager = async (userId, wagerAmount, currency) => {
       } else {
         // Daily, Weekly, Monthly Leaderboards track XP
         if (currency === 'HTG') {
-          const xpEarnedForComp = parseFloat((numericWager / 100).toFixed(4));
+          const xpEarnedForComp = parseFloat(((numericWager / 100) * xpMultiplier).toFixed(4));
           await query(
             `INSERT INTO user_competition_stats (user_id, competition_id, xp_gained)
              VALUES ($1, $2, $3)
@@ -74,15 +90,42 @@ const processWager = async (userId, wagerAmount, currency) => {
       }
     }
 
-    // Only HTG currency wagers earn XP
+    // Only HTG currency wagers contribute to Wager Requirements and earn XP
     if (currency === 'HTG') {
-      const xpEarned = parseFloat((numericWager / 100).toFixed(4));
-      
-      // Get current XP before update
-      const userRes = await query("SELECT xp FROM users WHERE id = $1", [userId]);
-      if (userRes.rows.length === 0) return;
-      
-      const oldXp = parseFloat(userRes.rows[0].xp || 0);
+      // 1. Process Wager Requirement progress if user has active bonus
+      if (parseFloat(user.wager_requirement_required) > 0) {
+        const newProgress = parseFloat((parseFloat(user.wager_requirement_progress || 0) + numericWager).toFixed(2));
+        if (newProgress >= parseFloat(user.wager_requirement_required)) {
+          // Unlock!
+          const locked = parseFloat(user.locked_winnings || 0);
+          await query(
+            `UPDATE users 
+             SET balance = balance + $1,
+                 locked_winnings = 0.00,
+                 bonus_balance = 0.00,
+                 wager_requirement_required = 0.00,
+                 wager_requirement_progress = 0.00,
+                 bonus_expires_at = NULL
+             WHERE id = $2`,
+            [locked, userId]
+          );
+          await query(
+            `INSERT INTO notifications (user_id, type, message)
+             VALUES ($1, 'bonus_unlocked', 'Félicitations ! Vous avez complété les conditions de mise. Vos gains bloqués ont été transférés vers votre solde cash.')`,
+            [userId]
+          );
+        } else {
+          // Increment progress
+          await query(
+            `UPDATE users SET wager_requirement_progress = $1 WHERE id = $2`,
+            [newProgress, userId]
+          );
+        }
+      }
+
+      // 2. Process XP
+      const xpEarned = parseFloat(((numericWager / 100) * xpMultiplier).toFixed(4));
+      const oldXp = parseFloat(user.xp || 0);
       const newXp = oldXp + xpEarned;
       
       const oldLevelInfo = getLevelInfo(oldXp);

@@ -1,6 +1,7 @@
 const { query } = require('./db');
 const activePlayersStore = require('./activePlayersStore');
 const { processWager, processBetSettlement } = require('./utils/progression');
+const { deductWager, creditPayout, broadcastBalanceUpdate } = require('./utils/bonus');
 const crypto = require('crypto');
 
 let io;
@@ -292,17 +293,13 @@ const handleGoalEnd = async () => {
         const profit = payout - bet.amount;
 
         // Credit user balance
-        if (isKet) {
-          await query("UPDATE users SET ket_balance = ket_balance + $1 WHERE id = $2", [payout, userId]);
-        } else {
-          await query("UPDATE users SET balance = balance + $1 WHERE id = $2", [payout, userId]);
-        }
+        await creditPayout(null, userId, payout, bet.currency || 'HTG', bet.fundedByBonus);
 
         // Insert bet record
         await query(
-          `INSERT INTO ls_bets (round_id, user_id, amount, bet_type, auto_cashout, cashed_out_at, profit, status, currency) 
-           VALUES ($1, $2, $3, 'goal', $4, $5, $6, 'won', $7)`,
-          [currentRound.id, userId, bet.amount, bet.auto_cashout, winMultiplier, profit, bet.currency]
+          `INSERT INTO ls_bets (round_id, user_id, amount, bet_type, auto_cashout, cashed_out_at, profit, status, currency, funded_by_bonus) 
+           VALUES ($1, $2, $3, 'goal', $4, $5, $6, 'won', $7, $8)`,
+          [currentRound.id, userId, bet.amount, bet.auto_cashout, winMultiplier, profit, bet.currency, !!bet.fundedByBonus]
         );
 
         // Update active player store for live leaderboard sync
@@ -314,27 +311,26 @@ const handleGoalEnd = async () => {
         await processBetSettlement(userId, bet.amount, payout, bet.currency, 'lastsecond');
 
         const balances = await getUserBalances(userId);
+        const userRes = await query('SELECT balance, ket_balance FROM users WHERE id = $1', [userId]);
+        const finalNewBalance = bet.currency === 'KET' ? parseFloat(userRes.rows[0]?.ket_balance || 0) : parseFloat(userRes.rows[0]?.balance || 0);
+        const finalNewKetBalance = parseFloat(userRes.rows[0]?.ket_balance || 0);
         if (io) {
           io.to(bet.socketId).emit('lastsecond:bet:result', {
             roundId: currentRound.id,
             status: 'won',
             multiplier: winMultiplier,
             profit,
-            newBalance: isKet ? balances.ket_balance : balances.balance,
+            newBalance: finalNewBalance,
             currency: bet.currency
           });
-          io.emit('balance_update', {
-            userId,
-            newBalance: balances.balance,
-            newKetBalance: balances.ket_balance
-          });
+          await broadcastBalanceUpdate(io, userId);
         }
       } else {
         // No Goal bet -> LOST
         await query(
-          `INSERT INTO ls_bets (round_id, user_id, amount, bet_type, auto_cashout, cashed_out_at, profit, status, currency) 
-           VALUES ($1, $2, $3, $4, $5, null, $6, 'lost', $7)`,
-          [currentRound.id, userId, bet.amount, bet.bet_type, bet.auto_cashout, -bet.amount, bet.currency]
+          `INSERT INTO ls_bets (round_id, user_id, amount, bet_type, auto_cashout, cashed_out_at, profit, status, currency, funded_by_bonus) 
+           VALUES ($1, $2, $3, $4, $5, null, $6, 'lost', $7, $8)`,
+          [currentRound.id, userId, bet.amount, bet.bet_type, bet.auto_cashout, -bet.amount, bet.currency, !!bet.fundedByBonus]
         );
 
         activePlayersStore.losePlayer(userId, 'lastsecond', 'eliminated');
@@ -419,17 +415,13 @@ const handleNoGoalEnd = async () => {
         const profit = payout - bet.amount;
 
         // Credit user balance
-        if (isKet) {
-          await query("UPDATE users SET ket_balance = ket_balance + $1 WHERE id = $2", [payout, userId]);
-        } else {
-          await query("UPDATE users SET balance = balance + $1 WHERE id = $2", [payout, userId]);
-        }
+        await creditPayout(null, userId, payout, bet.currency || 'HTG', bet.fundedByBonus);
 
         // Insert bet record
         await query(
-          `INSERT INTO ls_bets (round_id, user_id, amount, bet_type, auto_cashout, cashed_out_at, profit, status, currency) 
-           VALUES ($1, $2, $3, 'no_goal', null, $4, $5, 'won', $6)`,
-          [currentRound.id, userId, bet.amount, finalMultiplier, profit, bet.currency]
+          `INSERT INTO ls_bets (round_id, user_id, amount, bet_type, auto_cashout, cashed_out_at, profit, status, currency, funded_by_bonus) 
+           VALUES ($1, $2, $3, 'no_goal', null, $4, $5, 'won', $6, $7)`,
+          [currentRound.id, userId, bet.amount, finalMultiplier, profit, bet.currency, !!bet.fundedByBonus]
         );
 
         activePlayersStore.cashoutPlayer(userId, 'lastsecond', payout, finalMultiplier);
@@ -438,27 +430,26 @@ const handleNoGoalEnd = async () => {
         await processBetSettlement(userId, bet.amount, payout, bet.currency, 'lastsecond');
 
         const balances = await getUserBalances(userId);
+        const userRes = await query('SELECT balance, ket_balance FROM users WHERE id = $1', [userId]);
+        const finalNewBalance = bet.currency === 'KET' ? parseFloat(userRes.rows[0]?.ket_balance || 0) : parseFloat(userRes.rows[0]?.balance || 0);
+        const finalNewKetBalance = parseFloat(userRes.rows[0]?.ket_balance || 0);
         if (io) {
           io.to(bet.socketId).emit('lastsecond:bet:result', {
             roundId: currentRound.id,
             status: 'won',
             multiplier: finalMultiplier,
             profit,
-            newBalance: isKet ? balances.ket_balance : balances.balance,
+            newBalance: finalNewBalance,
             currency: bet.currency
           });
-          io.emit('balance_update', {
-            userId,
-            newBalance: balances.balance,
-            newKetBalance: balances.ket_balance
-          });
+          await broadcastBalanceUpdate(io, userId);
         }
       } else {
         // Goal bet (even if cashed out!) -> LOST because match ended without goal
         await query(
-          `INSERT INTO ls_bets (round_id, user_id, amount, bet_type, auto_cashout, cashed_out_at, profit, status, currency) 
-           VALUES ($1, $2, $3, 'goal', $4, null, $5, 'lost', $6)`,
-          [currentRound.id, userId, bet.amount, bet.auto_cashout, -bet.amount, bet.currency]
+          `INSERT INTO ls_bets (round_id, user_id, amount, bet_type, auto_cashout, cashed_out_at, profit, status, currency, funded_by_bonus) 
+           VALUES ($1, $2, $3, 'goal', $4, null, $5, 'lost', $6, $7)`,
+          [currentRound.id, userId, bet.amount, bet.auto_cashout, -bet.amount, bet.currency, !!bet.fundedByBonus]
         );
 
         activePlayersStore.losePlayer(userId, 'lastsecond', 'crashed');
@@ -620,27 +611,23 @@ const initLastsecondEngine = (socketIoInstance) => {
         }
 
         const activeCurrency = user.active_currency || 'HTG';
-        let newBalance = parseFloat(user.balance);
-        let newKetBalance = parseFloat(user.ket_balance || 0);
 
         if (activeCurrency === 'KET') {
           if (amount < 100) {
             return socket.emit('lastsecond:bet:error', { message: 'La mise minimale en KET est de 100 KET.' });
           }
-          if (newKetBalance < amount) {
-            return socket.emit('lastsecond:bet:error', { message: 'Solde de KET insuffisant.' });
-          }
-          await query('UPDATE users SET ket_balance = ket_balance - $1 WHERE id = $2', [amount, userId]);
-          newKetBalance -= amount;
         } else {
           if (amount < 10) {
             return socket.emit('lastsecond:bet:error', { message: 'La mise minimale est de 10 HTG.' });
           }
-          if (newBalance < amount) {
-            return socket.emit('lastsecond:bet:error', { message: 'Solde insuffisant.' });
-          }
-          await query('UPDATE users SET balance = balance - $1 WHERE id = $2', [amount, userId]);
-          newBalance -= amount;
+        }
+
+        let fundedByBonus = false;
+        try {
+          const deductRes = await deductWager(null, userId, amount, activeCurrency);
+          fundedByBonus = deductRes.fundedByBonus;
+        } catch (deductErr) {
+          return socket.emit('lastsecond:bet:error', { message: deductErr.message });
         }
 
         // Process progression
@@ -655,7 +642,8 @@ const initLastsecondEngine = (socketIoInstance) => {
           cashedOut: false,
           cashed_out_at: null,
           currency: activeCurrency,
-          socketId: socket.id
+          socketId: socket.id,
+          fundedByBonus
         };
 
         activePlayersStore.addPlayer(userId, email, 'lastsecond', amount, activeCurrency);
@@ -665,19 +653,19 @@ const initLastsecondEngine = (socketIoInstance) => {
           potentialWin: type === 'goal' ? (autoCashout ? amount * autoCashout : null) : null
         });
 
+        const userBalancesRes = await query('SELECT balance, ket_balance FROM users WHERE id = $1', [userId]);
+        const finalNewBalance = activeCurrency === 'KET' ? parseFloat(userBalancesRes.rows[0]?.ket_balance || 0) : parseFloat(userBalancesRes.rows[0]?.balance || 0);
+        const finalNewKetBalance = parseFloat(userBalancesRes.rows[0]?.ket_balance || 0);
+
         socket.emit('lastsecond:bet_success', {
           betAmount: amount,
           autoCashout: autoCashout || null,
-          newBalance: activeCurrency === 'KET' ? newKetBalance : newBalance,
-          newKetBalance,
+          newBalance: finalNewBalance,
+          newKetBalance: finalNewKetBalance,
           currency: activeCurrency
         });
 
-        io.emit('balance_update', {
-          userId,
-          newBalance,
-          newKetBalance
-        });
+        await broadcastBalanceUpdate(io, userId);
 
         io.emit('lastsecond:player_placed_bet', {
           email: email.split('@')[0],

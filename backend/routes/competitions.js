@@ -271,4 +271,134 @@ router.get('/history', async (req, res) => {
   }
 });
 
+/**
+ * POST /api/competitions/bonus-choices/:id/claim
+ * Process user choice between Bonus Balance (Option A) or XP Booster x2 (Option B).
+ */
+router.post('/bonus-choices/:id/claim', async (req, res) => {
+  const userId = req.user.id;
+  const choiceId = req.params.id;
+  const { choice } = req.body;
+
+  if (choice !== 'bonus' && choice !== 'booster') {
+    return res.status(400).json({ error: 'Choix invalide (bonus ou booster requis).' });
+  }
+
+  try {
+    await query('BEGIN');
+
+    const choiceRes = await query(
+      "SELECT * FROM user_bonus_choices WHERE id = $1 AND user_id = $2 FOR UPDATE",
+      [choiceId, userId]
+    );
+
+    if (choiceRes.rows.length === 0) {
+      await query('ROLLBACK');
+      return res.status(404).json({ error: 'Choix de récompense introuvable.' });
+    }
+
+    const bonusChoice = choiceRes.rows[0];
+    if (bonusChoice.status !== 'pending') {
+      await query('ROLLBACK');
+      return res.status(400).json({ error: 'Cette récompense a déjà été réclamée.' });
+    }
+
+    const potentialBonus = parseFloat(bonusChoice.potential_bonus);
+
+    if (choice === 'bonus') {
+      // Option A: Claim Deposit Bonus
+      const wrRequired = potentialBonus * 10;
+      await query(
+        `UPDATE users 
+         SET bonus_balance = bonus_balance + $1, 
+             wager_requirement_required = wager_requirement_required + $2, 
+             bonus_expires_at = CURRENT_TIMESTAMP + INTERVAL '7 days', 
+             last_bonus_claim_at = CURRENT_TIMESTAMP 
+         WHERE id = $3`,
+        [potentialBonus, wrRequired, userId]
+      );
+
+      await query(
+        "UPDATE user_bonus_choices SET status = 'claimed_bonus' WHERE id = $1",
+        [choiceId]
+      );
+
+      await query(
+        `INSERT INTO notifications (user_id, type, message) 
+         VALUES ($1, 'bonus_activated', 'Votre bonus a été activé avec succès.')`,
+        [userId]
+      );
+
+    } else {
+      // Option B: Claim XP Booster x2 for 7 days
+      await query(
+        `UPDATE users 
+         SET xp_booster_expires_at = CURRENT_TIMESTAMP + INTERVAL '7 days', 
+             last_bonus_claim_at = CURRENT_TIMESTAMP 
+         WHERE id = $1`,
+        [userId]
+      );
+
+      await query(
+        "UPDATE user_bonus_choices SET status = 'claimed_booster' WHERE id = $1",
+        [choiceId]
+      );
+
+      await query(
+        `INSERT INTO notifications (user_id, type, message) 
+         VALUES ($1, 'xp_booster_activated', 'Votre XP Booster x2 est maintenant actif pendant 7 jours.')`,
+        [userId]
+      );
+    }
+
+    await query('COMMIT');
+
+    // Retrieve updated user profile
+    const profileRes = await query(
+      `SELECT id, email, role, balance, ket_balance, active_currency, first_name, last_name, is_suspended, referral_code,
+              bonus_balance, locked_winnings, wager_requirement_required, wager_requirement_progress, bonus_expires_at, xp_booster_expires_at
+       FROM users WHERE id = $1`,
+      [userId]
+    );
+    const user = profileRes.rows[0];
+
+    const pendingChoicesRes = await query(
+      "SELECT id, deposit_amount, bonus_type, potential_bonus FROM user_bonus_choices WHERE user_id = $1 AND status = 'pending'",
+      [userId]
+    );
+
+    res.json({
+      message: choice === 'bonus' ? 'Votre bonus a été activé avec succès.' : 'Votre XP Booster x2 est maintenant actif pendant 7 jours.',
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        balance: parseFloat(user.balance),
+        ket_balance: parseFloat(user.ket_balance || 0),
+        active_currency: user.active_currency || 'HTG',
+        first_name: user.first_name || '',
+        last_name: user.last_name || '',
+        referral_code: user.referral_code,
+        bonus_balance: parseFloat(user.bonus_balance || 0),
+        locked_winnings: parseFloat(user.locked_winnings || 0),
+        wager_requirement_required: parseFloat(user.wager_requirement_required || 0),
+        wager_requirement_progress: parseFloat(user.wager_requirement_progress || 0),
+        bonus_expires_at: user.bonus_expires_at,
+        xp_booster_expires_at: user.xp_booster_expires_at,
+        pendingBonusChoices: pendingChoicesRes.rows.map(r => ({
+          id: r.id,
+          depositAmount: parseFloat(r.deposit_amount),
+          bonusType: r.bonus_type,
+          potentialBonus: parseFloat(r.potential_bonus)
+        }))
+      }
+    });
+
+  } catch (err) {
+    await query('ROLLBACK');
+    console.error('Error claiming reward:', err);
+    res.status(500).json({ error: 'Erreur serveur lors de la réclamation de votre récompense.' });
+  }
+});
+
 module.exports = router;

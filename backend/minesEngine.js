@@ -2,6 +2,7 @@ const { query } = require('./db');
 const crypto = require('crypto');
 const activePlayersStore = require('./activePlayersStore');
 const { processWager, processBetSettlement } = require('./utils/progression');
+const { deductWager, creditPayout, broadcastBalanceUpdate } = require('./utils/bonus');
 
 let io;
 
@@ -105,37 +106,26 @@ const handleMinesStart = async (socket, payload) => {
     }
 
     const activeCurrency = user.active_currency || 'HTG';
-    let newBalance = parseFloat(user.balance);
-    let newKetBalance = parseFloat(user.ket_balance || 0);
 
     if (activeCurrency === 'KET') {
       if (betAmount < 100) {
         await query('ROLLBACK');
         return socket.emit('mines_error', 'La mise minimale en KET est de 100 KET.');
       }
-      if (newKetBalance < betAmount) {
-        await query('ROLLBACK');
-        return socket.emit('mines_error', 'Solde de KET insuffisant.');
-      }
-      // Deduct KET
-      await query('UPDATE users SET ket_balance = ket_balance - $1 WHERE id = $2', [betAmount, userId]);
-      newKetBalance -= betAmount;
     } else {
-      // HTG currency
       if (betAmount < 10) {
         await query('ROLLBACK');
         return socket.emit('mines_error', 'La mise minimale est de 10 HTG.');
       }
-      if (newBalance < betAmount) {
-        await query('ROLLBACK');
-        return socket.emit('mines_error', 'Solde insuffisant.');
-      }
-      // Deduct HTG only (no starting KET credit)
-      await query(
-        'UPDATE users SET balance = balance - $1 WHERE id = $2',
-        [betAmount, userId]
-      );
-      newBalance -= betAmount;
+    }
+
+    let fundedByBonus = false;
+    try {
+      const deductRes = await deductWager(null, userId, betAmount, activeCurrency);
+      fundedByBonus = deductRes.fundedByBonus;
+    } catch (deductErr) {
+      await query('ROLLBACK');
+      return socket.emit('mines_error', deductErr.message);
     }
 
     // Process wager (resets inactivity, adds XP if HTG)
@@ -157,9 +147,9 @@ const handleMinesStart = async (socket, payload) => {
     // 6. Insert into DB
     const insertRes = await query(
       `INSERT INTO mines_games 
-       (user_id, bet_amount, net_stake, currency, mines_count, server_seed, client_seed, grid_mines) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-      [userId, betAmount, netStake, activeCurrency, minesCount, serverSeed, clientSeed, JSON.stringify(gridMines)]
+       (user_id, bet_amount, net_stake, currency, mines_count, server_seed, client_seed, grid_mines, funded_by_bonus) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+      [userId, betAmount, netStake, activeCurrency, minesCount, serverSeed, clientSeed, JSON.stringify(gridMines), fundedByBonus]
     );
 
     const gameId = insertRes.rows[0].id;
@@ -167,7 +157,7 @@ const handleMinesStart = async (socket, payload) => {
     await query('COMMIT');
 
     // Send updated balances globally
-    io.emit('balance_update', { userId, newBalance, newKetBalance });
+    await broadcastBalanceUpdate(io, userId);
 
     activePlayersStore.addPlayer(userId, email, 'mines', betAmount, activeCurrency);
 
@@ -262,19 +252,7 @@ const handleMinesReveal = async (socket, payload) => {
       // Auto cashout!
       const payoutAmount = parseFloat(game.net_stake) * currentMultiplier;
       
-      if (game.currency === 'KET') {
-        await query(
-          'UPDATE users SET ket_balance = ket_balance + $1 WHERE id = $2',
-          [payoutAmount, userId]
-        );
-      } else {
-        await query(
-          'UPDATE users SET balance = balance + $1 WHERE id = $2',
-          [payoutAmount, userId]
-        );
-      }
-
-      const balances = await getUserBalances(userId);
+      await creditPayout(null, userId, payoutAmount, game.currency || 'HTG', game.funded_by_bonus);
 
       await query(
         `UPDATE mines_games SET status = 'cashed_out', current_multiplier = $1, payout_amount = $2, revealed_tiles = $3 WHERE id = $4`,
@@ -289,7 +267,7 @@ const handleMinesReveal = async (socket, payload) => {
       const { recordPlatformRevenue } = require('./utils/competitions');
       await recordPlatformRevenue(parseFloat(game.bet_amount) - payoutAmount, game.currency || 'HTG', 'mines');
 
-      io.emit('balance_update', { userId, newBalance: balances.balance, newKetBalance: balances.ket_balance });
+      await broadcastBalanceUpdate(io, userId);
 
       const emailRes = await query('SELECT email FROM users WHERE id = $1', [userId]);
       const email = emailRes.rows[0]?.email || 'Joueur';
@@ -358,19 +336,7 @@ const handleMinesCashout = async (socket, payload) => {
     const payoutAmount = parseFloat(game.net_stake) * parseFloat(game.current_multiplier);
 
     // Update User Balance atomically
-    if (game.currency === 'KET') {
-      await query(
-        'UPDATE users SET ket_balance = ket_balance + $1 WHERE id = $2',
-        [payoutAmount, userId]
-      );
-    } else {
-      await query(
-        'UPDATE users SET balance = balance + $1 WHERE id = $2',
-        [payoutAmount, userId]
-      );
-    }
-
-    const balances = await getUserBalances(userId);
+    await creditPayout(null, userId, payoutAmount, game.currency || 'HTG', game.funded_by_bonus);
 
     // Update Game
     await query(
@@ -386,7 +352,7 @@ const handleMinesCashout = async (socket, payload) => {
     const { recordPlatformRevenue } = require('./utils/competitions');
     await recordPlatformRevenue(parseFloat(game.bet_amount) - payoutAmount, game.currency || 'HTG', 'mines');
 
-    io.emit('balance_update', { userId, newBalance: balances.balance, newKetBalance: balances.ket_balance });
+    await broadcastBalanceUpdate(io, userId);
 
     const emailRes = await query('SELECT email FROM users WHERE id = $1', [userId]);
     const email = emailRes.rows[0]?.email || 'Joueur';

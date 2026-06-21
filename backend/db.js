@@ -66,6 +66,29 @@ const initializeDatabase = async () => {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS last_conversion_at TIMESTAMP DEFAULT NULL;
     `);
 
+    // Bonus system columns
+    await query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS bonus_balance DECIMAL(12, 2) DEFAULT 0.00;
+    `);
+    await query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS locked_winnings DECIMAL(12, 2) DEFAULT 0.00;
+    `);
+    await query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS wager_requirement_required DECIMAL(12, 2) DEFAULT 0.00;
+    `);
+    await query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS wager_requirement_progress DECIMAL(12, 2) DEFAULT 0.00;
+    `);
+    await query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS bonus_expires_at TIMESTAMP DEFAULT NULL;
+    `);
+    await query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS xp_booster_expires_at TIMESTAMP DEFAULT NULL;
+    `);
+    await query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS last_bonus_claim_at TIMESTAMP DEFAULT NULL;
+    `);
+
     // Ensure currency column exists for bets, bloodmoney_bets, mines_games, duels, koth_rooms
     await query(`
       ALTER TABLE bets ADD COLUMN IF NOT EXISTS currency VARCHAR(10) DEFAULT 'HTG';
@@ -82,6 +105,41 @@ const initializeDatabase = async () => {
     await query(`
       ALTER TABLE koth_rooms ADD COLUMN IF NOT EXISTS currency VARCHAR(10) DEFAULT 'HTG';
     `);
+
+    // Add funded_by_bonus columns to bets and games
+    await query(`
+      ALTER TABLE bets ADD COLUMN IF NOT EXISTS funded_by_bonus BOOLEAN DEFAULT false;
+    `);
+    await query(`
+      ALTER TABLE bloodmoney_bets ADD COLUMN IF NOT EXISTS funded_by_bonus BOOLEAN DEFAULT false;
+    `);
+    await query(`
+      ALTER TABLE mines_games ADD COLUMN IF NOT EXISTS funded_by_bonus BOOLEAN DEFAULT false;
+    `);
+    await query(`
+      ALTER TABLE ls_bets ADD COLUMN IF NOT EXISTS funded_by_bonus BOOLEAN DEFAULT false;
+    `);
+    await query(`
+      ALTER TABLE duels ADD COLUMN IF NOT EXISTS player_a_funded_by_bonus BOOLEAN DEFAULT false;
+    `);
+    await query(`
+      ALTER TABLE duels ADD COLUMN IF NOT EXISTS player_b_funded_by_bonus BOOLEAN DEFAULT false;
+    `);
+
+    // Create user_bonus_choices table
+    await query(`
+      CREATE TABLE IF NOT EXISTS user_bonus_choices (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        transaction_id UUID REFERENCES transactions(id) ON DELETE CASCADE,
+        deposit_amount DECIMAL(12, 2) NOT NULL,
+        bonus_type VARCHAR(50) NOT NULL,
+        potential_bonus DECIMAL(12, 2) NOT NULL,
+        status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'claimed_bonus', 'claimed_booster', 'cancelled')),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('Database: Table "user_bonus_choices" checked/created.');
     
     // Backfill referral codes for existing users
     const usersWithoutCode = await query("SELECT id FROM users WHERE referral_code IS NULL");

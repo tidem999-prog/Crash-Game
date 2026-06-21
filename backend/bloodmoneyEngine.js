@@ -2,6 +2,7 @@ const { query } = require('./db');
 const crypto = require('crypto');
 const activePlayersStore = require('./activePlayersStore');
 const { processWager, processBetSettlement } = require('./utils/progression');
+const { deductWager, creditPayout, broadcastBalanceUpdate } = require('./utils/bonus');
 
 let io = null;
 let gameState = {
@@ -211,17 +212,13 @@ const processCashout = async (userId, baseMultiplier) => {
     await query('BEGIN');
     
     // 1. Credit balance
-    if (bet.currency === 'KET') {
-      await query("UPDATE users SET ket_balance = ket_balance + $1 WHERE id = $2", [payout, userId]);
-    } else {
-      await query("UPDATE users SET balance = balance + $1 WHERE id = $2", [payout, userId]);
-    }
+    await creditPayout(null, userId, payout, bet.currency || 'HTG', bet.fundedByBonus);
 
     // 2. Log bet as won in DB
     await query(
-      `INSERT INTO bloodmoney_bets (user_id, game_id, bet_amount, currency, route, cashout_multiplier, payout_amount, is_won) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, true)`,
-      [userId, gameState.gameId, bet.betAmount, bet.currency || 'HTG', bet.route, routeMult, payout]
+      `INSERT INTO bloodmoney_bets (user_id, game_id, bet_amount, currency, route, cashout_multiplier, payout_amount, is_won, funded_by_bonus) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, true, $8)`,
+      [userId, gameState.gameId, bet.betAmount, bet.currency || 'HTG', bet.route, routeMult, payout, !!bet.fundedByBonus]
     );
 
     await query('COMMIT');
@@ -241,21 +238,20 @@ const processCashout = async (userId, baseMultiplier) => {
       const socket = io.sockets.sockets.get(bet.socketId);
       if (socket) {
         const balances = await getUserBalances(userId);
+        const userRes = await query('SELECT balance, ket_balance FROM users WHERE id = $1', [userId]);
+        const newBalance = bet.currency === 'KET' ? parseFloat(userRes.rows[0]?.ket_balance || 0) : parseFloat(userRes.rows[0]?.balance || 0);
+        const newKetBalance = parseFloat(userRes.rows[0]?.ket_balance || 0);
         socket.emit('bet:result', {
           status: 'won',
           multiplier: routeMult,
           payout,
-          newBalance: bet.currency === 'KET' ? balances.ket_balance : balances.balance,
-          newKetBalance: balances.ket_balance,
+          newBalance,
+          newKetBalance,
           currency: bet.currency || 'HTG'
         });
         
         // Emit global balance update
-        io.emit('balance_update', {
-          userId,
-          newBalance: balances.balance,
-          newKetBalance: balances.ket_balance
-        });
+        await broadcastBalanceUpdate(io, userId);
       }
       
       const displayName = bet.email.split('@')[0];
@@ -292,15 +288,11 @@ const handleCrashPhase = async () => {
         if (bet.route === 'tunnel') {
           // Refund 30% of the bet amount for Tunnel route
           const refundAmount = parseFloat((bet.betAmount * 0.3).toFixed(2));
-          if (bet.currency === 'KET') {
-            await query("UPDATE users SET ket_balance = ket_balance + $1 WHERE id = $2", [refundAmount, userId]);
-          } else {
-            await query("UPDATE users SET balance = balance + $1 WHERE id = $2", [refundAmount, userId]);
-          }
+          await creditPayout(null, userId, refundAmount, bet.currency || 'HTG', bet.fundedByBonus);
           await query(
-            `INSERT INTO bloodmoney_bets (user_id, game_id, bet_amount, currency, route, cashout_multiplier, payout_amount, is_won) 
-             VALUES ($1, $2, $3, $4, $5, 0.3, $6, false)`,
-            [userId, gameState.gameId, bet.betAmount, bet.currency || 'HTG', bet.route, refundAmount]
+            `INSERT INTO bloodmoney_bets (user_id, game_id, bet_amount, currency, route, cashout_multiplier, payout_amount, is_won, funded_by_bonus) 
+             VALUES ($1, $2, $3, $4, $5, 0.3, $6, false, $7)`,
+            [userId, gameState.gameId, bet.betAmount, bet.currency || 'HTG', bet.route, refundAmount, !!bet.fundedByBonus]
           );
           
           bet.cashedOut = true;
@@ -309,20 +301,18 @@ const handleCrashPhase = async () => {
 
           const socket = io.sockets.sockets.get(bet.socketId);
           if (socket) {
-            const balances = await getUserBalances(userId);
+            const userRes = await query('SELECT balance, ket_balance FROM users WHERE id = $1', [userId]);
+            const newBalance = bet.currency === 'KET' ? parseFloat(userRes.rows[0]?.ket_balance || 0) : parseFloat(userRes.rows[0]?.balance || 0);
+            const newKetBalance = parseFloat(userRes.rows[0]?.ket_balance || 0);
             socket.emit('bet:result', {
               status: 'refunded',
               refundAmount,
-              newBalance: bet.currency === 'KET' ? balances.ket_balance : balances.balance,
-              newKetBalance: balances.ket_balance,
+              newBalance,
+              newKetBalance,
               currency: bet.currency || 'HTG'
             });
             // Emit global balance update
-            io.emit('balance_update', {
-              userId,
-              newBalance: balances.balance,
-              newKetBalance: balances.ket_balance
-            });
+            await broadcastBalanceUpdate(io, userId);
           }
           activePlayersStore.losePlayer(userId, 'bloodmoney', 'lost');
 
@@ -331,9 +321,9 @@ const handleCrashPhase = async () => {
         } else {
           // Normal loss (Alley, Rooftop)
           await query(
-            `INSERT INTO bloodmoney_bets (user_id, game_id, bet_amount, currency, route, cashout_multiplier, payout_amount, is_won) 
-             VALUES ($1, $2, $3, $4, $5, null, 0.00, false)`,
-            [userId, gameState.gameId, bet.betAmount, bet.currency || 'HTG', bet.route]
+            `INSERT INTO bloodmoney_bets (user_id, game_id, bet_amount, currency, route, cashout_multiplier, payout_amount, is_won, funded_by_bonus) 
+             VALUES ($1, $2, $3, $4, $5, null, 0.00, false, $6)`,
+            [userId, gameState.gameId, bet.betAmount, bet.currency || 'HTG', bet.route, !!bet.fundedByBonus]
           );
           activePlayersStore.losePlayer(userId, 'bloodmoney', 'lost');
 
@@ -343,9 +333,9 @@ const handleCrashPhase = async () => {
       } else if (bet.status === 'lost') {
         // If they were already busted early (e.g. rooftop at 85%)
         await query(
-          `INSERT INTO bloodmoney_bets (user_id, game_id, bet_amount, currency, route, cashout_multiplier, payout_amount, is_won) 
-           VALUES ($1, $2, $3, $4, $5, null, 0.00, false)`,
-          [userId, gameState.gameId, bet.betAmount, bet.currency || 'HTG', bet.route]
+          `INSERT INTO bloodmoney_bets (user_id, game_id, bet_amount, currency, route, cashout_multiplier, payout_amount, is_won, funded_by_bonus) 
+           VALUES ($1, $2, $3, $4, $5, null, 0.00, false, $6)`,
+          [userId, gameState.gameId, bet.betAmount, bet.currency || 'HTG', bet.route, !!bet.fundedByBonus]
         );
         activePlayersStore.losePlayer(userId, 'bloodmoney', 'lost');
 
@@ -434,33 +424,23 @@ const initBloodmoneyEngine = (socketIoInstance) => {
         if (user.is_suspended) throw new Error('Votre compte est suspendu.');
 
         const activeCurrency = user.active_currency || 'HTG';
-        let newBalance = parseFloat(user.balance);
-        let newKetBalance = parseFloat(user.ket_balance || 0);
 
         if (activeCurrency === 'KET') {
           if (amount < 100) {
             throw new Error('La mise minimale en KET est de 100 KET.');
           }
-          if (newKetBalance < amount) {
-            throw new Error('Solde de KET insuffisant.');
-          }
-          // Deduct KET
-          await query('UPDATE users SET ket_balance = ket_balance - $1 WHERE id = $2', [amount, userId]);
-          newKetBalance -= amount;
         } else {
-          // HTG currency
           if (amount < 10) {
             throw new Error('La mise minimale est de 10 HTG.');
           }
-          if (newBalance < amount) {
-            throw new Error('Solde insuffisant.');
-          }
-          // Deduct HTG only (no starting KET credit)
-          await query(
-            'UPDATE users SET balance = balance - $1 WHERE id = $2',
-            [amount, userId]
-          );
-          newBalance -= amount;
+        }
+
+        let fundedByBonus = false;
+        try {
+          const deductRes = await deductWager(null, userId, amount, activeCurrency);
+          fundedByBonus = deductRes.fundedByBonus;
+        } catch (deductErr) {
+          throw new Error(deductErr.message);
         }
 
         // Process wager (resets inactivity, adds XP if HTG)
@@ -480,22 +460,23 @@ const initBloodmoneyEngine = (socketIoInstance) => {
           processingCashout: false,
           cashoutMultiplier: null,
           payoutAmount: null,
-          socketId: socket.id
+          socketId: socket.id,
+          fundedByBonus
         };
+
+        const userBalancesRes = await query('SELECT balance, ket_balance FROM users WHERE id = $1', [userId]);
+        const finalNewBalance = activeCurrency === 'KET' ? parseFloat(userBalancesRes.rows[0]?.ket_balance || 0) : parseFloat(userBalancesRes.rows[0]?.balance || 0);
+        const finalNewKetBalance = parseFloat(userBalancesRes.rows[0]?.ket_balance || 0);
 
         socket.emit('bet:success', {
           betAmount: amount,
-          newBalance: activeCurrency === 'KET' ? newKetBalance : newBalance,
-          newKetBalance,
+          newBalance: finalNewBalance,
+          newKetBalance: finalNewKetBalance,
           currency: activeCurrency
         });
 
         // Emit global balance update
-        io.emit('balance_update', {
-          userId,
-          newBalance,
-          newKetBalance
-        });
+        await broadcastBalanceUpdate(io, userId);
 
         activePlayersStore.addPlayer(userId, email, 'bloodmoney', amount, activeCurrency);
         broadcastState();

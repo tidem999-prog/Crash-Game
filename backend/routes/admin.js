@@ -115,6 +115,66 @@ router.post('/transactions/:id/approve', async (req, res) => {
       );
       console.log(`Admin: Approved deposit of ${tx.amount} HTG for user ID ${tx.user_id}`);
 
+      // Check deposit bonus eligibility
+      const depositAmount = parseFloat(tx.amount);
+      if (depositAmount >= 500) {
+        const countRes = await query(
+          "SELECT COUNT(*) as count FROM transactions WHERE user_id = $1 AND type = 'deposit' AND status = 'approved'",
+          [tx.user_id]
+        );
+        const approvedCount = parseInt(countRes.rows[0].count);
+
+        const userStatsRes = await query(
+          "SELECT xp, last_bonus_claim_at FROM users WHERE id = $1",
+          [tx.user_id]
+        );
+        const userStats = userStatsRes.rows[0];
+        const xp = parseFloat(userStats.xp || 0);
+        const lastClaim = userStats.last_bonus_claim_at ? new Date(userStats.last_bonus_claim_at) : null;
+        
+        let eligible = false;
+        let bonusType = '';
+        let potentialBonus = 0;
+
+        if (approvedCount === 1) {
+          // First deposit bonus (100%, max 5000 HTG)
+          eligible = true;
+          bonusType = 'first_deposit';
+          const eligibleAmount = Math.min(depositAmount, 5000);
+          potentialBonus = eligibleAmount;
+        } else {
+          // Check 7-day cooldown
+          const sevenDaysAgo = new Date();
+          sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+          const hasCooldownPassed = !lastClaim || lastClaim < sevenDaysAgo;
+
+          if (hasCooldownPassed) {
+            if (xp >= 700) {
+              // VIP Recharge (50%, max 5000 HTG)
+              eligible = true;
+              bonusType = 'vip_recharge';
+              const eligibleAmount = Math.min(depositAmount, 10000);
+              potentialBonus = parseFloat((eligibleAmount * 0.50).toFixed(2));
+            } else {
+              // Recharge (25%, max 2500 HTG)
+              eligible = true;
+              bonusType = 'recharge';
+              const eligibleAmount = Math.min(depositAmount, 10000);
+              potentialBonus = parseFloat((eligibleAmount * 0.25).toFixed(2));
+            }
+          }
+        }
+
+        if (eligible && potentialBonus > 0) {
+          await query(
+            `INSERT INTO user_bonus_choices (user_id, transaction_id, deposit_amount, bonus_type, potential_bonus, status)
+             VALUES ($1, $2, $3, $4, $5, 'pending')`,
+            [tx.user_id, transactionId, depositAmount, bonusType, potentialBonus]
+          );
+          console.log(`Admin: User ${tx.user_id} qualified for ${bonusType} bonus of ${potentialBonus} HTG. Choice pending.`);
+        }
+      }
+
       // Check if user has a referrer
       const userRes = await query('SELECT email, referred_by FROM users WHERE id = $1', [tx.user_id]);
       if (userRes.rows.length > 0 && userRes.rows[0].referred_by) {

@@ -128,7 +128,7 @@ router.post('/withdraw', authenticateToken, async (req, res) => {
     await query('BEGIN');
 
     // Fetch user details with lock (SELECT FOR UPDATE) to prevent concurrency race conditions
-    const userRes = await query('SELECT balance, is_suspended FROM users WHERE id = $1 FOR UPDATE', [req.user.id]);
+    const userRes = await query('SELECT balance, bonus_balance, locked_winnings, is_suspended FROM users WHERE id = $1 FOR UPDATE', [req.user.id]);
     if (userRes.rows.length === 0) {
       await query('ROLLBACK');
       return res.status(404).json({ error: 'Utilisateur introuvable.' });
@@ -138,6 +138,36 @@ router.post('/withdraw', authenticateToken, async (req, res) => {
     if (user.is_suspended) {
       await query('ROLLBACK');
       return res.status(403).json({ error: 'Compte suspendu. Impossible d\'effectuer des transactions.' });
+    }
+
+    const bonus = parseFloat(user.bonus_balance || 0);
+    const locked = parseFloat(user.locked_winnings || 0);
+    if (bonus > 0 || locked > 0) {
+      if (req.body.confirmCancelBonus !== true) {
+        await query('ROLLBACK');
+        return res.status(400).json({
+          code: 'CONFIRM_CANCEL_BONUS',
+          error: `Attention : Vous avez un bonus actif (Solde bonus: ${bonus} HTG, Gains bloqués: ${locked} HTG). Effectuer un retrait annulera définitivement ce bonus et vos gains bloqués. Veuillez confirmer pour continuer.`
+        });
+      }
+
+      // Cancel the active bonus
+      await query(
+        `UPDATE users 
+         SET bonus_balance = 0.00, 
+             locked_winnings = 0.00, 
+             wager_requirement_required = 0.00, 
+             wager_requirement_progress = 0.00, 
+             bonus_expires_at = NULL 
+         WHERE id = $1`,
+        [req.user.id]
+      );
+
+      await query(
+        `INSERT INTO notifications (user_id, type, message) 
+         VALUES ($1, 'bonus_cancelled', 'Votre bonus et vos gains bloqués ont été annulés suite à votre demande de retrait.')`,
+        [req.user.id]
+      );
     }
 
     const balance = parseFloat(user.balance);

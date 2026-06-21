@@ -654,7 +654,7 @@ export default function LastSecondGame({ socket, onBackToLobby, addNotification 
 
     const isKet = user?.active_currency === 'KET';
     const minBet = isKet ? 1000 : 10;
-    const currentBalance = isKet ? (user?.ket_balance || 0) : (user?.balance || 0);
+    const currentBalance = isKet ? (user?.ket_balance || 0) : ((user?.balance || 0) + (user?.bonus_balance || 0) + (user?.locked_winnings || 0));
     const currencyLabel = isKet ? 'KET' : 'HTG';
 
     if (betAmount < minBet) {

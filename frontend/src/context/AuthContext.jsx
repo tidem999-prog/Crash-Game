@@ -117,6 +117,15 @@ export const AuthProvider = ({ children }) => {
   const updateBalance = (newBalance, currency = 'HTG') => {
     setUser(prev => {
       if (!prev) return null;
+      if (typeof newBalance === 'object' && newBalance !== null) {
+        return {
+          ...prev,
+          balance: parseFloat(newBalance.newBalance),
+          ket_balance: parseFloat(newBalance.newKetBalance ?? prev.ket_balance ?? 0),
+          bonus_balance: parseFloat(newBalance.bonusBalance ?? prev.bonus_balance ?? 0),
+          locked_winnings: parseFloat(newBalance.lockedWinnings ?? prev.locked_winnings ?? 0)
+        };
+      }
       if (currency === 'KET') {
         return { ...prev, ket_balance: parseFloat(newBalance) };
       } else {

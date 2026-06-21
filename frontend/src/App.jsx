@@ -186,7 +186,7 @@ const Navbar = () => {
              </span>
           ) : (
              <span className="bal-amount" style={{ color: '#34d399' }}>
-               {user.balance.toLocaleString('en-US', { minimumFractionDigits: 2 })}{' '}
+               {((user.balance || 0) + (user.bonus_balance || 0) + (user.locked_winnings || 0)).toLocaleString('en-US', { minimumFractionDigits: 2 })}{' '}
                <span className="bal-currency" style={{ color: 'rgba(16, 185, 129, 0.7)' }}>G</span>
              </span>
           )}
@@ -279,7 +279,7 @@ const Navbar = () => {
         <div className="sidebar-footer">
           <div className="sidebar-balance-card">
             <div className="sbc-label">Solde disponible</div>
-            <div className="sbc-value">{user.balance.toLocaleString('fr-FR', { minimumFractionDigits: 2 })} <span>HTG</span></div>
+            <div className="sbc-value">{((user.balance || 0) + (user.bonus_balance || 0) + (user.locked_winnings || 0)).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} <span>HTG</span></div>
           </div>
         </div>
       </aside>

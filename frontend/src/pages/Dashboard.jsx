@@ -5,7 +5,7 @@ import { useAuth, apiRequest } from '../context/AuthContext';
 import { 
   Plane, Landmark, ArrowUpRight, ArrowDownRight, History, 
   Wallet, ShieldAlert, Award, Clock, Coins, Upload, Send, HelpCircle, Gamepad2, ArrowLeft, Users, Gem,
-  Copy, Check, Flame, User, Volume2, VolumeX
+  Copy, Check, Flame, User, Volume2, VolumeX, X
 } from 'lucide-react';
 import KetmesyeGame from './KetmesyeGame';
 import MinesGame from './MinesGame';
@@ -104,6 +104,9 @@ export default function Dashboard() {
 
   // Withdrawal warning modal
   const [showWdWarning, setShowWdWarning] = useState(false);
+
+  // Bonus Promo Modal state
+  const [showBonusPromoModal, setShowBonusPromoModal] = useState(false);
 
   const [socketStatus, setSocketStatus] = useState('connecting'); // 'connecting', 'connected', 'disconnected'
   const activeTabRef = useRef(activeTab);
@@ -2070,10 +2073,10 @@ export default function Dashboard() {
                   <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Montant du retrait (HTG)</label>
                   <button
                     type="button"
-                    onClick={() => setWdAmount(user.balance.toString())}
+                    onClick={() => setWdAmount((user?.balance ?? 0).toString())}
                     className="text-[10px] font-bold text-indigo-400 hover:text-indigo-300 uppercase cursor-pointer"
                   >
-                    Solde Max ({user.balance.toLocaleString('fr-FR')} G)
+                    Solde Max ({(user?.balance ?? 0).toLocaleString('fr-FR')} G)
                   </button>
                 </div>
                 <div className="relative flex items-center">

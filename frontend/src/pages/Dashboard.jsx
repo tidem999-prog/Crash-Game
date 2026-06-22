@@ -1224,7 +1224,7 @@ export default function Dashboard() {
       
       {/* Fullscreen Reward Choice Overlay */}
       {user?.pendingBonusChoices && user.pendingBonusChoices.length > 0 && (
-        <div className="fixed inset-0 bg-slate-955/95 backdrop-blur-xl flex items-center justify-center p-4 z-50 overflow-y-auto animate-fade-in">
+        <div className="fixed inset-0 bg-slate-950/95 backdrop-blur-xl flex items-center justify-center p-4 z-50 overflow-y-auto animate-fade-in">
           <div className="max-w-3xl w-full bg-slate-900 border border-slate-800 rounded-3xl p-6 md:p-8 shadow-2xl relative overflow-hidden my-8">
             <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
             <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
@@ -1240,7 +1240,7 @@ export default function Dashboard() {
             </div>
 
             {claimError && (
-              <div className="mb-4 p-3 bg-red-955/35 border border-red-500/35 rounded-xl text-red-400 text-[10px] font-bold animate-shake">
+              <div className="mb-4 p-3 bg-red-950/35 border border-red-500/35 rounded-xl text-red-400 text-[10px] font-bold animate-shake">
                 {claimError}
               </div>
             )}
@@ -1261,7 +1261,7 @@ export default function Dashboard() {
                     <div className={`p-2.5 rounded-xl border ${
                       selectedRewardOption === 'bonus'
                         ? 'bg-indigo-500/20 border-indigo-500/30 text-indigo-400'
-                        : 'bg-slate-850 border-slate-700 text-slate-400'
+                        : 'bg-slate-800 border-slate-700 text-slate-400'
                     }`}>
                       <Coins className="h-5 w-5" />
                     </div>
@@ -1279,7 +1279,7 @@ export default function Dashboard() {
                     Créditez <strong className="text-white">{user.pendingBonusChoices[0].potentialBonus.toLocaleString('fr-FR')} HTG</strong> supplémentaires sur votre solde bonus.
                   </p>
 
-                  <div className="bg-slate-955 rounded-xl p-2.5 border border-slate-850 text-[9px] text-slate-500 leading-normal space-y-1">
+                  <div className="bg-slate-950 rounded-xl p-2.5 border border-slate-800 text-[9px] text-slate-500 leading-normal space-y-1">
                     <p>🎯 <strong className="text-slate-400 font-bold">Wager Requirement:</strong> 10x conditions de mise.</p>
                     <p>💰 <strong className="text-slate-400 font-bold">Total requis:</strong> {(user.pendingBonusChoices[0].potentialBonus * 10).toLocaleString('fr-FR')} HTG de mise.</p>
                     <p>⏱️ <strong className="text-slate-400 font-bold">Validité:</strong> 7 jours.</p>
@@ -1302,7 +1302,7 @@ export default function Dashboard() {
                     <div className={`p-2.5 rounded-xl border ${
                       selectedRewardOption === 'booster'
                         ? 'bg-purple-500/20 border-purple-500/30 text-purple-400'
-                        : 'bg-slate-850 border-slate-700 text-slate-400'
+                        : 'bg-slate-800 border-slate-700 text-slate-400'
                     }`}>
                       <Flame className="h-5 w-5" />
                     </div>
@@ -1319,7 +1319,7 @@ export default function Dashboard() {
                     Doublez l'XP généré par toutes vos mises sur Ketarena pendant les 7 prochains jours.
                   </p>
 
-                  <div className="bg-slate-955 rounded-xl p-2.5 border border-slate-850 text-[9px] text-slate-500 leading-normal space-y-1">
+                  <div className="bg-slate-950 rounded-xl p-2.5 border border-slate-800 text-[9px] text-slate-500 leading-normal space-y-1">
                     <p>⚡ <strong className="text-slate-400 font-bold">XP Multiplier:</strong> x2.0 XP sur tous les wagers HTG.</p>
                     <p>🏆 <strong className="text-slate-400 font-bold">Leaderboards:</strong> Grimpez deux fois plus vite dans les compétitions.</p>
                     <p>🎁 <strong className="text-slate-400 font-bold">Coffres:</strong> Débloquez les coffres Lucky XP Chest ultra-rapidement.</p>
@@ -1344,7 +1344,7 @@ export default function Dashboard() {
                   <span>ACTIVER MA RÉCOMPENSE</span>
                 )}
               </button>
-              <p className="text-[9px] text-slate-550">
+              <p className="text-[9px] text-slate-500">
                 En activant, vous acceptez les règles générales des bonus Ketarena.
               </p>
             </div>
@@ -1354,7 +1354,7 @@ export default function Dashboard() {
 
       {/* Withdrawal Warning Modal */}
       {showWdWarning && (
-        <div className="fixed inset-0 bg-slate-955/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in">
+        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in">
           <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl space-y-5 text-center animate-pop-in relative">
             <div className="mx-auto w-14 h-14 bg-red-500/10 border border-red-500/20 text-red-500 rounded-full flex items-center justify-center shadow-md">
               <ShieldAlert className="h-7 w-7" />
@@ -1367,7 +1367,7 @@ export default function Dashboard() {
               <p className="text-xs text-slate-400 leading-relaxed">
                 Vous avez un bonus actif sur votre compte :
               </p>
-              <div className="bg-slate-955 rounded-xl p-2.5 border border-slate-850 text-xs font-mono font-bold text-slate-300 space-y-1">
+              <div className="bg-slate-950 rounded-xl p-2.5 border border-slate-800 text-xs font-mono font-bold text-slate-300 space-y-1">
                 <p>🎁 Solde Bonus : <span className="text-red-400">{(user?.bonus_balance || 0).toFixed(2)} HTG</span></p>
                 <p>🔒 Gains Bloqués : <span className="text-red-400">{(user?.locked_winnings || 0).toFixed(2)} HTG</span></p>
               </div>
@@ -1380,7 +1380,7 @@ export default function Dashboard() {
               <button
                 type="button"
                 onClick={() => setShowWdWarning(false)}
-                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-350 font-bold rounded-xl text-xs transition-colors cursor-pointer"
+                className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs transition-colors cursor-pointer"
               >
                 ANNULER LE RETRAIT
               </button>
@@ -1881,7 +1881,7 @@ export default function Dashboard() {
                 className={`py-3 px-4 rounded-xl text-sm font-bold border transition-all flex items-center justify-center space-x-2 cursor-pointer ${
                   depositMethod === 'fiat'
                     ? 'border-indigo-500 bg-indigo-500/10 text-white shadow-[0_0_10px_rgba(99,102,241,0.15)]'
-                    : 'border-slate-850 bg-slate-950/40 text-slate-450 hover:text-slate-200'
+                    : 'border-slate-800 bg-slate-950/40 text-slate-450 hover:text-slate-200'
                 }`}
               >
                 <Landmark className="h-4 w-4" />
@@ -1893,7 +1893,7 @@ export default function Dashboard() {
                 className={`py-3 px-4 rounded-xl text-sm font-bold border transition-all flex items-center justify-center space-x-2 cursor-pointer ${
                   depositMethod === 'usdt'
                     ? 'border-emerald-500 bg-emerald-500/10 text-white shadow-[0_0_10px_rgba(16,185,129,0.15)]'
-                    : 'border-slate-850 bg-slate-950/40 text-slate-450 hover:text-slate-200'
+                    : 'border-slate-800 bg-slate-950/40 text-slate-450 hover:text-slate-200'
                 }`}
               >
                 <Coins className="h-4 w-4 text-emerald-400" />
@@ -2004,7 +2004,7 @@ export default function Dashboard() {
 
                 <form onSubmit={handleDepositSubmit} className="space-y-5">
                   {depError && (
-                    <div className="p-3.5 bg-red-955/30 border border-red-500/20 text-red-400 text-xs rounded-xl animate-fade-in font-bold">
+                    <div className="p-3.5 bg-red-950/30 border border-red-500/20 text-red-400 text-xs rounded-xl animate-fade-in font-bold">
                       {depError}
                     </div>
                   )}
@@ -2024,7 +2024,7 @@ export default function Dashboard() {
                         className={`py-3 px-4 rounded-xl text-sm font-bold border transition-all flex items-center justify-center space-x-2 cursor-pointer ${
                           depProvider === 'moncash' 
                             ? 'border-red-500 bg-red-500/10 text-red-400 shadow-[0_0_10px_rgba(239,68,68,0.1)]' 
-                            : 'border-slate-850 bg-slate-950/40 text-slate-400 hover:text-slate-200'
+                            : 'border-slate-800 bg-slate-950/40 text-slate-400 hover:text-slate-200'
                         }`}
                       >
                         <span className={`h-2 w-2 rounded-full ${depProvider === 'moncash' ? 'bg-red-400' : 'bg-slate-600'}`}></span>
@@ -2036,7 +2036,7 @@ export default function Dashboard() {
                         className={`py-3 px-4 rounded-xl text-sm font-bold border transition-all flex items-center justify-center space-x-2 cursor-pointer ${
                           depProvider === 'natcash' 
                             ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.1)]' 
-                            : 'border-slate-850 bg-slate-950/40 text-slate-400 hover:text-slate-200'
+                            : 'border-slate-800 bg-slate-950/40 text-slate-400 hover:text-slate-200'
                         }`}
                       >
                         <span className={`h-2 w-2 rounded-full ${depProvider === 'natcash' ? 'bg-emerald-400' : 'bg-slate-600'}`}></span>
@@ -2057,7 +2057,7 @@ export default function Dashboard() {
                         className="block w-full px-4 py-3 bg-slate-950/70 border border-slate-800 rounded-xl text-sm text-slate-100 font-semibold focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 placeholder-slate-700 font-bold"
                         required
                       />
-                      <span className="absolute right-4 text-xs font-bold text-slate-505 pointer-events-none">HTG</span>
+                      <span className="absolute right-4 text-xs font-bold text-slate-500 pointer-events-none">HTG</span>
                     </div>
                     
                     {/* Preset Chips */}
@@ -2070,7 +2070,7 @@ export default function Dashboard() {
                             const current = parseFloat(prev) || 0;
                             return (current + val).toString();
                           })}
-                          className="bg-slate-955/40 hover:bg-slate-900 border border-slate-855 hover:border-slate-700 text-slate-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer active:scale-95"
+                          className="bg-slate-950/40 hover:bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer active:scale-95"
                         >
                           +{val.toLocaleString('fr-FR')} HTG
                         </button>
@@ -2172,7 +2172,7 @@ export default function Dashboard() {
                         <button
                           type="button"
                           onClick={() => setDepFile(null)}
-                          className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-955/20 hover:bg-red-955/40 border border-red-900/30 hover:border-red-505 text-red-400 transition-all cursor-pointer"
+                          className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-950/20 hover:bg-red-950/40 border border-red-900/30 hover:border-red-505 text-red-400 transition-all cursor-pointer"
                         >
                           <span>Retirer</span>
                         </button>
@@ -2204,7 +2204,7 @@ export default function Dashboard() {
               // USDT BEP20 Deposit Interface
               <div className="space-y-6 animate-fade-in">
                 {/* Warnings */}
-                <div className="p-4 bg-amber-955/20 border border-amber-500/25 rounded-2xl flex items-start space-x-3 text-amber-350 text-xs">
+                <div className="p-4 bg-amber-950/20 border border-amber-500/25 rounded-2xl flex items-start space-x-3 text-amber-350 text-xs">
                   <ShieldAlert className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
                   <div>
                     <p className="font-bold uppercase tracking-wider text-amber-400">Réseau BNB Smart Chain (BEP20) Uniquement</p>
@@ -2214,7 +2214,7 @@ export default function Dashboard() {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
                   {/* QR Code Column */}
-                  <div className="flex flex-col items-center justify-center p-6 bg-slate-955/40 border border-slate-900 rounded-3xl text-center gap-3">
+                  <div className="flex flex-col items-center justify-center p-6 bg-slate-950/40 border border-slate-900 rounded-3xl text-center gap-3">
                     <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">QR Code de Dépôt</span>
                     {usdtStats?.configs?.adminWallet ? (
                       <div className="bg-white p-2 rounded-2xl border border-slate-200">
@@ -2225,7 +2225,7 @@ export default function Dashboard() {
                         />
                       </div>
                     ) : (
-                      <div className="w-36 h-36 bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-center text-slate-550 animate-pulse text-[10px]">
+                      <div className="w-36 h-36 bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-center text-slate-500 animate-pulse text-[10px]">
                         Chargement...
                       </div>
                     )}
@@ -2273,11 +2273,11 @@ export default function Dashboard() {
                       </div>
 
                       <div className="grid grid-cols-2 gap-4 text-xs">
-                        <div className="p-3 bg-slate-955/50 rounded-xl border border-slate-900 flex flex-col">
+                        <div className="p-3 bg-slate-950/50 rounded-xl border border-slate-900 flex flex-col">
                           <span className="text-slate-500 font-semibold uppercase tracking-wider text-[9px]">Dépôt Minimum :</span>
                           <span className="font-black text-white mt-0.5">{usdtStats?.configs?.minDep || 5} USDT</span>
                         </div>
-                        <div className="p-3 bg-slate-955/50 rounded-xl border border-slate-900 flex flex-col">
+                        <div className="p-3 bg-slate-950/50 rounded-xl border border-slate-900 flex flex-col">
                           <span className="text-slate-500 font-semibold uppercase tracking-wider text-[9px]">Réseau :</span>
                           <span className="font-black text-white mt-0.5">BEP20 (BSC)</span>
                         </div>
@@ -2287,14 +2287,14 @@ export default function Dashboard() {
                 </div>
 
                 {/* Tx Hash form */}
-                <form onSubmit={handleUsdtDepositSubmit} className="glass-panel p-5 rounded-2xl border border-slate-850 space-y-4">
+                <form onSubmit={handleUsdtDepositSubmit} className="glass-panel p-5 rounded-2xl border border-slate-800 space-y-4">
                   <h4 className="font-display font-black text-sm text-white">Vérification Automatique de la Blockchain</h4>
                   <p className="text-xs text-slate-400 leading-normal">
                     Une fois votre transfert USDT BEP20 effectué, collez le <strong>Transaction Hash (Tx Hash)</strong> de la transaction ci-dessous. Notre scanner interrogera la blockchain BSC pour créditer votre compte instantanément.
                   </p>
 
                   {usdtDepError && (
-                    <div className="p-3.5 bg-red-955/30 border border-red-500/20 text-red-400 text-xs rounded-xl font-bold animate-shake">
+                    <div className="p-3.5 bg-red-950/30 border border-red-500/20 text-red-400 text-xs rounded-xl font-bold animate-shake">
                       {usdtDepError}
                     </div>
                   )}
@@ -2378,7 +2378,7 @@ export default function Dashboard() {
                     className={`py-3 px-4 rounded-xl text-sm font-bold border transition-all flex items-center justify-center space-x-2 cursor-pointer ${
                       wdProvider === 'moncash' 
                         ? 'border-red-500 bg-red-500/10 text-red-400 shadow-[0_0_10px_rgba(239,68,68,0.1)]' 
-                        : 'border-slate-850 bg-slate-950/40 text-slate-400 hover:text-slate-200'
+                        : 'border-slate-800 bg-slate-950/40 text-slate-400 hover:text-slate-200'
                     }`}
                   >
                     <span className={`h-2 w-2 rounded-full ${wdProvider === 'moncash' ? 'bg-red-500' : 'bg-slate-600'}`}></span>
@@ -2390,7 +2390,7 @@ export default function Dashboard() {
                     className={`py-3 px-4 rounded-xl text-sm font-bold border transition-all flex items-center justify-center space-x-2 cursor-pointer ${
                       wdProvider === 'natcash' 
                         ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.1)]' 
-                        : 'border-slate-850 bg-slate-950/40 text-slate-400 hover:text-slate-200'
+                        : 'border-slate-800 bg-slate-950/40 text-slate-400 hover:text-slate-200'
                     }`}
                   >
                     <span className={`h-2 w-2 rounded-full ${wdProvider === 'natcash' ? 'bg-emerald-400' : 'bg-slate-600'}`}></span>
@@ -2430,7 +2430,7 @@ export default function Dashboard() {
                       key={val}
                       type="button"
                       onClick={() => setWdAmount(val.toString())}
-                      className="bg-slate-955/40 hover:bg-slate-900 border border-slate-850 hover:border-slate-700 text-slate-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer active:scale-95"
+                      className="bg-slate-950/40 hover:bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer active:scale-95"
                     >
                       {val.toLocaleString('fr-FR')} HTG
                     </button>
@@ -2453,10 +2453,10 @@ export default function Dashboard() {
 
               {/* Automatic Fee Calculation display */}
               {wdAmount && parseFloat(wdAmount) >= 100 && (
-                <div className="p-4 bg-slate-950/60 rounded-xl border border-slate-850 space-y-2.5 text-xs animate-slide-up">
+                <div className="p-4 bg-slate-950/60 rounded-xl border border-slate-800 space-y-2.5 text-xs animate-slide-up">
                   <div className="flex justify-between">
                     <span className="text-slate-500">Montant demandé :</span>
-                    <span className="font-mono text-slate-350 font-bold">{parseFloat(wdAmount).toFixed(2)} HTG</span>
+                    <span className="font-mono text-slate-300 font-bold">{parseFloat(wdAmount).toFixed(2)} HTG</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-slate-500">Frais opérationnels (10%) :</span>
@@ -2577,7 +2577,7 @@ export default function Dashboard() {
                             </td>
                             <td className="py-3">
                               <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase ${
-                                tx.type === 'deposit' ? 'bg-emerald-950/60 border border-emerald-500/20 text-emerald-400' : 'bg-red-955/60 border border-red-500/20 text-red-400'
+                                tx.type === 'deposit' ? 'bg-emerald-950/60 border border-emerald-500/20 text-emerald-400' : 'bg-red-950/60 border border-red-500/20 text-red-400'
                               }`}>
                                 {tx.type === 'deposit' ? 'Dépôt' : 'Retrait'}
                               </span>
@@ -2589,7 +2589,7 @@ export default function Dashboard() {
                                     href={`https://bscscan.com/tx/${tx.tx_hash}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-emerald-455 hover:underline font-bold"
+                                    className="text-emerald-500 hover:underline font-bold"
                                   >
                                     USDT BEP20 (Blockchain)
                                   </a>
@@ -2598,7 +2598,7 @@ export default function Dashboard() {
                                     href={`https://bscscan.com/address/${tx.phone_number}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-emerald-455 hover:underline font-mono"
+                                    className="text-emerald-500 hover:underline font-mono"
                                     title={tx.phone_number}
                                   >
                                     Vers {tx.phone_number.substring(0, 6)}...{tx.phone_number.substring(tx.phone_number.length - 4)}
@@ -2619,7 +2619,7 @@ export default function Dashboard() {
                             </td>
                             <td className="py-3 text-right">
                               <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                tx.status === 'approved' ? 'bg-emerald-500/10 text-emerald-455' :
+                                tx.status === 'approved' ? 'bg-emerald-500/10 text-emerald-500' :
                                 tx.status === 'rejected' ? 'bg-red-500/10 text-red-400' :
                                 'bg-amber-500/10 text-amber-400'
                               }`}>
@@ -2851,7 +2851,7 @@ export default function Dashboard() {
                   <div className="space-y-2 pt-2">
                     <div className="flex justify-between text-xs font-semibold">
                       <span className="text-slate-400">Progression XP</span>
-                      <span className="font-mono text-slate-350">
+                      <span className="font-mono text-slate-300">
                         {rewardsStats.nextXpRequired 
                           ? `${rewardsStats.xp.toFixed(1)} / ${rewardsStats.nextXpRequired} XP` 
                           : `${rewardsStats.xp.toFixed(1)} XP (Niveau Max)`}
@@ -2897,7 +2897,7 @@ export default function Dashboard() {
                     </div>
                     
                     {/* Status Badge */}
-                    <div className="flex items-center space-x-1.5 bg-slate-950 border border-slate-850 py-1 px-2.5 rounded-full">
+                    <div className="flex items-center space-x-1.5 bg-slate-950 border border-slate-800 py-1 px-2.5 rounded-full">
                       <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping"></span>
                       <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wide">Sécurisé</span>
                     </div>
@@ -2976,7 +2976,7 @@ export default function Dashboard() {
                     </div>
                   </div>
 
-                  <div className="bg-slate-950/50 rounded-xl p-3 border border-slate-850 text-[10px] text-slate-500 leading-relaxed">
+                  <div className="bg-slate-950/50 rounded-xl p-3 border border-slate-800 text-[10px] text-slate-500 leading-relaxed">
                     Taux d'échange officiel : <strong>10 000 KET = 1 HTG</strong>. La conversion est instantanée et s'ajoute à votre solde HTG disponible.
                   </div>
                 </div>
@@ -2986,7 +2986,7 @@ export default function Dashboard() {
                   
                   {/* Lock Overlay if criteria are not met */}
                   {(rewardsStats.level < 5 || rewardsStats.netLoss < 10000 || rewardsStats.daysRemaining > 0) && (
-                    <div className="absolute inset-0 bg-slate-955/95 backdrop-blur-md rounded-3xl flex flex-col items-center justify-center p-6 z-10 text-center">
+                    <div className="absolute inset-0 bg-slate-950/95 backdrop-blur-md rounded-3xl flex flex-col items-center justify-center p-6 z-10 text-center">
                       <div className="bg-slate-900 border border-slate-800 p-3 rounded-full text-pink-400 mb-3 shadow-lg">
                         <ShieldAlert className="h-8 w-8" />
                       </div>
@@ -3004,7 +3004,7 @@ export default function Dashboard() {
 
                   <div className="space-y-4">
                     {rewardsError && (
-                      <div className="p-3 bg-red-955/30 border border-red-500/20 text-red-400 text-xs rounded-xl font-bold animate-fade-in">
+                      <div className="p-3 bg-red-950/30 border border-red-500/20 text-red-400 text-xs rounded-xl font-bold animate-fade-in">
                         {rewardsError}
                       </div>
                     )}
@@ -3151,13 +3151,13 @@ export default function Dashboard() {
                 <div className="space-y-4">
                   <div className="p-5 bg-slate-950/60 rounded-2xl border border-slate-900 space-y-3">
                     <div>
-                      <span className="text-[10px] text-slate-550 uppercase tracking-wider font-bold">Solde USDT disponible :</span>
+                      <span className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Solde USDT disponible :</span>
                       <span className="font-mono text-2xl font-black text-emerald-400 block mt-0.5">
                         {(user?.usdt_balance || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 6 })} USDT
                       </span>
                     </div>
                     <div className="border-t border-slate-900 pt-3">
-                      <span className="text-[10px] text-slate-550 uppercase tracking-wider font-bold">Taux de conversion actuel :</span>
+                      <span className="text-[10px] text-slate-500 uppercase tracking-wider font-bold">Taux de conversion actuel :</span>
                       <span className="text-sm font-bold text-white block mt-0.5">
                         1 USDT = {usdtStats?.configs?.rate || 130} HTG
                       </span>
@@ -3172,7 +3172,7 @@ export default function Dashboard() {
                 {/* Form panel */}
                 <form onSubmit={handleUsdtExchangeSubmit} className="space-y-4">
                   {usdtExError && (
-                    <div className="p-3 bg-red-955/30 border border-red-500/20 text-red-400 text-xs rounded-xl font-bold animate-shake">
+                    <div className="p-3 bg-red-950/30 border border-red-500/20 text-red-400 text-xs rounded-xl font-bold animate-shake">
                       {usdtExError}
                     </div>
                   )}
@@ -3181,14 +3181,13 @@ export default function Dashboard() {
                       {usdtExSuccess}
                     </div>
                   )}
-
                   <div className="flex flex-col gap-1.5">
                     <div className="flex justify-between items-center">
                       <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Montant à convertir (USDT)</label>
                       <button
                         type="button"
                         onClick={() => setUsdtExAmount((user?.usdt_balance ?? 0).toString())}
-                        className="text-[10px] font-bold text-emerald-455 hover:text-emerald-400 uppercase cursor-pointer"
+                        className="text-[10px] font-bold text-emerald-500 hover:text-emerald-400 uppercase cursor-pointer"
                       >
                         Tout convertir
                       </button>
@@ -3200,10 +3199,10 @@ export default function Dashboard() {
                         placeholder="Ex: 10"
                         value={usdtExAmount}
                         onChange={(e) => setUsdtExAmount(e.target.value)}
-                        className="block w-full px-4 py-3.5 bg-slate-955/70 border border-slate-800 rounded-xl text-sm font-mono text-slate-200 focus:outline-none focus:border-emerald-500 font-bold"
+                        className="block w-full px-4 py-3.5 bg-slate-900 border border-slate-800 rounded-xl text-sm font-mono text-slate-100 focus:outline-none focus:border-emerald-500 font-bold"
                         required
                       />
-                      <span className="absolute right-4 text-xs font-bold text-slate-505 pointer-events-none">USDT</span>
+                      <span className="absolute right-4 text-xs font-bold text-slate-500 pointer-events-none">USDT</span>
                     </div>
                   </div>
 
@@ -3240,7 +3239,7 @@ export default function Dashboard() {
             {/* History panel */}
             <div className="glass-panel p-6 rounded-3xl space-y-4">
               <h3 className="font-display font-black text-lg text-white flex items-center space-x-2">
-                <History className="h-5 w-5 text-emerald-455" />
+                <History className="h-5 w-5 text-emerald-500" />
                 <span>Historique des Conversions USDT</span>
               </h3>
 
@@ -3327,7 +3326,7 @@ export default function Dashboard() {
                   🎁 BONUS DE DÉPÔT ACTIF
                 </h4>
               </div>
-              <span className="text-[9px] font-black text-indigo-400 bg-indigo-500/15 px-2 py-0.5 rounded-md border border-indigo-550/20 animate-pulse">
+              <span className="text-[9px] font-black text-indigo-400 bg-indigo-500/15 px-2 py-0.5 rounded-md border border-indigo-500/20 animate-pulse">
                 ACTIVE
               </span>
             </div>
@@ -3358,7 +3357,7 @@ export default function Dashboard() {
               </div>
 
               {/* Progress bar */}
-              <div className="h-2 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-850">
+              <div className="h-2 w-full bg-slate-950 rounded-full overflow-hidden border border-slate-800">
                 <div
                   className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all duration-300"
                   style={{
@@ -3369,7 +3368,7 @@ export default function Dashboard() {
 
               <div className="flex justify-between items-center text-[9px] text-slate-500 pt-0.5">
                 <span>{Math.min(100, Math.round(((user?.wager_requirement_progress ?? 0) / (user?.wager_requirement_required ?? 1)) * 100))}% complété</span>
-                <span className="flex items-center text-slate-400 font-semibold bg-slate-950 px-2 py-0.5 rounded-full border border-slate-850">
+                <span className="flex items-center text-slate-400 font-semibold bg-slate-950 px-2 py-0.5 rounded-full border border-slate-800">
                   <Clock className="h-3 w-3 mr-1" />
                   {user?.bonus_expires_at ? (() => {
                     const diffMs = new Date(user.bonus_expires_at) - new Date();
@@ -3475,7 +3474,7 @@ export default function Dashboard() {
             <button
               type="button"
               onClick={() => setShowBonusPromoModal(false)}
-              className="absolute top-4 right-4 sm:top-6 sm:right-6 p-2 rounded-xl bg-slate-800/40 hover:bg-slate-850 hover:text-white border border-slate-700/50 hover:border-slate-500 text-slate-400 transition-all cursor-pointer"
+              className="absolute top-4 right-4 sm:top-6 sm:right-6 p-2 rounded-xl bg-slate-800/40 hover:bg-slate-800 hover:text-white border border-slate-700/50 hover:border-slate-500 text-slate-400 transition-all cursor-pointer"
             >
               <X className="h-5 w-5" />
             </button>
@@ -3502,7 +3501,7 @@ export default function Dashboard() {
               <div className="grid md:grid-cols-2 gap-5 mt-4">
                 
                 {/* Option A Box */}
-                <div className="bg-slate-950/60 border border-slate-850 p-5 rounded-2xl flex flex-col justify-between hover:border-indigo-500/20 transition-all">
+                <div className="bg-slate-950/60 border border-slate-800 p-5 rounded-2xl flex flex-col justify-between hover:border-indigo-500/20 transition-all">
                   <div>
                     <div className="flex items-center space-x-2.5 mb-3">
                       <div className="h-7 w-7 rounded-lg bg-indigo-500/10 border border-indigo-500/25 flex items-center justify-center font-bold text-indigo-400 text-sm">A</div>
@@ -3530,14 +3529,14 @@ export default function Dashboard() {
                       <span><strong>Validité :</strong> Expire après 7 jours si non complété.</span>
                     </div>
                     <div className="flex items-start space-x-2 text-[10px] text-slate-500">
-                      <ShieldAlert className="h-3.5 w-3.5 text-pink-505/80 shrink-0 mt-0.5" />
+                      <ShieldAlert className="h-3.5 w-3.5 text-pink-500/80 shrink-0 mt-0.5" />
                       <span><strong>Wager :</strong> Condition de mise de 10x le montant du bonus. Les retraits de solde sont indisponibles tant que le wager est actif.</span>
                     </div>
                   </div>
                 </div>
 
                 {/* Option B Box */}
-                <div className="bg-slate-950/60 border border-slate-850 p-5 rounded-2xl flex flex-col justify-between hover:border-purple-500/20 transition-all">
+                <div className="bg-slate-950/60 border border-slate-800 p-5 rounded-2xl flex flex-col justify-between hover:border-purple-500/20 transition-all">
                   <div>
                     <div className="flex items-center space-x-2.5 mb-3">
                       <div className="h-7 w-7 rounded-lg bg-purple-500/10 border border-purple-500/25 flex items-center justify-center font-bold text-purple-400 text-sm">B</div>
@@ -3588,7 +3587,7 @@ export default function Dashboard() {
               <button
                 type="button"
                 onClick={() => setShowBonusPromoModal(false)}
-                className="px-6 py-2.5 bg-indigo-650 hover:bg-indigo-550 active:scale-95 text-white font-bold text-xs rounded-xl shadow-lg shadow-indigo-600/10 transition-all cursor-pointer"
+                className="px-6 py-2.5 bg-indigo-650 hover:bg-indigo-500 active:scale-95 text-white font-bold text-xs rounded-xl shadow-lg shadow-indigo-600/10 transition-all cursor-pointer"
               >
                 J'ai compris
               </button>

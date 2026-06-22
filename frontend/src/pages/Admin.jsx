@@ -540,7 +540,7 @@ export default function Admin() {
                           {tx.type === 'deposit' ? 'Dépôt' : 'Retrait'}
                         </span>
                       </td>
-                      <td className="py-4 text-slate-350 font-medium">
+                      <td className="py-4 text-slate-300 font-medium">
                         {tx.type === 'deposit' 
                           ? (tx.provider === 'usdt_bep20' ? 'USDT BEP20' : tx.provider.toUpperCase()) 
                           : `${tx.provider ? (tx.provider === 'usdt_bep20' ? 'USDT BEP20' : tx.provider.toUpperCase()) : 'MONCASH'} (Vers ${
@@ -716,7 +716,7 @@ export default function Admin() {
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {globalSettings.map(setting => (
-            <div key={setting.key} className="bg-slate-955/40 p-5 rounded-2xl border border-slate-900 flex flex-col justify-between gap-4">
+            <div key={setting.key} className="bg-slate-950/40 p-5 rounded-2xl border border-slate-900 flex flex-col justify-between gap-4">
               <div>
                 <span className="text-xs font-black text-indigo-400 uppercase tracking-widest block font-display">
                   {setting.key.replace(/_/g, ' ')}
@@ -846,7 +846,7 @@ export default function Admin() {
       )}
       {/* Setting Editor Modal */}
       {editingSetting && (
-        <div className="fixed inset-0 bg-slate-955/95 flex items-center justify-center p-4 z-50 backdrop-blur-md">
+        <div className="fixed inset-0 bg-slate-950/95 flex items-center justify-center p-4 z-50 backdrop-blur-md">
           <form onSubmit={handleSaveSetting} className="glass-panel p-6 rounded-3xl max-w-lg w-full relative space-y-4">
             <button
               type="button"
@@ -865,7 +865,7 @@ export default function Admin() {
                   <select
                     value={editingSetting.value}
                     onChange={(e) => setEditingSetting({ ...editingSetting, value: e.target.value })}
-                    className="bg-slate-955 border border-slate-850 text-white text-sm rounded-xl px-4 py-2 w-full focus:outline-none focus:border-indigo-500 font-bold"
+                    className="bg-slate-950 border border-slate-800 text-white text-sm rounded-xl px-4 py-2 w-full focus:outline-none focus:border-indigo-500 font-bold"
                   >
                     <option value="true">Activer (true)</option>
                     <option value="false">Désactiver (false)</option>
@@ -876,7 +876,7 @@ export default function Admin() {
                     required
                     value={editingSetting.value}
                     onChange={(e) => setEditingSetting({ ...editingSetting, value: e.target.value })}
-                    className="bg-slate-955 border border-slate-850 text-white text-sm rounded-xl px-4 py-2 w-full focus:outline-none focus:border-indigo-500 font-mono font-bold"
+                    className="bg-slate-950 border border-slate-800 text-white text-sm rounded-xl px-4 py-2 w-full focus:outline-none focus:border-indigo-500 font-mono font-bold"
                   />
                 )}
               </div>

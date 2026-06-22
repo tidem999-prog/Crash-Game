@@ -19,6 +19,16 @@
   }
 }
 
+/* Style autofilled inputs to match our dark theme, preventing white-on-white text */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active {
+  -webkit-text-fill-color: #f8fafc !important;
+  transition: background-color 5000s ease-in-out 0s;
+  box-shadow: inset 0 0 20px 20px #090d16 !important;
+}
+
 /* Prevent auto-zoom on form inputs/select/textarea on mobile screens in iOS Safari */
 @media (max-width: 768px) {
   input, select, textarea {

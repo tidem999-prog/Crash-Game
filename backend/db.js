@@ -469,7 +469,8 @@ const initializeDatabase = async () => {
       { key: 'usdt_admin_wallet', value: '0x0000000000000000000000000000000000000000', desc: 'Adresse du portefeuille principal USDT BEP20 de l\'administrateur' },
       { key: 'usdt_confirmations_required', value: '3', desc: 'Nombre de confirmations requises sur la blockchain' },
       { key: 'usdt_deposits_enabled', value: 'true', desc: 'Activer ou désactiver les dépôts USDT' },
-      { key: 'usdt_withdrawals_enabled', value: 'true', desc: 'Activer ou désactiver les retraits USDT' }
+      { key: 'usdt_withdrawals_enabled', value: 'true', desc: 'Activer ou désactiver les retraits USDT' },
+      { key: 'ls_nogoal_multiplier', value: '1.20', desc: 'Multiplicateur de gain pour le pari PAS DE BUT dans Last Second (ex: 1.20)' }
     ];
 
     for (const s of seedSettings) {

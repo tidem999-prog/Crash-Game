@@ -6,6 +6,17 @@ const crypto = require('crypto');
 
 let io;
 
+// Helper to load settings from DB
+const getSetting = async (key, defaultValue) => {
+  try {
+    const res = await query("SELECT value FROM global_settings WHERE key = $1", [key]);
+    return res.rows.length > 0 ? res.rows[0].value : defaultValue;
+  } catch (err) {
+    console.error(`Error loading setting '${key}':`, err);
+    return defaultValue;
+  }
+};
+
 // Simulated match state
 let currentMatch = {
   id: null,
@@ -396,6 +407,7 @@ const handleNoGoalEnd = async () => {
   console.log(`LastSecond: Round ended with NO GOAL at ${finalMultiplier}x`);
 
   try {
+    const nogoalMultiplier = parseFloat(await getSetting('ls_nogoal_multiplier', '1.20'));
     await query('BEGIN');
 
     // Update round status
@@ -410,8 +422,8 @@ const handleNoGoalEnd = async () => {
       const isKet = bet.currency === 'KET';
 
       if (bet.bet_type === 'no_goal') {
-        // No Goal bet holds until the end -> WON at the final multiplier
-        const payout = parseFloat((bet.amount * finalMultiplier).toFixed(2));
+        // No Goal bet holds until the end -> WON at the configured multiplier
+        const payout = parseFloat((bet.amount * nogoalMultiplier).toFixed(2));
         const profit = payout - bet.amount;
 
         // Credit user balance
@@ -421,10 +433,10 @@ const handleNoGoalEnd = async () => {
         await query(
           `INSERT INTO ls_bets (round_id, user_id, amount, bet_type, auto_cashout, cashed_out_at, profit, status, currency, funded_by_bonus) 
            VALUES ($1, $2, $3, 'no_goal', null, $4, $5, 'won', $6, $7)`,
-          [currentRound.id, userId, bet.amount, finalMultiplier, profit, bet.currency, !!bet.fundedByBonus]
+          [currentRound.id, userId, bet.amount, nogoalMultiplier, profit, bet.currency, !!bet.fundedByBonus]
         );
 
-        activePlayersStore.cashoutPlayer(userId, 'lastsecond', payout, finalMultiplier);
+        activePlayersStore.cashoutPlayer(userId, 'lastsecond', payout, nogoalMultiplier);
 
         // Process progression
         await processBetSettlement(userId, bet.amount, payout, bet.currency, 'lastsecond');
@@ -437,7 +449,7 @@ const handleNoGoalEnd = async () => {
           io.to(bet.socketId).emit('lastsecond:bet:result', {
             roundId: currentRound.id,
             status: 'won',
-            multiplier: finalMultiplier,
+            multiplier: nogoalMultiplier,
             profit,
             newBalance: finalNewBalance,
             currency: bet.currency
@@ -476,7 +488,7 @@ const handleNoGoalEnd = async () => {
       if (bet.currency === 'HTG' || !bet.currency) {
         let payout = 0;
         if (bet.bet_type === 'no_goal') {
-          payout = parseFloat((bet.amount * finalMultiplier).toFixed(2));
+          payout = parseFloat((bet.amount * nogoalMultiplier).toFixed(2));
         }
         roundNetRevenue += (parseFloat(bet.amount) - payout);
       }

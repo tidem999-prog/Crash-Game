@@ -51,6 +51,23 @@ export default function LastSecondGame({ socket, onBackToLobby, addNotification 
   const phaseRef = useRef('idle'); // 'idle', 'dribbling', 'scoring', 'missing'
   const socketIdRef = useRef(null);
 
+  // Refs to keep WebSocket listeners from unbinding/rebinding constantly
+  const betAmountRef = useRef(betAmount);
+  const betTypeRef = useRef(betType);
+  const myBetRef = useRef(myBet);
+  const userRef = useRef(user);
+  const addNotificationRef = useRef(addNotification);
+  const updateBalanceRef = useRef(updateBalance);
+  const refreshBalanceRef = useRef(refreshBalance);
+
+  useEffect(() => { betAmountRef.current = betAmount; }, [betAmount]);
+  useEffect(() => { betTypeRef.current = betType; }, [betType]);
+  useEffect(() => { myBetRef.current = myBet; }, [myBet]);
+  useEffect(() => { userRef.current = user; }, [user]);
+  useEffect(() => { addNotificationRef.current = addNotification; }, [addNotification]);
+  useEffect(() => { updateBalanceRef.current = updateBalance; }, [updateBalance]);
+  useEffect(() => { refreshBalanceRef.current = refreshBalance; }, [refreshBalance]);
+
   // Match clock formatting helper
   const getFormattedMatchTime = () => {
     if (round.status !== 'ticking') {
@@ -77,6 +94,7 @@ export default function LastSecondGame({ socket, onBackToLobby, addNotification 
 
     // Listen to round state changes
     socket.on('lastsecond:round:state', (data) => {
+      console.log("LastSecond: Round State received:", data);
       setRound(prev => {
         // If a new round is opened, reset all active betting states
         if (data.roundId !== prev.roundId) {
@@ -97,6 +115,7 @@ export default function LastSecondGame({ socket, onBackToLobby, addNotification 
 
     // Listen to live ticks
     socket.on('lastsecond:round:tick', (data) => {
+      console.log("LastSecond: Live Tick received:", data);
       setTickingMultiplier(data.multiplier);
       setRound(prev => ({
         ...prev,
@@ -113,7 +132,9 @@ export default function LastSecondGame({ socket, onBackToLobby, addNotification 
       setTimeout(() => {
         setShowResultOverlay(true);
       }, 2000);
-      refreshBalance();
+      if (refreshBalanceRef.current) {
+        refreshBalanceRef.current();
+      }
     });
 
     // Round ended with NO GOAL
@@ -124,39 +145,45 @@ export default function LastSecondGame({ socket, onBackToLobby, addNotification 
       setTimeout(() => {
         setShowResultOverlay(true);
       }, 2000);
-      refreshBalance();
+      if (refreshBalanceRef.current) {
+        refreshBalanceRef.current();
+      }
     });
 
     // Bet confirmed on server
     socket.on('lastsecond:bet:confirmed', (data) => {
       setMyBet({
-        amount: parseFloat(betAmount),
-        bet_type: betType,
+        amount: parseFloat(betAmountRef.current),
+        bet_type: betTypeRef.current,
         status: 'placed'
       });
       setBetError('');
-      if (addNotification) {
-        addNotification(`Pari enregistré sur ${betType === 'goal' ? 'BUT' : 'PAS DE BUT'} !`, 'success');
+      if (addNotificationRef.current) {
+        addNotificationRef.current(`Pari enregistré sur ${betTypeRef.current === 'goal' ? 'BUT' : 'PAS DE BUT'} !`, 'success');
       }
     });
 
     socket.on('lastsecond:bet_success', (data) => {
-      updateBalance(data.newBalance, user?.active_currency || 'HTG');
+      if (updateBalanceRef.current) {
+        updateBalanceRef.current(data.newBalance, userRef.current?.active_currency || 'HTG');
+      }
     });
 
     // Bet result (won/lost)
     socket.on('lastsecond:bet:result', (data) => {
       if (data.status === 'won') {
         setMyBet(prev => prev ? { ...prev, status: 'won', payout: data.profit + prev.amount, multiplier: data.multiplier } : null);
-        setCashoutSuccess({ payout: data.profit + (myBet?.amount || parseFloat(betAmount)), multiplier: data.multiplier });
-        updateBalance(data.newBalance, user?.active_currency || 'HTG');
-        if (addNotification) {
-          addNotification(`Gagné ! +${data.profit.toFixed(0)} ${data.currency} (${data.multiplier}x)`, 'success');
+        setCashoutSuccess({ payout: data.profit + (myBetRef.current?.amount || parseFloat(betAmountRef.current)), multiplier: data.multiplier });
+        if (updateBalanceRef.current) {
+          updateBalanceRef.current(data.newBalance, userRef.current?.active_currency || 'HTG');
+        }
+        if (addNotificationRef.current) {
+          addNotificationRef.current(`Gagné ! +${data.profit.toFixed(0)} ${data.currency} (${data.multiplier}x)`, 'success');
         }
       } else {
         setMyBet(prev => prev ? { ...prev, status: 'lost' } : null);
-        if (addNotification) {
-          addNotification(`Pari perdu ! -${betAmount} ${data.currency}`, 'danger');
+        if (addNotificationRef.current) {
+          addNotificationRef.current(`Pari perdu ! -${betAmountRef.current} ${data.currency}`, 'danger');
         }
       }
     });
@@ -165,23 +192,23 @@ export default function LastSecondGame({ socket, onBackToLobby, addNotification 
     socket.on('lastsecond:bet:cashout:confirm', (data) => {
       setMyBet(prev => prev ? { ...prev, status: 'cashed_out', cashed_out_at: data.multiplier } : null);
       setCashoutSuccess({ payout: data.potentialWin, multiplier: data.multiplier });
-      if (addNotification) {
-        addNotification(`Encaissé à ${data.multiplier}x ! En attente du but...`, 'success');
+      if (addNotificationRef.current) {
+        addNotificationRef.current(`Encaissé à ${data.multiplier}x ! En attente du but...`, 'success');
       }
     });
 
     socket.on('lastsecond:bet:error', (data) => {
       setBetError(data.message);
-      if (addNotification) {
-        addNotification(data.message, 'danger');
+      if (addNotificationRef.current) {
+        addNotificationRef.current(data.message, 'danger');
       }
     });
 
     // Trigger standard toast when another player wagers
     socket.on('lastsecond:player_placed_bet', (data) => {
-      const userPrefix = user?.email ? user.email.split('@')[0] : '';
-      if (data.email !== userPrefix && addNotification) {
-        addNotification(
+      const userPrefix = userRef.current?.email ? userRef.current.email.split('@')[0] : '';
+      if (data.email !== userPrefix && addNotificationRef.current) {
+        addNotificationRef.current(
           `${data.email} a misé ${data.amount} ${data.currency} sur ${data.bet_type === 'goal' ? 'BUT' : 'PAS DE BUT'}`, 
           'info'
         );
@@ -190,9 +217,9 @@ export default function LastSecondGame({ socket, onBackToLobby, addNotification 
 
     // Trigger standard toast when another player cashes out
     socket.on('lastsecond:player_cashed_out', (data) => {
-      const userPrefix = user?.email ? user.email.split('@')[0] : '';
-      if (data.email !== userPrefix && addNotification) {
-        addNotification(
+      const userPrefix = userRef.current?.email ? userRef.current.email.split('@')[0] : '';
+      if (data.email !== userPrefix && addNotificationRef.current) {
+        addNotificationRef.current(
           `${data.email} a encaissé +${data.payout.toFixed(0)} ${data.currency} (${data.multiplier.toFixed(2)}x)`, 
           'info'
         );
@@ -213,7 +240,7 @@ export default function LastSecondGame({ socket, onBackToLobby, addNotification 
       socket.off('lastsecond:player_placed_bet');
       socket.off('lastsecond:player_cashed_out');
     };
-  }, [socket, betAmount, betType, myBet, user, addNotification, updateBalance, refreshBalance]);
+  }, [socket]);
 
   // Adjust default wagers depending on active currency
   useEffect(() => {

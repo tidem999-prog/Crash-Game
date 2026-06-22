@@ -2344,150 +2344,282 @@ export default function Dashboard() {
           <div className="glass-panel p-6 sm:p-8 rounded-3xl space-y-6 max-w-2xl mx-auto">
             <div className="text-center md:text-left">
               <h3 className="font-display font-black text-2xl text-white">Demande de Retrait</h3>
-              <p className="text-sm text-slate-400 mt-1">Retirez vos HTG vers votre compte MonCash ou NatCash. Les fonds sont envoyés sous 24h par l'administration.</p>
+              <p className="text-sm text-slate-400 mt-1">Retirez vos HTG ou vos USDT de votre compte en toute sécurité.</p>
             </div>
 
-            {/* Fee Warning */}
-            <div className="p-4 bg-indigo-950/20 border border-indigo-500/20 rounded-2xl flex items-start space-x-3 text-indigo-300 text-xs">
-              <ShieldAlert className="h-5 w-5 text-indigo-400 shrink-0 mt-0.5" />
-              <div>
-                <p className="font-bold">Frais de retrait de 10% applicables</p>
-                <p className="mt-0.5 text-indigo-400/80">Pour assurer les coûts opérationnels et de transfert, 10% sont automatiquement prélevés sur chaque retrait.</p>
-              </div>
-            </div>
-
-            <form onSubmit={handleWithdrawSubmit} className="space-y-5">
-              {wdError && (
-                <div className="p-3.5 bg-red-950/30 border border-red-500/20 text-red-400 text-xs rounded-xl animate-fade-in">
-                  {wdError}
-                </div>
-              )}
-              {wdSuccess && (
-                <div className="p-3.5 bg-emerald-950/30 border border-emerald-500/20 text-emerald-400 text-xs rounded-xl animate-fade-in">
-                  {wdSuccess}
-                </div>
-              )}
-
-              {/* Provider choice */}
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Choisir la méthode de retrait</label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setWdProvider('moncash')}
-                    className={`py-3 px-4 rounded-xl text-sm font-bold border transition-all flex items-center justify-center space-x-2 cursor-pointer ${
-                      wdProvider === 'moncash' 
-                        ? 'border-red-500 bg-red-500/10 text-red-400 shadow-[0_0_10px_rgba(239,68,68,0.1)]' 
-                        : 'border-slate-800 bg-slate-950/40 text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    <span className={`h-2 w-2 rounded-full ${wdProvider === 'moncash' ? 'bg-red-500' : 'bg-slate-600'}`}></span>
-                    <span>MonCash</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setWdProvider('natcash')}
-                    className={`py-3 px-4 rounded-xl text-sm font-bold border transition-all flex items-center justify-center space-x-2 cursor-pointer ${
-                      wdProvider === 'natcash' 
-                        ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.1)]' 
-                        : 'border-slate-800 bg-slate-950/40 text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    <span className={`h-2 w-2 rounded-full ${wdProvider === 'natcash' ? 'bg-emerald-400' : 'bg-slate-600'}`}></span>
-                    <span>NatCash</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Amount */}
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Montant du retrait (HTG)</label>
-                  <button
-                    type="button"
-                    onClick={() => setWdAmount((user?.balance ?? 0).toString())}
-                    className="text-[10px] font-bold text-indigo-400 hover:text-indigo-300 uppercase cursor-pointer"
-                  >
-                    Solde Max ({(user?.balance ?? 0).toLocaleString('fr-FR')} G)
-                  </button>
-                </div>
-                <div className="relative flex items-center">
-                  <input
-                    type="number"
-                    placeholder="Min: 100 HTG"
-                    value={wdAmount}
-                    onChange={(e) => setWdAmount(e.target.value)}
-                    className="block w-full px-4 py-3 bg-slate-950/70 border border-slate-800 rounded-xl text-sm text-slate-100 font-semibold focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 placeholder-slate-700"
-                    required
-                  />
-                  <span className="absolute right-4 text-xs font-bold text-slate-500 pointer-events-none">HTG</span>
-                </div>
-                
-                {/* Preset Chips */}
-                <div className="flex flex-wrap gap-2 mt-2.5">
-                  {[100, 250, 500, 1000, 5000].map((val) => (
-                    <button
-                      key={val}
-                      type="button"
-                      onClick={() => setWdAmount(val.toString())}
-                      className="bg-slate-950/40 hover:bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer active:scale-95"
-                    >
-                      {val.toLocaleString('fr-FR')} HTG
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Phone number */}
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Numéro de Téléphone (MonCash / NatCash)</label>
-                <input
-                  type="text"
-                  placeholder="Ex: 36203465"
-                  value={wdPhone}
-                  onChange={(e) => setWdPhone(e.target.value)}
-                  className="block w-full px-4 py-3.5 bg-slate-950/70 border border-slate-800 rounded-xl text-sm text-slate-100 font-semibold focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 placeholder-slate-700"
-                  required
-                />
-              </div>
-
-              {/* Automatic Fee Calculation display */}
-              {wdAmount && parseFloat(wdAmount) >= 100 && (
-                <div className="p-4 bg-slate-950/60 rounded-xl border border-slate-800 space-y-2.5 text-xs animate-slide-up">
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Montant demandé :</span>
-                    <span className="font-mono text-slate-300 font-bold">{parseFloat(wdAmount).toFixed(2)} HTG</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Frais opérationnels (10%) :</span>
-                    <span className="font-mono text-red-500">-{ (parseFloat(wdAmount) * 0.1).toFixed(2) } HTG</span>
-                  </div>
-                  <div className="border-t border-slate-800 pt-2 flex justify-between font-bold text-sm">
-                    <span className="text-slate-200">Total net à recevoir :</span>
-                    <span className="font-mono text-emerald-400 font-black tracking-wide">{ (parseFloat(wdAmount) * 0.9).toFixed(2) } HTG</span>
-                  </div>
-                </div>
-              )}
-
-              {/* Submit button */}
+            {/* Method Selector */}
+            <div className="grid grid-cols-2 gap-4 border-b border-slate-800 pb-4">
               <button
-                type="submit"
-                disabled={wdLoading}
-                className="w-full py-4 px-4 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-bold rounded-xl text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 shadow-lg shadow-indigo-600/10 hover:shadow-indigo-600/20 transform hover:-translate-y-0.5 active:translate-y-0 active:scale-98 cursor-pointer font-display"
+                type="button"
+                onClick={() => setWithdrawMethod('fiat')}
+                className={`py-3 px-4 rounded-xl text-sm font-bold border transition-all flex items-center justify-center space-x-2 cursor-pointer ${
+                  withdrawMethod === 'fiat'
+                    ? 'border-indigo-500 bg-indigo-500/10 text-white shadow-[0_0_10px_rgba(99,102,241,0.15)]'
+                    : 'border-slate-800 bg-slate-950/40 text-slate-400 hover:text-slate-200'
+                }`}
               >
-                {wdLoading ? (
-                  <>
-                    <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>Traitement en cours...</span>
-                  </>
-                ) : (
-                  <>
-                    <Send className="h-4 w-4" />
-                    <span>Demander le Retrait</span>
-                  </>
-                )}
+                <Landmark className="h-4 w-4" />
+                <span>MonCash / NatCash</span>
               </button>
-            </form>
+              <button
+                type="button"
+                onClick={() => setWithdrawMethod('usdt')}
+                className={`py-3 px-4 rounded-xl text-sm font-bold border transition-all flex items-center justify-center space-x-2 cursor-pointer ${
+                  withdrawMethod === 'usdt'
+                    ? 'border-emerald-500 bg-emerald-500/10 text-white shadow-[0_0_10px_rgba(16,185,129,0.15)]'
+                    : 'border-slate-800 bg-slate-950/40 text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                <Coins className="h-4 w-4 text-emerald-400" />
+                <span>USDT (BEP20)</span>
+              </button>
+            </div>
+
+            {withdrawMethod === 'fiat' ? (
+              <>
+                {/* Fee Warning */}
+                <div className="p-4 bg-indigo-950/20 border border-indigo-500/20 rounded-2xl flex items-start space-x-3 text-indigo-300 text-xs animate-fade-in">
+                  <ShieldAlert className="h-5 w-5 text-indigo-400 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-bold">Frais de retrait de 10% applicables</p>
+                    <p className="mt-0.5 text-indigo-400/80">Pour assurer les coûts opérationnels et de transfert, 10% sont automatiquement prélevés sur chaque retrait.</p>
+                  </div>
+                </div>
+
+                <form onSubmit={handleWithdrawSubmit} className="space-y-5">
+                  {wdError && (
+                    <div className="p-3.5 bg-red-950/30 border border-red-500/20 text-red-400 text-xs rounded-xl animate-fade-in">
+                      {wdError}
+                    </div>
+                  )}
+                  {wdSuccess && (
+                    <div className="p-3.5 bg-emerald-950/30 border border-emerald-500/20 text-emerald-400 text-xs rounded-xl animate-fade-in">
+                      {wdSuccess}
+                    </div>
+                  )}
+
+                  {/* Provider choice */}
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Choisir la méthode de retrait</label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setWdProvider('moncash')}
+                        className={`py-3 px-4 rounded-xl text-sm font-bold border transition-all flex items-center justify-center space-x-2 cursor-pointer ${
+                          wdProvider === 'moncash' 
+                            ? 'border-red-500 bg-red-500/10 text-red-400 shadow-[0_0_10px_rgba(239,68,68,0.1)]' 
+                            : 'border-slate-800 bg-slate-950/40 text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        <span className={`h-2 w-2 rounded-full ${wdProvider === 'moncash' ? 'bg-red-500' : 'bg-slate-600'}`}></span>
+                        <span>MonCash</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setWdProvider('natcash')}
+                        className={`py-3 px-4 rounded-xl text-sm font-bold border transition-all flex items-center justify-center space-x-2 cursor-pointer ${
+                          wdProvider === 'natcash' 
+                            ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.1)]' 
+                            : 'border-slate-800 bg-slate-950/40 text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        <span className={`h-2 w-2 rounded-full ${wdProvider === 'natcash' ? 'bg-emerald-400' : 'bg-slate-600'}`}></span>
+                        <span>NatCash</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Amount */}
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Montant du retrait (HTG)</label>
+                      <button
+                        type="button"
+                        onClick={() => setWdAmount((user?.balance ?? 0).toString())}
+                        className="text-[10px] font-bold text-indigo-400 hover:text-indigo-300 uppercase cursor-pointer"
+                      >
+                        Solde Max ({(user?.balance ?? 0).toLocaleString('fr-FR')} G)
+                      </button>
+                    </div>
+                    <div className="relative flex items-center">
+                      <input
+                        type="number"
+                        placeholder="Min: 100 HTG"
+                        value={wdAmount}
+                        onChange={(e) => setWdAmount(e.target.value)}
+                        className="block w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 font-semibold focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 placeholder-slate-700 font-bold font-mono"
+                        required
+                      />
+                      <span className="absolute right-4 text-xs font-bold text-slate-500 pointer-events-none">HTG</span>
+                    </div>
+                    
+                    {/* Preset Chips */}
+                    <div className="flex flex-wrap gap-2 mt-2.5">
+                      {[100, 250, 500, 1000, 5000].map((val) => (
+                        <button
+                          key={val}
+                          type="button"
+                          onClick={() => setWdAmount(val.toString())}
+                          className="bg-slate-950/40 hover:bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer active:scale-95"
+                        >
+                          {val.toLocaleString('fr-FR')} HTG
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Phone number */}
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Numéro de Téléphone (MonCash / NatCash)</label>
+                    <input
+                      type="text"
+                      placeholder="Ex: 36203465"
+                      value={wdPhone}
+                      onChange={(e) => setWdPhone(e.target.value)}
+                      className="block w-full px-4 py-3.5 bg-slate-950/70 border border-slate-800 rounded-xl text-sm text-slate-100 font-semibold focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 placeholder-slate-700 font-bold"
+                      required
+                    />
+                  </div>
+
+                  {/* Automatic Fee Calculation display */}
+                  {wdAmount && parseFloat(wdAmount) >= 100 && (
+                    <div className="p-4 bg-slate-950/60 rounded-xl border border-slate-800 space-y-2.5 text-xs animate-slide-up">
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Montant demandé :</span>
+                        <span className="font-mono text-slate-300 font-bold">{parseFloat(wdAmount).toFixed(2)} HTG</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Frais opérationnels (10%) :</span>
+                        <span className="font-mono text-red-500">-{ (parseFloat(wdAmount) * 0.1).toFixed(2) } HTG</span>
+                      </div>
+                      <div className="border-t border-slate-800 pt-2 flex justify-between font-bold text-sm">
+                        <span className="text-slate-200">Total net à recevoir :</span>
+                        <span className="font-mono text-emerald-400 font-black tracking-wide">{ (parseFloat(wdAmount) * 0.9).toFixed(2) } HTG</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Submit button */}
+                  <button
+                    type="submit"
+                    disabled={wdLoading}
+                    className="w-full py-4 px-4 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-bold rounded-xl text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 shadow-lg shadow-indigo-600/10 hover:shadow-indigo-600/20 transform hover:-translate-y-0.5 active:translate-y-0 active:scale-98 cursor-pointer font-display"
+                  >
+                    {wdLoading ? (
+                      <>
+                        <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        <span>Traitement en cours...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send className="h-4 w-4" />
+                        <span>Demander le Retrait</span>
+                      </>
+                    )}
+                  </button>
+                </form>
+              </>
+            ) : (
+              <>
+                {/* USDT Warning */}
+                <div className="p-4 bg-amber-950/20 border border-amber-500/25 rounded-2xl flex items-start space-x-3 text-amber-300 text-xs animate-fade-in">
+                  <ShieldAlert className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-bold uppercase tracking-wider text-amber-400">Réseau BNB Smart Chain (BEP20) Uniquement</p>
+                    <p className="mt-0.5 leading-relaxed text-amber-500/90 font-medium">Saisissez uniquement une adresse de destination BEP20 valide. Tout retrait envoyé vers un autre réseau ou une adresse erronée entraînera une perte définitive des fonds.</p>
+                  </div>
+                </div>
+
+                <form onSubmit={handleUsdtWithdrawSubmit} className="space-y-5 animate-fade-in">
+                  {usdtWdError && (
+                    <div className="p-3.5 bg-red-950/30 border border-red-500/20 text-red-400 text-xs rounded-xl font-bold animate-shake">
+                      {usdtWdError}
+                    </div>
+                  )}
+                  {usdtWdSuccess && (
+                    <div className="p-3.5 bg-emerald-950/30 border border-emerald-500/20 text-emerald-400 text-xs rounded-xl font-bold animate-fade-in">
+                      {usdtWdSuccess}
+                    </div>
+                  )}
+
+                  {/* Wallet address input */}
+                  <div className="flex flex-col gap-1.5">
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Adresse de destination BEP20 (USDT)</label>
+                    <input
+                      type="text"
+                      placeholder="Ex: 0x9f53..."
+                      value={usdtWdAddress}
+                      onChange={(e) => setUsdtWdAddress(e.target.value)}
+                      className="block w-full px-4 py-3 bg-slate-900 border border-slate-800 rounded-xl text-sm font-mono text-slate-100 focus:outline-none focus:border-emerald-500 font-bold"
+                      required
+                    />
+                  </div>
+
+                  {/* Amount input */}
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex justify-between items-center">
+                      <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400">Montant du retrait (USDT)</label>
+                      <button
+                        type="button"
+                        onClick={() => setUsdtWdAmount((user?.usdt_balance ?? 0).toString())}
+                        className="text-[10px] font-bold text-emerald-500 hover:text-emerald-400 uppercase cursor-pointer"
+                      >
+                        Solde Max ({(user?.usdt_balance ?? 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 6 })} USDT)
+                      </button>
+                    </div>
+                    <div className="relative flex items-center">
+                      <input
+                        type="number"
+                        step="0.000001"
+                        placeholder={`Min: ${usdtStats?.configs?.minWd || 5} USDT`}
+                        value={usdtWdAmount}
+                        onChange={(e) => setUsdtWdAmount(e.target.value)}
+                        className="block w-full px-4 py-3.5 bg-slate-900 border border-slate-800 rounded-xl text-sm font-mono text-slate-100 focus:outline-none focus:border-emerald-500 font-bold"
+                        required
+                      />
+                      <span className="absolute right-4 text-xs font-bold text-slate-500 pointer-events-none">USDT</span>
+                    </div>
+                  </div>
+
+                  {/* Automatic Fee Calculation display */}
+                  {usdtWdAmount && parseFloat(usdtWdAmount) > 0 && (
+                    <div className="p-4 bg-slate-950/60 rounded-xl border border-slate-800 space-y-2.5 text-xs animate-slide-up">
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Montant demandé :</span>
+                        <span className="font-mono text-slate-300 font-bold">{parseFloat(usdtWdAmount).toFixed(6)} USDT</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-slate-500">Frais opérationnels ({usdtStats?.configs?.feeWd || 10}%) :</span>
+                        <span className="font-mono text-red-500">-{ (parseFloat(usdtWdAmount) * ((usdtStats?.configs?.feeWd || 10) / 100)).toFixed(6) } USDT</span>
+                      </div>
+                      <div className="border-t border-slate-800 pt-2 flex justify-between font-bold text-sm">
+                        <span className="text-slate-200">Total net à recevoir :</span>
+                        <span className="font-mono text-emerald-400 font-black tracking-wide">{ (parseFloat(usdtWdAmount) * (1 - (usdtStats?.configs?.feeWd || 10) / 100)).toFixed(6) } USDT</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Submit button */}
+                  <button
+                    type="submit"
+                    disabled={usdtWdLoading}
+                    className="w-full py-4 px-4 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-bold rounded-xl text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 shadow-lg shadow-emerald-600/10 hover:shadow-emerald-600/20 transform hover:-translate-y-0.5 active:translate-y-0 active:scale-98 cursor-pointer font-display"
+                  >
+                    {usdtWdLoading ? (
+                      <>
+                        <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        <span>Traitement en cours...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send className="h-4 w-4" />
+                        <span>Demander le Retrait USDT</span>
+                      </>
+                    )}
+                  </button>
+                </form>
+              </>
+            )}
           </div>
         )}
 

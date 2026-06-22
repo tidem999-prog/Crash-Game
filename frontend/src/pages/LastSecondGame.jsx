@@ -720,9 +720,9 @@ export default function LastSecondGame({ socket, onBackToLobby, addNotification 
               <span>{getFormattedMatchTime()}</span>
             </span>
 
-            {/* Multiplier pill floating at the top right of the score panel! */}
+            {/* Multiplier pill inline on the right of the score panel */}
             {round.status === 'ticking' && (
-              <span className="absolute -top-3.5 -right-3.5 font-mono text-emerald-400 text-xs sm:text-sm font-black bg-emerald-950 border border-emerald-500/30 px-2 py-0.5 rounded-xl whitespace-nowrap animate-pulse shadow-md shadow-emerald-500/25">
+              <span className="font-mono text-emerald-400 text-xs sm:text-sm font-black bg-emerald-950 border border-emerald-500/30 px-2 py-0.5 rounded-xl whitespace-nowrap animate-pulse shadow-md shadow-emerald-500/25">
                 {tickingMultiplier.toFixed(2)}x
               </span>
             )}

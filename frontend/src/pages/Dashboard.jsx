@@ -5,7 +5,7 @@ import { useAuth, apiRequest } from '../context/AuthContext';
 import { 
   Plane, Landmark, ArrowUpRight, ArrowDownRight, History, 
   Wallet, ShieldAlert, Award, Clock, Coins, Upload, Send, HelpCircle, Gamepad2, ArrowLeft, Users, Gem,
-  Copy, Check, Flame, User, Volume2, VolumeX, X
+  Copy, Check, Flame, User, Volume2, VolumeX, X, RefreshCw
 } from 'lucide-react';
 import KetmesyeGame from './KetmesyeGame';
 import MinesGame from './MinesGame';
@@ -88,6 +88,34 @@ export default function Dashboard() {
   // History state
   const [myHistory, setMyHistory] = useState({ transactions: [], bets: [] });
   const [loadingHistory, setLoadingHistory] = useState(false);
+
+  // USDT states
+  const [usdtStats, setUsdtStats] = useState(null);
+  const [loadingUsdtStats, setLoadingUsdtStats] = useState(false);
+  const [copiedUsdtText, setCopiedUsdtText] = useState(false);
+
+  // USDT Deposit Form State
+  const [usdtDepTxHash, setUsdtDepTxHash] = useState('');
+  const [usdtDepLoading, setUsdtDepLoading] = useState(false);
+  const [usdtDepSuccess, setUsdtDepSuccess] = useState('');
+  const [usdtDepError, setUsdtDepError] = useState('');
+
+  // USDT Withdrawal Form State
+  const [usdtWdAmount, setUsdtWdAmount] = useState('');
+  const [usdtWdAddress, setUsdtWdAddress] = useState('');
+  const [usdtWdLoading, setUsdtWdLoading] = useState(false);
+  const [usdtWdSuccess, setUsdtWdSuccess] = useState('');
+  const [usdtWdError, setUsdtWdError] = useState('');
+
+  // USDT Exchange Form State
+  const [usdtExAmount, setUsdtExAmount] = useState('');
+  const [usdtExLoading, setUsdtExLoading] = useState(false);
+  const [usdtExSuccess, setUsdtExSuccess] = useState('');
+  const [usdtExError, setUsdtExError] = useState('');
+
+  // Selectors for cashier methods
+  const [depositMethod, setDepositMethod] = useState('fiat'); // 'fiat' or 'usdt'
+  const [withdrawMethod, setWithdrawMethod] = useState('fiat'); // 'fiat' or 'usdt'
 
   // Referral state
   const [referralsData, setReferralsData] = useState({ totalReferrals: 0, totalEarnings: 0.0, referrals: [] });
@@ -477,6 +505,24 @@ export default function Dashboard() {
   useEffect(() => {
     if (activeTab === 'history') {
       fetchUserHistory();
+    }
+  }, [activeTab]);
+
+  const fetchUsdtStats = async () => {
+    setLoadingUsdtStats(true);
+    try {
+      const data = await apiRequest('/api/transactions/usdt/stats');
+      setUsdtStats(data);
+    } catch (err) {
+      console.error('Error fetching USDT stats:', err);
+    } finally {
+      setLoadingUsdtStats(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'deposit' || activeTab === 'withdraw' || activeTab === 'exchange' || activeTab === 'history') {
+      fetchUsdtStats();
     }
   }, [activeTab]);
 
@@ -1051,6 +1097,125 @@ export default function Dashboard() {
       addNotification(err.message || 'Échec de la conversion.', 'danger');
     } finally {
       setConvertLoading(false);
+    }
+  };
+
+  const handleCopyToUsdtClipboard = (text) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedUsdtText(true);
+      addNotification("L'adresse USDT (BEP20) officielle a été copiée.", 'success');
+      setTimeout(() => {
+        setCopiedUsdtText(false);
+      }, 2000);
+    }).catch(err => {
+      addNotification("Impossible de copier l'adresse.", 'danger');
+    });
+  };
+
+  const handleUsdtDepositSubmit = async (e) => {
+    e.preventDefault();
+    setUsdtDepError('');
+    setUsdtDepSuccess('');
+
+    if (!usdtDepTxHash) {
+      return setUsdtDepError('Le hash de la transaction (Tx Hash) est requis.');
+    }
+
+    setUsdtDepLoading(true);
+    try {
+      const data = await apiRequest('/api/transactions/usdt/deposit', {
+        method: 'POST',
+        body: { txHash: usdtDepTxHash }
+      });
+      
+      if (data.status === 'pending_confirmations') {
+        setUsdtDepSuccess(data.message);
+        addNotification(data.message, 'info');
+      } else {
+        setUsdtDepSuccess(data.message || 'Votre dépôt USDT a été crédité avec succès.');
+        addNotification(data.message || 'Votre dépôt USDT a été crédité avec succès.', 'success');
+        setUsdtDepTxHash('');
+        await refreshBalance();
+        await fetchUsdtStats();
+      }
+    } catch (err) {
+      setUsdtDepError(err.message || 'Échec de la validation de la transaction.');
+      addNotification(err.message || 'Échec de la validation de la transaction.', 'danger');
+    } finally {
+      setUsdtDepLoading(false);
+    }
+  };
+
+  const handleUsdtWithdrawSubmit = async (e) => {
+    e.preventDefault();
+    setUsdtWdError('');
+    setUsdtWdSuccess('');
+
+    const amt = parseFloat(usdtWdAmount);
+    const minWd = usdtStats?.configs?.minWd || 5;
+
+    if (!usdtWdAmount || amt < minWd) {
+      return setUsdtWdError(`Le montant minimal de retrait est de ${minWd} USDT.`);
+    }
+
+    if (amt > (user?.usdt_balance || 0)) {
+      return setUsdtWdError('Solde USDT insuffisant.');
+    }
+
+    if (!usdtWdAddress) {
+      return setUsdtWdError("Veuillez saisir l'adresse BEP20 de destination.");
+    }
+
+    setUsdtWdLoading(true);
+    try {
+      const data = await apiRequest('/api/transactions/usdt/withdraw', {
+        method: 'POST',
+        body: { amount: amt, address: usdtWdAddress }
+      });
+      setUsdtWdSuccess(data.message || 'Votre demande de retrait a été enregistrée.');
+      addNotification(data.message || 'Votre demande de retrait a été enregistrée.', 'success');
+      setUsdtWdAmount('');
+      setUsdtWdAddress('');
+      await refreshBalance();
+      await fetchUsdtStats();
+    } catch (err) {
+      setUsdtWdError(err.message || 'Échec de la demande.');
+      addNotification(err.message || 'Échec de la demande.', 'danger');
+    } finally {
+      setUsdtWdLoading(false);
+    }
+  };
+
+  const handleUsdtExchangeSubmit = async (e) => {
+    e.preventDefault();
+    setUsdtExError('');
+    setUsdtExSuccess('');
+
+    const amt = parseFloat(usdtExAmount);
+    if (!usdtExAmount || amt <= 0) {
+      return setUsdtExError('Veuillez saisir un montant de conversion valide.');
+    }
+
+    if (amt > (user?.usdt_balance || 0)) {
+      return setUsdtExError('Solde USDT insuffisant.');
+    }
+
+    setUsdtExLoading(true);
+    try {
+      const data = await apiRequest('/api/transactions/usdt/exchange', {
+        method: 'POST',
+        body: { amount: amt }
+      });
+      setUsdtExSuccess(data.message || 'Conversion réalisée avec succès.');
+      addNotification(data.message || 'Conversion réalisée avec succès.', 'success');
+      setUsdtExAmount('');
+      await refreshBalance();
+      await fetchUsdtStats();
+    } catch (err) {
+      setUsdtExError(err.message || 'Échec de la conversion.');
+      addNotification(err.message || 'Échec de la conversion.', 'danger');
+    } finally {
+      setUsdtExLoading(false);
     }
   };
 
@@ -1705,305 +1870,472 @@ export default function Dashboard() {
           <div className="glass-panel p-6 sm:p-8 rounded-3xl space-y-6 max-w-4xl mx-auto">
             <div className="text-center md:text-left">
               <h3 className="font-display font-black text-2xl text-white">Méthode de Dépôt</h3>
-              <p className="text-sm text-slate-400 mt-1">Créditez votre compte manuellement en effectuant un transfert sur nos numéros officiels.</p>
+              <p className="text-sm text-slate-400 mt-1">Créditez votre compte manuellement ou via le réseau blockchain BEP20.</p>
             </div>
 
-            {/* Promo Banner / Info Link */}
-            <div 
-              onClick={() => setShowBonusPromoModal(true)}
-              className="group cursor-pointer relative overflow-hidden bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-slate-900/40 hover:from-indigo-500/15 hover:via-purple-500/15 hover:to-slate-900/60 border border-indigo-500/20 hover:border-indigo-500/45 rounded-2xl p-4 flex items-center justify-between transition-all duration-300 shadow-md animate-fade-in"
-            >
-              <div className="flex items-center space-x-3">
-                <div className="h-10 w-10 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 group-hover:scale-105 transition-transform shrink-0">
-                  <Award className="h-5 w-5 animate-pulse" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-slate-200 text-sm flex flex-wrap items-center gap-1.5">
-                    🎁 Obtenez un Bonus à partir de 500 HTG !
-                    <span className="text-[10px] text-indigo-400 font-extrabold tracking-wider uppercase bg-indigo-500/10 px-1.5 py-0.5 rounded border border-indigo-500/20">
-                      Offre Spéciale
-                    </span>
-                  </h4>
-                  <p className="text-xs text-slate-400 mt-0.5">Choisissez entre un Bonus sur Dépôt (jusqu'à +100%) ou un Booster XP. <span className="text-indigo-400 font-semibold group-hover:underline">Cliquez ici pour voir les conditions.</span></p>
-                </div>
-              </div>
-              <div className="text-slate-500 group-hover:text-slate-300 transition-colors pl-2 shrink-0">
-                <HelpCircle className="h-5 w-5" />
-              </div>
+            {/* Method Selector */}
+            <div className="grid grid-cols-2 gap-4 border-b border-slate-800 pb-4">
+              <button
+                type="button"
+                onClick={() => setDepositMethod('fiat')}
+                className={`py-3 px-4 rounded-xl text-sm font-bold border transition-all flex items-center justify-center space-x-2 cursor-pointer ${
+                  depositMethod === 'fiat'
+                    ? 'border-indigo-500 bg-indigo-500/10 text-white shadow-[0_0_10px_rgba(99,102,241,0.15)]'
+                    : 'border-slate-850 bg-slate-950/40 text-slate-450 hover:text-slate-200'
+                }`}
+              >
+                <Landmark className="h-4 w-4" />
+                <span>MonCash / NatCash</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDepositMethod('usdt')}
+                className={`py-3 px-4 rounded-xl text-sm font-bold border transition-all flex items-center justify-center space-x-2 cursor-pointer ${
+                  depositMethod === 'usdt'
+                    ? 'border-emerald-500 bg-emerald-500/10 text-white shadow-[0_0_10px_rgba(16,185,129,0.15)]'
+                    : 'border-slate-850 bg-slate-950/40 text-slate-450 hover:text-slate-200'
+                }`}
+              >
+                <Coins className="h-4 w-4 text-emerald-400" />
+                <span>USDT (BEP20)</span>
+              </button>
             </div>
 
-            {/* Payment instructions */}
-            <div className="grid grid-cols-2 gap-3 sm:gap-4">
-              
-              {/* MonCash Card */}
-              <div className="p-3 sm:p-5 bg-gradient-to-b from-slate-900/60 to-red-500/5 border border-red-500/10 hover:border-red-500/30 rounded-2xl flex flex-col justify-between transition-all duration-300 shadow-md">
-                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-3">
-                  <div className="flex items-center space-x-1.5 shrink-0">
-                    <span className="h-6 w-6 sm:h-7 sm:w-7 rounded-full bg-red-600 text-white flex items-center justify-center font-black text-xs sm:text-sm">M</span>
-                    <span className="font-bold text-slate-200 text-xs sm:text-sm">MonCash</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleCopyToClipboard('36203465', 'moncash')}
-                    className={`flex items-center justify-center space-x-1 px-2 py-1 rounded-lg text-[10px] font-semibold border transition-all cursor-pointer ${
-                      copiedText.moncash 
-                        ? 'bg-emerald-950/40 border-emerald-500 text-emerald-400' 
-                        : 'bg-slate-800/40 border-slate-700/50 hover:bg-slate-800 hover:text-white text-slate-400'
-                    }`}
-                  >
-                    {copiedText.moncash ? (
-                      <>
-                        <Check className="h-2.5 w-2.5" />
-                        <span>Copié !</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="h-2.5 w-2.5" />
-                        <span>Copier</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-                <div>
-                  <p className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">Numéro :</p>
-                  <p className="font-mono font-black text-sm sm:text-xl text-red-500 mt-0.5">36203465</p>
-                </div>
-              </div>
-
-              {/* NatCash Card */}
-              <div className="p-3 sm:p-5 bg-gradient-to-b from-slate-900/60 to-emerald-500/5 border border-emerald-500/10 hover:border-emerald-500/30 rounded-2xl flex flex-col justify-between transition-all duration-300 shadow-md">
-                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-3">
-                  <div className="flex items-center space-x-1.5 shrink-0">
-                    <span className="h-6 w-6 sm:h-7 sm:w-7 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center font-black text-xs sm:text-sm">N</span>
-                    <span className="font-bold text-slate-200 text-xs sm:text-sm">NatCash</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleCopyToClipboard('42398022', 'natcash')}
-                    className={`flex items-center justify-center space-x-1 px-2 py-1 rounded-lg text-[10px] font-semibold border transition-all cursor-pointer ${
-                      copiedText.natcash 
-                        ? 'bg-emerald-950/40 border-emerald-500 text-emerald-400' 
-                        : 'bg-slate-800/40 border-slate-700/50 hover:bg-slate-800 hover:text-white text-slate-400'
-                    }`}
-                  >
-                    {copiedText.natcash ? (
-                      <>
-                        <Check className="h-2.5 w-2.5" />
-                        <span>Copié !</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="h-2.5 w-2.5" />
-                        <span>Copier</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-                <div>
-                  <p className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">Numéro :</p>
-                  <p className="font-mono font-black text-sm sm:text-xl text-emerald-400 mt-0.5">42398022</p>
-                </div>
-              </div>
-
-            </div>
-
-            <form onSubmit={handleDepositSubmit} className="space-y-5">
-              {depError && (
-                <div className="p-3.5 bg-red-950/30 border border-red-500/20 text-red-400 text-xs rounded-xl animate-fade-in">
-                  {depError}
-                </div>
-              )}
-              {depSuccess && (
-                <div className="p-3.5 bg-emerald-950/30 border border-emerald-500/20 text-emerald-400 text-xs rounded-xl animate-fade-in">
-                  {depSuccess}
-                </div>
-              )}
-
-              {/* Provider choice */}
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Choisir le fournisseur</label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setDepProvider('moncash')}
-                    className={`py-3 px-4 rounded-xl text-sm font-bold border transition-all flex items-center justify-center space-x-2 cursor-pointer ${
-                      depProvider === 'moncash' 
-                        ? 'border-red-500 bg-red-500/10 text-red-400 shadow-[0_0_10px_rgba(239,68,68,0.1)]' 
-                        : 'border-slate-850 bg-slate-950/40 text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    <span className={`h-2 w-2 rounded-full ${depProvider === 'moncash' ? 'bg-red-400' : 'bg-slate-600'}`}></span>
-                    <span>MonCash</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDepProvider('natcash')}
-                    className={`py-3 px-4 rounded-xl text-sm font-bold border transition-all flex items-center justify-center space-x-2 cursor-pointer ${
-                      depProvider === 'natcash' 
-                        ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.1)]' 
-                        : 'border-slate-850 bg-slate-950/40 text-slate-400 hover:text-slate-200'
-                    }`}
-                  >
-                    <span className={`h-2 w-2 rounded-full ${depProvider === 'natcash' ? 'bg-emerald-400' : 'bg-slate-600'}`}></span>
-                    <span>NatCash</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Amount */}
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Montant envoyé (HTG)</label>
-                <div className="relative flex items-center">
-                  <input
-                    type="number"
-                    placeholder="Ex: 500"
-                    value={depAmount}
-                    onChange={(e) => setDepAmount(e.target.value)}
-                    className="block w-full px-4 py-3 bg-slate-950/70 border border-slate-800 rounded-xl text-sm text-slate-100 font-semibold focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 placeholder-slate-700"
-                    required
-                  />
-                  <span className="absolute right-4 text-xs font-bold text-slate-500 pointer-events-none">HTG</span>
-                </div>
-                
-                {/* Preset Chips */}
-                <div className="flex flex-wrap gap-2 mt-2.5">
-                  {[250, 500, 1000, 2500, 5000].map((val) => (
-                    <button
-                      key={val}
-                      type="button"
-                      onClick={() => setDepAmount(prev => {
-                        const current = parseFloat(prev) || 0;
-                        return (current + val).toString();
-                      })}
-                      className="bg-slate-955/40 hover:bg-slate-900 border border-slate-850 hover:border-slate-700 text-slate-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer active:scale-95"
-                    >
-                      +{val.toLocaleString('fr-FR')} HTG
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Phone number from which money is sent */}
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
-                  Numéro de téléphone expéditeur (MonCash / NatCash)
-                </label>
-                <input
-                  type="text"
-                  placeholder="Ex: 36203465"
-                  value={depPhone}
-                  onChange={(e) => setDepPhone(e.target.value)}
-                  className="block w-full px-4 py-3 bg-slate-950/70 border border-slate-800 rounded-xl text-sm text-slate-100 font-semibold focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 placeholder-slate-700"
-                  required
-                />
-                <p className="text-[10px] text-slate-500 mt-1.5 leading-relaxed">
-                  Veuillez saisir le numéro de téléphone avec lequel vous avez effectué le transfert de fonds (le numéro expéditeur), afin que notre équipe puisse associer et valider votre transaction.
-                </p>
-              </div>
-
-              {/* File Screenshot Upload */}
-              <div>
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Capture d'écran de la transaction</label>
-                
-                {!depFile ? (
-                  <div 
-                    onClick={() => {
-                      const input = document.getElementById('screenshot-upload-input');
-                      if (input) input.click();
-                    }}
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      setIsDragging(true);
-                    }}
-                    onDragLeave={() => setIsDragging(false)}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      setIsDragging(false);
-                      const files = e.dataTransfer.files;
-                      if (files && files.length > 0) {
-                        const file = files[0];
-                        if (['image/jpeg', 'image/png', 'image/gif'].includes(file.type)) {
-                          setDepFile(file);
-                        } else {
-                          addNotification('Seuls les formats JPEG, PNG et GIF sont autorisés.', 'danger');
-                        }
-                      }
-                    }}
-                    className={`border-2 border-dashed rounded-2xl p-6 text-center hover:bg-slate-900/10 hover:border-indigo-500/50 transition-all relative flex flex-col items-center justify-center cursor-pointer ${
-                      isDragging ? 'border-indigo-500 bg-indigo-500/5' : 'border-slate-800 bg-slate-950/40'
-                    }`}
-                  >
-                    <input
-                      id="screenshot-upload-input"
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files[0];
-                        if (file) setDepFile(file);
-                      }}
-                      className="hidden"
-                    />
-                    <div className="bg-slate-900/60 p-3 rounded-full text-slate-500 mb-2.5">
-                      <Upload className="h-6 w-6" />
+            {depositMethod === 'fiat' ? (
+              <div className="space-y-6">
+                {/* Promo Banner / Info Link */}
+                <div 
+                  onClick={() => setShowBonusPromoModal(true)}
+                  className="group cursor-pointer relative overflow-hidden bg-gradient-to-r from-indigo-500/10 via-purple-500/10 to-slate-900/40 hover:from-indigo-500/15 hover:via-purple-500/15 hover:to-slate-900/60 border border-indigo-500/20 hover:border-indigo-500/45 rounded-2xl p-4 flex items-center justify-between transition-all duration-300 shadow-md animate-fade-in"
+                >
+                  <div className="flex items-center space-x-3">
+                    <div className="h-10 w-10 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 group-hover:scale-105 transition-transform shrink-0">
+                      <Award className="h-5 w-5 animate-pulse" />
                     </div>
-                    <p className="text-xs text-slate-350 font-bold">
-                      Cliquez ou déposez votre capture d'écran ici
-                    </p>
-                    <p className="text-[10px] text-slate-600 mt-1">Seuls les formats JPEG, PNG et GIF sont autorisés (max. 5 Mo).</p>
+                    <div>
+                      <h4 className="font-bold text-slate-200 text-sm flex flex-wrap items-center gap-1.5">
+                        🎁 Obtenez un Bonus à partir de 500 HTG !
+                        <span className="text-[10px] text-indigo-400 font-extrabold tracking-wider uppercase bg-indigo-500/10 px-1.5 py-0.5 rounded border border-indigo-500/20">
+                          Offre Spéciale
+                        </span>
+                      </h4>
+                      <p className="text-xs text-slate-400 mt-0.5">Choisissez entre un Bonus sur Dépôt (jusqu'à +100%) ou un Booster XP. <span className="text-indigo-400 font-semibold group-hover:underline">Cliquez ici pour voir les conditions.</span></p>
+                    </div>
                   </div>
-                ) : (
-                  <div className="flex items-center justify-between bg-slate-950/60 border border-slate-800 rounded-xl p-3.5 animate-slide-up">
-                    <div className="flex items-center">
-                      {filePreviewUrl ? (
-                        <img
-                          src={filePreviewUrl}
-                          alt="Reçu"
-                          className="w-12 h-12 rounded-lg border border-slate-800 object-cover bg-black"
+                  <div className="text-slate-500 group-hover:text-slate-300 transition-colors pl-2 shrink-0">
+                    <HelpCircle className="h-5 w-5" />
+                  </div>
+                </div>
+
+                {/* Payment instructions */}
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                  
+                  {/* MonCash Card */}
+                  <div className="p-3 sm:p-5 bg-gradient-to-b from-slate-900/60 to-red-500/5 border border-red-500/10 hover:border-red-500/30 rounded-2xl flex flex-col justify-between transition-all duration-300 shadow-md">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-3">
+                      <div className="flex items-center space-x-1.5 shrink-0">
+                        <span className="h-6 w-6 sm:h-7 sm:w-7 rounded-full bg-red-600 text-white flex items-center justify-center font-black text-xs sm:text-sm">M</span>
+                        <span className="font-bold text-slate-200 text-xs sm:text-sm">MonCash</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyToClipboard('36203465', 'moncash')}
+                        className={`flex items-center justify-center space-x-1 px-2 py-1 rounded-lg text-[10px] font-semibold border transition-all cursor-pointer ${
+                          copiedText.moncash 
+                            ? 'bg-emerald-950/40 border-emerald-500 text-emerald-400' 
+                            : 'bg-slate-800/40 border-slate-700/50 hover:bg-slate-800 hover:text-white text-slate-400'
+                        }`}
+                      >
+                        {copiedText.moncash ? (
+                          <>
+                            <Check className="h-2.5 w-2.5" />
+                            <span>Copié !</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-2.5 w-2.5" />
+                            <span>Copier</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    <div>
+                      <p className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">Numéro :</p>
+                      <p className="font-mono font-black text-sm sm:text-xl text-red-500 mt-0.5">36203465</p>
+                    </div>
+                  </div>
+
+                  {/* NatCash Card */}
+                  <div className="p-3 sm:p-5 bg-gradient-to-b from-slate-900/60 to-emerald-500/5 border border-emerald-500/10 hover:border-emerald-500/30 rounded-2xl flex flex-col justify-between transition-all duration-300 shadow-md">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-3">
+                      <div className="flex items-center space-x-1.5 shrink-0">
+                        <span className="h-6 w-6 sm:h-7 sm:w-7 rounded-full bg-emerald-500 text-slate-950 flex items-center justify-center font-black text-xs sm:text-sm">N</span>
+                        <span className="font-bold text-slate-200 text-xs sm:text-sm">NatCash</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyToClipboard('42398022', 'natcash')}
+                        className={`flex items-center justify-center space-x-1 px-2 py-1 rounded-lg text-[10px] font-semibold border transition-all cursor-pointer ${
+                          copiedText.natcash 
+                            ? 'bg-emerald-950/40 border-emerald-500 text-emerald-400' 
+                            : 'bg-slate-800/40 border-slate-700/50 hover:bg-slate-800 hover:text-white text-slate-400'
+                        }`}
+                      >
+                        {copiedText.natcash ? (
+                          <>
+                            <Check className="h-2.5 w-2.5" />
+                            <span>Copié !</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="h-2.5 w-2.5" />
+                            <span>Copier</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    <div>
+                      <p className="text-[9px] text-slate-500 uppercase tracking-wider font-semibold">Numéro :</p>
+                      <p className="font-mono font-black text-sm sm:text-xl text-emerald-400 mt-0.5">42398022</p>
+                    </div>
+                  </div>
+
+                </div>
+
+                <form onSubmit={handleDepositSubmit} className="space-y-5">
+                  {depError && (
+                    <div className="p-3.5 bg-red-955/30 border border-red-500/20 text-red-400 text-xs rounded-xl animate-fade-in font-bold">
+                      {depError}
+                    </div>
+                  )}
+                  {depSuccess && (
+                    <div className="p-3.5 bg-emerald-950/30 border border-emerald-500/20 text-emerald-400 text-xs rounded-xl animate-fade-in font-bold">
+                      {depSuccess}
+                    </div>
+                  )}
+
+                  {/* Provider choice */}
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Choisir le fournisseur</label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setDepProvider('moncash')}
+                        className={`py-3 px-4 rounded-xl text-sm font-bold border transition-all flex items-center justify-center space-x-2 cursor-pointer ${
+                          depProvider === 'moncash' 
+                            ? 'border-red-500 bg-red-500/10 text-red-400 shadow-[0_0_10px_rgba(239,68,68,0.1)]' 
+                            : 'border-slate-850 bg-slate-950/40 text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        <span className={`h-2 w-2 rounded-full ${depProvider === 'moncash' ? 'bg-red-400' : 'bg-slate-600'}`}></span>
+                        <span>MonCash</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDepProvider('natcash')}
+                        className={`py-3 px-4 rounded-xl text-sm font-bold border transition-all flex items-center justify-center space-x-2 cursor-pointer ${
+                          depProvider === 'natcash' 
+                            ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.1)]' 
+                            : 'border-slate-850 bg-slate-950/40 text-slate-400 hover:text-slate-200'
+                        }`}
+                      >
+                        <span className={`h-2 w-2 rounded-full ${depProvider === 'natcash' ? 'bg-emerald-400' : 'bg-slate-600'}`}></span>
+                        <span>NatCash</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Amount */}
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Montant envoyé (HTG)</label>
+                    <div className="relative flex items-center">
+                      <input
+                        type="number"
+                        placeholder="Ex: 500"
+                        value={depAmount}
+                        onChange={(e) => setDepAmount(e.target.value)}
+                        className="block w-full px-4 py-3 bg-slate-950/70 border border-slate-800 rounded-xl text-sm text-slate-100 font-semibold focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 placeholder-slate-700 font-bold"
+                        required
+                      />
+                      <span className="absolute right-4 text-xs font-bold text-slate-505 pointer-events-none">HTG</span>
+                    </div>
+                    
+                    {/* Preset Chips */}
+                    <div className="flex flex-wrap gap-2 mt-2.5">
+                      {[250, 500, 1000, 2500, 5000].map((val) => (
+                        <button
+                          key={val}
+                          type="button"
+                          onClick={() => setDepAmount(prev => {
+                            const current = parseFloat(prev) || 0;
+                            return (current + val).toString();
+                          })}
+                          className="bg-slate-955/40 hover:bg-slate-900 border border-slate-855 hover:border-slate-700 text-slate-400 hover:text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer active:scale-95"
+                        >
+                          +{val.toLocaleString('fr-FR')} HTG
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Phone number from which money is sent */}
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+                      Numéro de téléphone expéditeur (MonCash / NatCash)
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ex: 36203465"
+                      value={depPhone}
+                      onChange={(e) => setDepPhone(e.target.value)}
+                      className="block w-full px-4 py-3 bg-slate-950/70 border border-slate-800 rounded-xl text-sm text-slate-100 font-semibold focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 placeholder-slate-700 font-bold"
+                      required
+                    />
+                    <p className="text-[10px] text-slate-500 mt-1.5 leading-relaxed">
+                      Veuillez saisir le numéro de téléphone avec lequel vous avez effectué le transfert de fonds (le numéro expéditeur), afin que notre équipe puisse associer et valider votre transaction.
+                    </p>
+                  </div>
+
+                  {/* File Screenshot Upload */}
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Capture d'écran de la transaction</label>
+                    
+                    {!depFile ? (
+                      <div 
+                        onClick={() => {
+                          const input = document.getElementById('screenshot-upload-input');
+                          if (input) input.click();
+                        }}
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          setIsDragging(true);
+                        }}
+                        onDragLeave={() => setIsDragging(false)}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          setIsDragging(false);
+                          const files = e.dataTransfer.files;
+                          if (files && files.length > 0) {
+                            const file = files[0];
+                            if (['image/jpeg', 'image/png', 'image/gif'].includes(file.type)) {
+                              setDepFile(file);
+                            } else {
+                              addNotification('Seuls les formats JPEG, PNG et GIF sont autorisés.', 'danger');
+                            }
+                          }
+                        }}
+                        className={`border-2 border-dashed rounded-2xl p-6 text-center hover:bg-slate-900/10 hover:border-indigo-500/50 transition-all relative flex flex-col items-center justify-center cursor-pointer ${
+                          isDragging ? 'border-indigo-500 bg-indigo-500/5' : 'border-slate-800 bg-slate-950/40'
+                        }`}
+                      >
+                        <input
+                          id="screenshot-upload-input"
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files[0];
+                            if (file) setDepFile(file);
+                          }}
+                          className="hidden"
                         />
-                      ) : (
-                        <div className="w-12 h-12 rounded-lg border border-slate-800 bg-slate-900 flex items-center justify-center text-slate-500">
-                          <Upload className="h-5 w-5" />
+                        <div className="bg-slate-900/60 p-3 rounded-full text-slate-500 mb-2.5">
+                          <Upload className="h-6 w-6" />
                         </div>
-                      )}
-                      <div className="flex flex-col text-left ml-3">
-                        <span className="text-xs font-bold text-slate-200 max-w-[200px] truncate" title={depFile.name}>
-                          {depFile.name}
+                        <p className="text-xs text-slate-355 font-bold">
+                          Cliquez ou déposez votre capture d'écran ici
+                        </p>
+                        <p className="text-[10px] text-slate-600 mt-1">Seuls les formats JPEG, PNG et GIF sont autorisés (max. 5 Mo).</p>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-between bg-slate-950/60 border border-slate-800 rounded-xl p-3.5 animate-slide-up">
+                        <div className="flex items-center">
+                          {filePreviewUrl ? (
+                            <img
+                              src={filePreviewUrl}
+                              alt="Reçu"
+                              className="w-12 h-12 rounded-lg border border-slate-800 object-cover bg-black"
+                            />
+                          ) : (
+                            <div className="w-12 h-12 rounded-lg border border-slate-800 bg-slate-900 flex items-center justify-center text-slate-500">
+                              <Upload className="h-5 w-5" />
+                            </div>
+                          )}
+                          <div className="flex flex-col text-left ml-3">
+                            <span className="text-xs font-bold text-slate-200 max-w-[200px] truncate" title={depFile.name}>
+                              {depFile.name}
+                            </span>
+                            <span className="text-[10px] text-slate-500">
+                              {(depFile.size / 1024).toFixed(1)} Ko
+                            </span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setDepFile(null)}
+                          className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-955/20 hover:bg-red-955/40 border border-red-900/30 hover:border-red-505 text-red-400 transition-all cursor-pointer"
+                        >
+                          <span>Retirer</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Submit button */}
+                  <button
+                    type="submit"
+                    disabled={depLoading}
+                    className="w-full py-4 px-4 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-bold rounded-xl text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 shadow-lg shadow-indigo-600/10 hover:shadow-indigo-600/20 transform hover:-translate-y-0.5 active:translate-y-0 active:scale-98 cursor-pointer font-display"
+                  >
+                    {depLoading ? (
+                      <>
+                        <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        <span>Traitement en cours...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Send className="h-4 w-4" />
+                        <span>Soumettre le Reçu</span>
+                      </>
+                    )}
+                  </button>
+                </form>
+              </div>
+            ) : (
+              // USDT BEP20 Deposit Interface
+              <div className="space-y-6 animate-fade-in">
+                {/* Warnings */}
+                <div className="p-4 bg-amber-955/20 border border-amber-500/25 rounded-2xl flex items-start space-x-3 text-amber-350 text-xs">
+                  <ShieldAlert className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-bold uppercase tracking-wider text-amber-400">Réseau BNB Smart Chain (BEP20) Uniquement</p>
+                    <p className="mt-0.5 leading-relaxed text-amber-500/90 font-medium">Envoyez uniquement des USDT via le réseau BEP20. Tout autre réseau ou actif entraînera une perte définitive des fonds.</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+                  {/* QR Code Column */}
+                  <div className="flex flex-col items-center justify-center p-6 bg-slate-955/40 border border-slate-900 rounded-3xl text-center gap-3">
+                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">QR Code de Dépôt</span>
+                    {usdtStats?.configs?.adminWallet ? (
+                      <div className="bg-white p-2 rounded-2xl border border-slate-200">
+                        <img 
+                          src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${usdtStats.configs.adminWallet}`} 
+                          alt="QR Code USDT"
+                          className="w-36 h-36"
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-36 h-36 bg-slate-900 border border-slate-800 rounded-2xl flex items-center justify-center text-slate-550 animate-pulse text-[10px]">
+                        Chargement...
+                      </div>
+                    )}
+                    <span className="text-[9px] text-slate-500 font-semibold leading-normal">Scannez pour obtenir l'adresse de transfert.</span>
+                  </div>
+
+                  {/* Wallet details & Copy address Column */}
+                  <div className="md:col-span-2 space-y-4">
+                    <div className="p-5 bg-gradient-to-b from-slate-900/60 to-emerald-500/5 border border-emerald-500/10 rounded-2xl shadow-md space-y-4">
+                      <div className="flex justify-between items-center">
+                        <span className="font-black text-slate-200 text-sm flex items-center space-x-2">
+                          <span className="h-2 w-2 rounded-full bg-emerald-450 animate-pulse"></span>
+                          <span>USDT Wallet Officiel</span>
                         </span>
-                        <span className="text-[10px] text-slate-500">
-                          {(depFile.size / 1024).toFixed(1)} Ko
-                        </span>
+                        
+                        <button
+                          type="button"
+                          onClick={() => handleCopyToUsdtClipboard(usdtStats?.configs?.adminWallet || '')}
+                          disabled={!usdtStats?.configs?.adminWallet}
+                          className={`flex items-center justify-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all cursor-pointer ${
+                            copiedUsdtText
+                              ? 'bg-emerald-950/40 border-emerald-500 text-emerald-400'
+                              : 'bg-slate-800/40 border-slate-700/50 hover:bg-slate-800 hover:text-white text-slate-400'
+                          }`}
+                        >
+                          {copiedUsdtText ? (
+                            <>
+                              <Check className="h-3 w-3" />
+                              <span>Copié !</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="h-3 w-3" />
+                              <span>Copier l'adresse</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      <div className="p-3.5 bg-slate-950 border border-slate-900 rounded-xl">
+                        <p className="text-[9px] text-slate-500 uppercase tracking-wider font-bold">Adresse BEP20 :</p>
+                        <p className="font-mono font-black text-xs sm:text-sm text-emerald-400 mt-1 break-all select-all">
+                          {usdtStats?.configs?.adminWallet || '0x...'}
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4 text-xs">
+                        <div className="p-3 bg-slate-955/50 rounded-xl border border-slate-900 flex flex-col">
+                          <span className="text-slate-500 font-semibold uppercase tracking-wider text-[9px]">Dépôt Minimum :</span>
+                          <span className="font-black text-white mt-0.5">{usdtStats?.configs?.minDep || 5} USDT</span>
+                        </div>
+                        <div className="p-3 bg-slate-955/50 rounded-xl border border-slate-900 flex flex-col">
+                          <span className="text-slate-500 font-semibold uppercase tracking-wider text-[9px]">Réseau :</span>
+                          <span className="font-black text-white mt-0.5">BEP20 (BSC)</span>
+                        </div>
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setDepFile(null)}
-                      className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-950/20 hover:bg-red-950/40 border border-red-900/30 hover:border-red-500 text-red-400 transition-all cursor-pointer"
-                    >
-                      <span>Retirer</span>
-                    </button>
                   </div>
-                )}
-              </div>
+                </div>
 
-              {/* Submit button */}
-              <button
-                type="submit"
-                disabled={depLoading}
-                className="w-full py-4 px-4 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-bold rounded-xl text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 shadow-lg shadow-indigo-600/10 hover:shadow-indigo-600/20 transform hover:-translate-y-0.5 active:translate-y-0 active:scale-98 cursor-pointer font-display"
-              >
-                {depLoading ? (
-                  <>
-                    <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>Traitement en cours...</span>
-                  </>
-                ) : (
-                  <>
-                    <Send className="h-4 w-4" />
-                    <span>Soumettre le Reçu</span>
-                  </>
-                )}
-              </button>
-            </form>
+                {/* Tx Hash form */}
+                <form onSubmit={handleUsdtDepositSubmit} className="glass-panel p-5 rounded-2xl border border-slate-850 space-y-4">
+                  <h4 className="font-display font-black text-sm text-white">Vérification Automatique de la Blockchain</h4>
+                  <p className="text-xs text-slate-400 leading-normal">
+                    Une fois votre transfert USDT BEP20 effectué, collez le <strong>Transaction Hash (Tx Hash)</strong> de la transaction ci-dessous. Notre scanner interrogera la blockchain BSC pour créditer votre compte instantanément.
+                  </p>
+
+                  {usdtDepError && (
+                    <div className="p-3.5 bg-red-955/30 border border-red-500/20 text-red-400 text-xs rounded-xl font-bold animate-shake">
+                      {usdtDepError}
+                    </div>
+                  )}
+                  {usdtDepSuccess && (
+                    <div className="p-3.5 bg-emerald-950/30 border border-emerald-500/20 text-emerald-400 text-xs rounded-xl font-bold animate-fade-in">
+                      {usdtDepSuccess}
+                    </div>
+                  )}
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Transaction Hash (Tx Hash)</label>
+                    <input
+                      type="text"
+                      placeholder="Ex: 0xe00adbc2..."
+                      value={usdtDepTxHash}
+                      onChange={(e) => setUsdtDepTxHash(e.target.value)}
+                      className="block w-full px-4 py-3 bg-slate-950/70 border border-slate-800 rounded-xl text-sm font-mono text-slate-200 placeholder-slate-700 focus:outline-none focus:border-emerald-500"
+                      required
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={usdtDepLoading}
+                    className="w-full py-3.5 px-4 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-bold rounded-xl text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 shadow-lg shadow-emerald-600/10 hover:shadow-emerald-600/20 transform hover:-translate-y-0.5 active:translate-y-0 active:scale-98 cursor-pointer font-display"
+                  >
+                    {usdtDepLoading ? (
+                      <>
+                        <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        <span>VÉRIFICATION BLOCKCHAIN...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Coins className="h-4 w-4 text-emerald-450" />
+                        <span>Vérifier et Créditer mon USDT</span>
+                      </>
+                    )}
+                  </button>
+                </form>
+              </div>
+            )}
           </div>
         )}
 
@@ -2198,7 +2530,7 @@ export default function Dashboard() {
                             {bet.is_won ? `${bet.cashout_multiplier ? bet.cashout_multiplier.toFixed(2) : '-'}x` : 'Crash'}
                           </td>
                           <td className={`py-3 text-right font-mono font-black ${bet.is_won ? 'text-emerald-400' : 'text-slate-500'}`}>
-                            {bet.is_won ? `+${bet.payout_amount ? bet.payout_amount.toFixed(2) : '0.00'} HTG` : '0.00 HTG'}
+                            {bet.is_won ? `+${bet.payout_amount ? bet.payout_amount.toFixed(2) : '0.00'} ${bet.currency || 'HTG'}` : `- ${bet.bet_amount ? bet.bet_amount.toFixed(2) : '0.00'} ${bet.currency || 'HTG'}`}
                           </td>
                         </tr>
                       ))}
@@ -2209,7 +2541,7 @@ export default function Dashboard() {
             </div>
 
             {/* My Transactions History Table */}
-            <div className="glass-panel p-6 rounded-3xl">
+            <div className="glass-panel p-6 rounded-3xl animate-fade-in">
               <h3 className="font-display font-black text-xl text-white mb-4 flex items-center space-x-2">
                 <Landmark className="h-5 w-5 text-indigo-400" />
                 <span>Mes Dépôts & Retraits</span>
@@ -2236,35 +2568,69 @@ export default function Dashboard() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800">
-                      {myHistory.transactions.map((tx, idx) => (
-                        <tr key={idx} className="hover:bg-slate-900/25 transition-colors">
-                          <td className="py-3 text-slate-400">{new Date(tx.created_at).toLocaleDateString('fr-FR')}</td>
-                          <td className="py-3">
-                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase ${
-                              tx.type === 'deposit' ? 'bg-emerald-950/60 border border-emerald-500/20 text-emerald-400' : 'bg-red-950/60 border border-red-500/20 text-red-400'
-                            }`}>
-                              {tx.type === 'deposit' ? 'Dépôt' : 'Retrait'}
-                            </span>
-                          </td>
-                          <td className="py-3 text-slate-300 font-medium">
-                            {tx.type === 'deposit' ? (tx.provider ? tx.provider.toUpperCase() : 'N/A') : `Vers ${tx.phone_number || 'N/A'}`}
-                          </td>
-                          <td className="py-3 font-mono font-bold text-slate-400">{tx.amount ? tx.amount.toFixed(2) : '0.00'} HTG</td>
-                          <td className="py-3 font-mono text-red-400/80">{tx.fee > 0 ? `-${tx.fee.toFixed(2)} HTG` : '-'}</td>
-                          <td className="py-3 font-mono font-bold text-slate-200">{tx.net_amount ? tx.net_amount.toFixed(2) : '0.00'} HTG</td>
-                          <td className="py-3 text-right">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                              tx.status === 'approved' ? 'bg-emerald-500/10 text-emerald-400' :
-                              tx.status === 'rejected' ? 'bg-red-500/10 text-red-400' :
-                              'bg-amber-500/10 text-amber-400'
-                            }`}>
-                              {tx.status === 'approved' ? 'Approuvé' :
-                               tx.status === 'rejected' ? 'Refusé' :
-                               'En attente'}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
+                      {myHistory.transactions.map((tx, idx) => {
+                        const isUsdt = tx.provider === 'usdt_bep20';
+                        return (
+                          <tr key={idx} className="hover:bg-slate-900/25 transition-colors">
+                            <td className="py-3 text-slate-400">
+                              {new Date(tx.created_at).toLocaleDateString('fr-FR')}
+                            </td>
+                            <td className="py-3">
+                              <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase ${
+                                tx.type === 'deposit' ? 'bg-emerald-950/60 border border-emerald-500/20 text-emerald-400' : 'bg-red-955/60 border border-red-500/20 text-red-400'
+                              }`}>
+                                {tx.type === 'deposit' ? 'Dépôt' : 'Retrait'}
+                              </span>
+                            </td>
+                            <td className="py-3 text-slate-300 font-medium">
+                              {isUsdt ? (
+                                tx.type === 'deposit' ? (
+                                  <a
+                                    href={`https://bscscan.com/tx/${tx.tx_hash}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-emerald-455 hover:underline font-bold"
+                                  >
+                                    USDT BEP20 (Blockchain)
+                                  </a>
+                                ) : (
+                                  <a
+                                    href={`https://bscscan.com/address/${tx.phone_number}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-emerald-455 hover:underline font-mono"
+                                    title={tx.phone_number}
+                                  >
+                                    Vers {tx.phone_number.substring(0, 6)}...{tx.phone_number.substring(tx.phone_number.length - 4)}
+                                  </a>
+                                )
+                              ) : (
+                                tx.type === 'deposit' ? (tx.provider ? tx.provider.toUpperCase() : 'N/A') : `Vers ${tx.phone_number || 'N/A'}`
+                              )}
+                            </td>
+                            <td className="py-3 font-mono font-bold text-slate-400">
+                              {tx.amount ? tx.amount.toFixed(isUsdt ? 4 : 2) : '0.00'} {isUsdt ? 'USDT' : 'HTG'}
+                            </td>
+                            <td className="py-3 font-mono text-red-455/80">
+                              {tx.fee > 0 ? `-${tx.fee.toFixed(isUsdt ? 4 : 2)} ${isUsdt ? 'USDT' : 'HTG'}` : '-'}
+                            </td>
+                            <td className="py-3 font-mono font-bold text-slate-200">
+                              {tx.net_amount ? tx.net_amount.toFixed(isUsdt ? 4 : 2) : '0.00'} {isUsdt ? 'USDT' : 'HTG'}
+                            </td>
+                            <td className="py-3 text-right">
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                tx.status === 'approved' ? 'bg-emerald-500/10 text-emerald-455' :
+                                tx.status === 'rejected' ? 'bg-red-500/10 text-red-400' :
+                                'bg-amber-500/10 text-amber-400'
+                              }`}>
+                                {tx.status === 'approved' ? 'Approuvé' :
+                                 tx.status === 'rejected' ? 'Refusé' :
+                                 'En attente'}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -2763,6 +3129,157 @@ export default function Dashboard() {
 
             </div>
           )
+        )}
+
+        {/* Tab content: EXCHANGE (CONVERSION USDT -> HTG) */}
+        {activeTab === 'exchange' && (
+          <div className="space-y-6 animate-fade-in max-w-4xl mx-auto">
+            {/* Main conversion card */}
+            <div className="glass-panel p-6 sm:p-8 rounded-3xl space-y-6 bg-gradient-to-br from-slate-900/40 via-emerald-950/5 to-slate-900/40 border border-slate-800 shadow-xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none"></div>
+              
+              <div className="text-center md:text-left">
+                <h3 className="font-display font-black text-2xl text-white flex items-center space-x-2">
+                  <Coins className="h-6 w-6 text-emerald-400" />
+                  <span>Exchange USDT → HTG</span>
+                </h3>
+                <p className="text-sm text-slate-400 mt-1">Convertissez instantanément vos USDT en gourdes (HTG) pour jouer directement sur Ketarena.</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                {/* Stats panel */}
+                <div className="space-y-4">
+                  <div className="p-5 bg-slate-950/60 rounded-2xl border border-slate-900 space-y-3">
+                    <div>
+                      <span className="text-[10px] text-slate-550 uppercase tracking-wider font-bold">Solde USDT disponible :</span>
+                      <span className="font-mono text-2xl font-black text-emerald-400 block mt-0.5">
+                        {(user?.usdt_balance || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 6 })} USDT
+                      </span>
+                    </div>
+                    <div className="border-t border-slate-900 pt-3">
+                      <span className="text-[10px] text-slate-550 uppercase tracking-wider font-bold">Taux de conversion actuel :</span>
+                      <span className="text-sm font-bold text-white block mt-0.5">
+                        1 USDT = {usdtStats?.configs?.rate || 130} HTG
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-950/30 rounded-xl p-4 border border-slate-900 text-xs text-slate-400 leading-relaxed">
+                    💡 <strong className="text-slate-300">Zéro frais de conversion :</strong> Ketarena n'applique aucun frais lors des conversions de devises. Vous recevez exactement la contrevaleur en HTG selon le taux fixé par l'administration.
+                  </div>
+                </div>
+
+                {/* Form panel */}
+                <form onSubmit={handleUsdtExchangeSubmit} className="space-y-4">
+                  {usdtExError && (
+                    <div className="p-3 bg-red-955/30 border border-red-500/20 text-red-400 text-xs rounded-xl font-bold animate-shake">
+                      {usdtExError}
+                    </div>
+                  )}
+                  {usdtExSuccess && (
+                    <div className="p-3 bg-emerald-950/30 border border-emerald-500/20 text-emerald-400 text-xs rounded-xl font-bold animate-fade-in">
+                      {usdtExSuccess}
+                    </div>
+                  )}
+
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex justify-between items-center">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Montant à convertir (USDT)</label>
+                      <button
+                        type="button"
+                        onClick={() => setUsdtExAmount((user?.usdt_balance ?? 0).toString())}
+                        className="text-[10px] font-bold text-emerald-455 hover:text-emerald-400 uppercase cursor-pointer"
+                      >
+                        Tout convertir
+                      </button>
+                    </div>
+                    <div className="relative flex items-center">
+                      <input
+                        type="number"
+                        step="0.000001"
+                        placeholder="Ex: 10"
+                        value={usdtExAmount}
+                        onChange={(e) => setUsdtExAmount(e.target.value)}
+                        className="block w-full px-4 py-3.5 bg-slate-955/70 border border-slate-800 rounded-xl text-sm font-mono text-slate-200 focus:outline-none focus:border-emerald-500 font-bold"
+                        required
+                      />
+                      <span className="absolute right-4 text-xs font-bold text-slate-505 pointer-events-none">USDT</span>
+                    </div>
+                  </div>
+
+                  {usdtExAmount && parseFloat(usdtExAmount) > 0 && (
+                    <div className="p-4 bg-emerald-950/15 rounded-xl border border-emerald-500/10 flex items-center justify-between animate-slide-up">
+                      <span className="text-xs text-emerald-300 font-bold">Montant crédité sur votre compte :</span>
+                      <span className="font-mono text-lg font-black text-white">
+                        +{(parseFloat(usdtExAmount) * (usdtStats?.configs?.rate || 130)).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} HTG
+                      </span>
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={usdtExLoading || !usdtExAmount || parseFloat(usdtExAmount) <= 0 || parseFloat(usdtExAmount) > (user?.usdt_balance || 0)}
+                    className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white font-bold rounded-xl text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 shadow-md shadow-emerald-600/15 cursor-pointer transform hover:-translate-y-0.5 active:translate-y-0 active:scale-98"
+                  >
+                    {usdtExLoading ? (
+                      <>
+                        <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        <span>CONVERSION EN COURS...</span>
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="h-4 w-4" />
+                        <span>Convertir en HTG</span>
+                      </>
+                    )}
+                  </button>
+                </form>
+              </div>
+            </div>
+
+            {/* History panel */}
+            <div className="glass-panel p-6 rounded-3xl space-y-4">
+              <h3 className="font-display font-black text-lg text-white flex items-center space-x-2">
+                <History className="h-5 w-5 text-emerald-455" />
+                <span>Historique des Conversions USDT</span>
+              </h3>
+
+              {!usdtStats?.histories?.conversions || usdtStats.histories.conversions.length === 0 ? (
+                <p className="text-xs text-slate-500 text-center py-6">Aucune conversion enregistrée.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="border-b border-slate-800 text-slate-500 font-bold uppercase tracking-wider">
+                        <th className="pb-3">Date</th>
+                        <th className="pb-3">Débité</th>
+                        <th className="pb-3">Taux Appliqué</th>
+                        <th className="pb-3 text-right">Crédité</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800">
+                      {usdtStats.histories.conversions.map((conv, idx) => (
+                        <tr key={idx} className="hover:bg-slate-900/25 transition-colors">
+                          <td className="py-3 text-slate-400 font-mono">
+                            {new Date(conv.created_at).toLocaleDateString('fr-FR')} {new Date(conv.created_at).toLocaleTimeString('fr-FR', {hour: '2-digit', minute:'2-digit'})}
+                          </td>
+                          <td className="py-3 font-mono font-bold text-red-400">
+                            -{parseFloat(conv.usdt_amount).toFixed(4)} USDT
+                          </td>
+                          <td className="py-3 font-mono text-slate-400">
+                            1 USDT = {parseFloat(conv.rate).toFixed(0)} HTG
+                          </td>
+                          <td className="py-3 text-right font-mono font-black text-emerald-400">
+                            +{parseFloat(conv.htg_amount).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} HTG
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
         )}
 
         {/* Tab content 8: COMPETITIONS */}

@@ -30,6 +30,10 @@ export default function Admin() {
   const [adminSuccess, setAdminSuccess] = useState('');
   const [selectedScreenshot, setSelectedScreenshot] = useState(null); // stores image url to view in modal
 
+  // USDT and Global settings
+  const [globalSettings, setGlobalSettings] = useState([]);
+  const [editingSetting, setEditingSetting] = useState(null);
+
   // Search User Bets
   const [searchQuery, setSearchQuery] = useState('');
   const [searchLoading, setSearchLoading] = useState(false);
@@ -67,6 +71,9 @@ export default function Admin() {
 
       const configsData = await apiRequest('/api/admin/competitions/config');
       setCompConfigs(configsData);
+
+      const settingsData = await apiRequest('/api/admin/settings');
+      setGlobalSettings(settingsData);
     } catch (err) {
       setAdminError(err.message || 'Erreur lors du chargement des données administratives.');
     } finally {
@@ -166,6 +173,27 @@ export default function Admin() {
       setCompConfigs(configsData);
     } catch (err) {
       setAdminError(err.message || 'Erreur lors de la sauvegarde de la configuration.');
+    }
+  };
+
+  const handleSaveSetting = async (e) => {
+    e.preventDefault();
+    setAdminError('');
+    setAdminSuccess('');
+    try {
+      await apiRequest('/api/admin/settings', {
+        method: 'POST',
+        body: {
+          key: editingSetting.key,
+          value: editingSetting.value
+        }
+      });
+      setAdminSuccess(`Le paramètre '${editingSetting.key}' a été enregistré.`);
+      setEditingSetting(null);
+      const settingsData = await apiRequest('/api/admin/settings');
+      setGlobalSettings(settingsData);
+    } catch (err) {
+      setAdminError(err.message || 'Erreur lors de la sauvegarde du paramètre.');
     }
   };
 
@@ -512,16 +540,34 @@ export default function Admin() {
                           {tx.type === 'deposit' ? 'Dépôt' : 'Retrait'}
                         </span>
                       </td>
-                      <td className="py-4 text-slate-300 font-medium">
+                      <td className="py-4 text-slate-350 font-medium">
                         {tx.type === 'deposit' 
-                          ? tx.provider.toUpperCase() 
-                          : `${tx.provider ? tx.provider.toUpperCase() : 'MONCASH'} (Vers ${tx.phone_number})`
+                          ? (tx.provider === 'usdt_bep20' ? 'USDT BEP20' : tx.provider.toUpperCase()) 
+                          : `${tx.provider ? (tx.provider === 'usdt_bep20' ? 'USDT BEP20' : tx.provider.toUpperCase()) : 'MONCASH'} (Vers ${
+                              tx.provider === 'usdt_bep20' 
+                                ? `${tx.phone_number.substring(0, 6)}...${tx.phone_number.substring(tx.phone_number.length - 4)}` 
+                                : tx.phone_number
+                            })`
                         }
                       </td>
-                      <td className="py-4 font-mono font-bold text-slate-400">{tx.amount.toFixed(2)}</td>
-                      <td className="py-4 font-mono font-bold text-slate-200">{tx.net_amount.toFixed(2)}</td>
+                      <td className="py-4 font-mono font-bold text-slate-400">
+                        {tx.amount.toFixed(tx.provider === 'usdt_bep20' ? 4 : 2)} {tx.provider === 'usdt_bep20' ? 'USDT' : 'HTG'}
+                      </td>
+                      <td className="py-4 font-mono font-bold text-slate-200">
+                        {tx.net_amount.toFixed(tx.provider === 'usdt_bep20' ? 4 : 2)} {tx.provider === 'usdt_bep20' ? 'USDT' : 'HTG'}
+                      </td>
                       <td className="py-4">
-                        {tx.screenshot_url ? (
+                        {tx.provider === 'usdt_bep20' ? (
+                          <a
+                            href={tx.type === 'deposit' ? `https://bscscan.com/tx/${tx.tx_hash}` : `https://bscscan.com/address/${tx.phone_number}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-emerald-450 hover:underline font-bold flex items-center space-x-1"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                            <span>BscScan</span>
+                          </a>
+                        ) : tx.screenshot_url ? (
                           <button
                             onClick={() => {
                               const finalUrl = tx.screenshot_url.startsWith('/api/') ? tx.screenshot_url : `/api${tx.screenshot_url}`;
@@ -661,6 +707,43 @@ export default function Admin() {
         </div>
       </div>
 
+      {/* Configuration USDT et Paramètres Système */}
+      <div className="glass-panel p-6 rounded-3xl space-y-6">
+        <h3 className="font-display font-black text-lg text-slate-200 border-b border-slate-900 pb-3 flex items-center space-x-2">
+          <Landmark className="h-5 w-5 text-indigo-405" />
+          <span>Paramètres Système & USDT (BEP20)</span>
+        </h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {globalSettings.map(setting => (
+            <div key={setting.key} className="bg-slate-955/40 p-5 rounded-2xl border border-slate-900 flex flex-col justify-between gap-4">
+              <div>
+                <span className="text-xs font-black text-indigo-400 uppercase tracking-widest block font-display">
+                  {setting.key.replace(/_/g, ' ')}
+                </span>
+                <p className="text-[11px] text-slate-400 mt-1 leading-normal">
+                  {setting.description || 'Pas de description.'}
+                </p>
+                <div className="mt-3 p-3 bg-slate-950 border border-slate-900 rounded-xl">
+                  <span className="text-xs text-slate-500 font-bold block uppercase tracking-wider">Valeur actuelle :</span>
+                  <span className="text-sm font-mono font-black text-white break-all mt-0.5 block">
+                    {setting.value}
+                  </span>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setEditingSetting({ ...setting })}
+                className="w-full py-2.5 bg-indigo-600/10 hover:bg-indigo-600 text-indigo-400 hover:text-white font-bold rounded-xl text-xs border border-indigo-500/20 transition-all text-center cursor-pointer"
+              >
+                Modifier la valeur
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* Config Editor Modal */}
       {editingConfig && (
         <div className="fixed inset-0 bg-slate-950/95 flex items-center justify-center p-4 z-50 backdrop-blur-md">
@@ -750,6 +833,53 @@ export default function Admin() {
                   />
                 </div>
               )}
+            </div>
+
+            <button
+              type="submit"
+              className="w-full py-3 bg-indigo-650 hover:bg-indigo-600 text-white font-bold rounded-xl text-sm transition-all"
+            >
+              Enregistrer
+            </button>
+          </form>
+        </div>
+      )}
+      {/* Setting Editor Modal */}
+      {editingSetting && (
+        <div className="fixed inset-0 bg-slate-955/95 flex items-center justify-center p-4 z-50 backdrop-blur-md">
+          <form onSubmit={handleSaveSetting} className="glass-panel p-6 rounded-3xl max-w-lg w-full relative space-y-4">
+            <button
+              type="button"
+              onClick={() => setEditingSetting(null)}
+              className="absolute top-4 right-4 text-slate-500 hover:text-slate-300 text-lg font-bold p-2 hover:bg-slate-800 rounded-full h-8 w-8 flex items-center justify-center transition-colors"
+            >
+              ✕
+            </button>
+            <h4 className="font-display font-black text-lg text-slate-200 mb-2">Modifier Paramètre: {editingSetting.key.toUpperCase()}</h4>
+            <p className="text-xs text-slate-400">{editingSetting.description}</p>
+            
+            <div className="space-y-3 text-sm">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs text-slate-400 font-bold uppercase">Nouvelle Valeur</label>
+                {editingSetting.key.endsWith('_enabled') ? (
+                  <select
+                    value={editingSetting.value}
+                    onChange={(e) => setEditingSetting({ ...editingSetting, value: e.target.value })}
+                    className="bg-slate-955 border border-slate-850 text-white text-sm rounded-xl px-4 py-2 w-full focus:outline-none focus:border-indigo-500 font-bold"
+                  >
+                    <option value="true">Activer (true)</option>
+                    <option value="false">Désactiver (false)</option>
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    required
+                    value={editingSetting.value}
+                    onChange={(e) => setEditingSetting({ ...editingSetting, value: e.target.value })}
+                    className="bg-slate-955 border border-slate-850 text-white text-sm rounded-xl px-4 py-2 w-full focus:outline-none focus:border-indigo-500 font-mono font-bold"
+                  />
+                )}
+              </div>
             </div>
 
             <button

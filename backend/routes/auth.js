@@ -319,7 +319,7 @@ router.get('/me', authenticateToken, async (req, res) => {
 
     const result = await query(
       `SELECT id, email, role, balance, ket_balance, active_currency, first_name, last_name, is_suspended, referral_code,
-              bonus_balance, locked_winnings, wager_requirement_required, wager_requirement_progress, bonus_expires_at, xp_booster_expires_at
+              bonus_balance, locked_winnings, wager_requirement_required, wager_requirement_progress, bonus_expires_at, xp_booster_expires_at, usdt_balance
        FROM users WHERE id = $1`,
       [req.user.id]
     );

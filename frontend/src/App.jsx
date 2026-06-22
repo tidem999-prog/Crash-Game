@@ -245,6 +245,10 @@ const Navbar = () => {
             <span className="nav-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M3 10h18M5 6h14M4 10v11M20 10v11M12 2v4M8 10v11M16 10v11"></path></svg></span>
             <span className="nav-item-label">Retrait</span>
           </button>
+          <button className="sidebar-nav-item" onClick={() => navigateTo('/dashboard?tab=exchange')}>
+            <span className="nav-item-icon"><RefreshCw className="h-5 w-5" /></span>
+            <span className="nav-item-label">Exchange USDT</span>
+          </button>
           <button className="sidebar-nav-item" onClick={() => navigateTo('/dashboard?tab=history')}>
             <span className="nav-item-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg></span>
             <span className="nav-item-label">Historique</span>
@@ -276,10 +280,14 @@ const Navbar = () => {
           )}
         </nav>
 
-        <div className="sidebar-footer">
+        <div className="sidebar-footer" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <div className="sidebar-balance-card">
-            <div className="sbc-label">Solde disponible</div>
+            <div className="sbc-label">Solde disponible (HTG)</div>
             <div className="sbc-value">{((user.balance || 0) + (user.bonus_balance || 0) + (user.locked_winnings || 0)).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} <span>HTG</span></div>
+          </div>
+          <div className="sidebar-balance-card" style={{ marginTop: '0' }}>
+            <div className="sbc-label">Solde disponible (USDT)</div>
+            <div className="sbc-value">{(user.usdt_balance || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 6 })} <span>USDT</span></div>
           </div>
         </div>
       </aside>

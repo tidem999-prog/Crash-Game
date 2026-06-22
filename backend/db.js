@@ -439,6 +439,61 @@ const initializeDatabase = async () => {
     `);
     console.log('Database: Table "user_chests" checked/created.');
 
+    // 8.17 Alter users table for USDT balance
+    await query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS usdt_balance DECIMAL(15, 6) DEFAULT 0.000000;
+    `);
+    
+    // 8.18 Alter transactions table for unique tx_hash
+    await query(`
+      ALTER TABLE transactions ADD COLUMN IF NOT EXISTS tx_hash VARCHAR(100) UNIQUE DEFAULT NULL;
+    `);
+
+    // 8.19 Create Global Settings Table
+    await query(`
+      CREATE TABLE IF NOT EXISTS global_settings (
+        key VARCHAR(100) PRIMARY KEY,
+        value VARCHAR(255) NOT NULL,
+        description TEXT,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('Database: Table "global_settings" checked/created.');
+
+    // Seed default settings if empty
+    const seedSettings = [
+      { key: 'usdt_exchange_rate', value: '130', desc: 'Taux de change USDT -> HTG' },
+      { key: 'usdt_min_deposit', value: '5', desc: 'Montant minimum de dépôt en USDT' },
+      { key: 'usdt_min_withdrawal', value: '5', desc: 'Montant minimum de retrait en USDT' },
+      { key: 'usdt_withdrawal_fee', value: '10', desc: 'Pourcentage de frais de retrait en USDT' },
+      { key: 'usdt_admin_wallet', value: '0x0000000000000000000000000000000000000000', desc: 'Adresse du portefeuille principal USDT BEP20 de l\'administrateur' },
+      { key: 'usdt_confirmations_required', value: '3', desc: 'Nombre de confirmations requises sur la blockchain' },
+      { key: 'usdt_deposits_enabled', value: 'true', desc: 'Activer ou désactiver les dépôts USDT' },
+      { key: 'usdt_withdrawals_enabled', value: 'true', desc: 'Activer ou désactiver les retraits USDT' }
+    ];
+
+    for (const s of seedSettings) {
+      await query(`
+        INSERT INTO global_settings (key, value, description)
+        VALUES ($1, $2, $3)
+        ON CONFLICT (key) DO NOTHING;
+      `, [s.key, s.value, s.desc]);
+    }
+    console.log('Database: Default global settings checked/seeded.');
+
+    // 8.20 Create USDT Conversions Table
+    await query(`
+      CREATE TABLE IF NOT EXISTS usdt_conversions (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+        usdt_amount DECIMAL(15, 6) NOT NULL,
+        rate DECIMAL(10, 4) NOT NULL,
+        htg_amount DECIMAL(12, 2) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('Database: Table "usdt_conversions" checked/created.');
+
     // Seed default competition configurations if empty
     const configCheck = await query("SELECT COUNT(*) FROM comp_configs");
     if (parseInt(configCheck.rows[0].count) === 0) {

@@ -109,15 +109,28 @@ router.post('/transactions/:id/approve', async (req, res) => {
 
     // If it is a deposit, we credit the user's balance now
     if (tx.type === 'deposit') {
-      await query(
-        "UPDATE users SET balance = balance + $1 WHERE id = $2",
-        [tx.amount, tx.user_id]
-      );
-      console.log(`Admin: Approved deposit of ${tx.amount} HTG for user ID ${tx.user_id}`);
+      if (tx.provider === 'usdt_bep20') {
+        await query(
+          "UPDATE users SET usdt_balance = usdt_balance + $1 WHERE id = $2",
+          [tx.amount, tx.user_id]
+        );
+        console.log(`Admin: Approved deposit of ${tx.amount} USDT for user ID ${tx.user_id}`);
+        // Create user notification
+        await query(
+          "INSERT INTO notifications (user_id, type, message) VALUES ($1, 'usdt_deposit_confirmed', $2)",
+          [tx.user_id, `Votre dépôt USDT de ${tx.amount} USDT a été validé.`]
+        );
+      } else {
+        await query(
+          "UPDATE users SET balance = balance + $1 WHERE id = $2",
+          [tx.amount, tx.user_id]
+        );
+        console.log(`Admin: Approved deposit of ${tx.amount} HTG for user ID ${tx.user_id}`);
+      }
 
       // Check deposit bonus eligibility
       const depositAmount = parseFloat(tx.amount);
-      if (depositAmount >= 500) {
+      if (depositAmount >= 500 && tx.provider !== 'usdt_bep20') {
         const countRes = await query(
           "SELECT COUNT(*) as count FROM transactions WHERE user_id = $1 AND type = 'deposit' AND status = 'approved'",
           [tx.user_id]
@@ -177,7 +190,7 @@ router.post('/transactions/:id/approve', async (req, res) => {
 
       // Check if user has a referrer
       const userRes = await query('SELECT email, referred_by FROM users WHERE id = $1', [tx.user_id]);
-      if (userRes.rows.length > 0 && userRes.rows[0].referred_by) {
+      if (userRes.rows.length > 0 && userRes.rows[0].referred_by && tx.provider !== 'usdt_bep20') {
         const referredBy = userRes.rows[0].referred_by;
         const depositerEmail = userRes.rows[0].email;
         const commission = parseFloat((tx.amount * 0.05).toFixed(2));
@@ -206,11 +219,29 @@ router.post('/transactions/:id/approve', async (req, res) => {
         }
       }
     } else {
-      console.log(`Admin: Approved withdrawal of ${tx.amount} HTG for user ID ${tx.user_id}`);
-      const feeAmount = parseFloat(tx.fee);
-      if (feeAmount > 0) {
-        const { recordPlatformRevenue } = require('../utils/competitions');
-        await recordPlatformRevenue(feeAmount, 'HTG', 'withdrawal_fee');
+      if (tx.provider === 'usdt_bep20') {
+        console.log(`Admin: Approved withdrawal of ${tx.amount} USDT for user ID ${tx.user_id}`);
+        const feeAmount = parseFloat(tx.fee);
+        if (feeAmount > 0) {
+          // Get current usdt exchange rate to convert USDT fees to HTG revenue
+          const rateRes = await query("SELECT value FROM global_settings WHERE key = 'usdt_exchange_rate'");
+          const rate = rateRes.rows.length > 0 ? parseFloat(rateRes.rows[0].value) : 130;
+          const feeInHtg = parseFloat((feeAmount * rate).toFixed(2));
+          const { recordPlatformRevenue } = require('../utils/competitions');
+          await recordPlatformRevenue(feeInHtg, 'HTG', 'withdrawal_fee_usdt');
+        }
+        // Send user notification
+        await query(
+          "INSERT INTO notifications (user_id, type, message) VALUES ($1, 'usdt_withdrawal_approved', $2)",
+          [tx.user_id, `Votre retrait USDT de ${tx.amount} USDT a été envoyé avec succès.`]
+        );
+      } else {
+        console.log(`Admin: Approved withdrawal of ${tx.amount} HTG for user ID ${tx.user_id}`);
+        const feeAmount = parseFloat(tx.fee);
+        if (feeAmount > 0) {
+          const { recordPlatformRevenue } = require('../utils/competitions');
+          await recordPlatformRevenue(feeAmount, 'HTG', 'withdrawal_fee');
+        }
       }
     }
 
@@ -251,13 +282,35 @@ router.post('/transactions/:id/reject', async (req, res) => {
 
     // If it was a withdrawal, we MUST refund the balance back to the user
     if (tx.type === 'withdrawal') {
-      await query(
-        "UPDATE users SET balance = balance + $1 WHERE id = $2",
-        [tx.amount, tx.user_id]
-      );
-      console.log(`Admin: Rejected withdrawal. Refunded ${tx.amount} HTG to user ID ${tx.user_id}`);
+      if (tx.provider === 'usdt_bep20') {
+        await query(
+          "UPDATE users SET usdt_balance = usdt_balance + $1 WHERE id = $2",
+          [tx.amount, tx.user_id]
+        );
+        console.log(`Admin: Rejected withdrawal. Refunded ${tx.amount} USDT to user ID ${tx.user_id}`);
+        // Create user notification
+        await query(
+          "INSERT INTO notifications (user_id, type, message) VALUES ($1, 'usdt_withdrawal_rejected', $2)",
+          [tx.user_id, `Votre demande de retrait de ${tx.amount} USDT a été refusée.`]
+        );
+      } else {
+        await query(
+          "UPDATE users SET balance = balance + $1 WHERE id = $2",
+          [tx.amount, tx.user_id]
+        );
+        console.log(`Admin: Rejected withdrawal. Refunded ${tx.amount} HTG to user ID ${tx.user_id}`);
+      }
     } else {
-      console.log(`Admin: Rejected deposit of ${tx.amount} HTG for user ID ${tx.user_id}`);
+      if (tx.provider === 'usdt_bep20') {
+        console.log(`Admin: Rejected deposit of ${tx.amount} USDT for user ID ${tx.user_id}`);
+        // Create user notification
+        await query(
+          "INSERT INTO notifications (user_id, type, message) VALUES ($1, 'usdt_deposit_rejected', $2)",
+          [tx.user_id, `Votre dépôt USDT de ${tx.amount} USDT a été refusé.`]
+        );
+      } else {
+        console.log(`Admin: Rejected deposit of ${tx.amount} HTG for user ID ${tx.user_id}`);
+      }
     }
 
     await query('COMMIT');
@@ -573,6 +626,38 @@ router.post('/competitions/config', async (req, res) => {
   } catch (err) {
     console.error('Error updating admin competition configuration:', err);
     res.status(500).json({ error: 'Erreur lors de la mise à jour de la configuration de compétition.' });
+  }
+});
+
+// 14. Get General System Settings
+router.get('/settings', async (req, res) => {
+  try {
+    const result = await query("SELECT key, value, description FROM global_settings ORDER BY key ASC");
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Error fetching admin global settings:', err);
+    res.status(500).json({ error: 'Erreur lors de la récupération des paramètres généraux.' });
+  }
+});
+
+// 15. Update General System Setting
+router.post('/settings', async (req, res) => {
+  const { key, value } = req.body;
+
+  if (!key || value === undefined) {
+    return res.status(400).json({ error: 'La clé et la valeur du paramètre sont requises.' });
+  }
+
+  try {
+    await query(
+      "UPDATE global_settings SET value = $1, updated_at = CURRENT_TIMESTAMP WHERE key = $2",
+      [value.toString().trim(), key]
+    );
+    console.log(`Admin: System setting '${key}' updated to '${value}'`);
+    res.json({ message: `Le paramètre '${key}' a été mis à jour avec succès.` });
+  } catch (err) {
+    console.error('Error updating admin global setting:', err);
+    res.status(500).json({ error: 'Erreur lors de la mise à jour du paramètre.' });
   }
 });
 

@@ -10,6 +10,7 @@ const transactionRoutes = require('./routes/transactions');
 const adminRoutes = require('./routes/admin');
 const rewardsRoutes = require('./routes/rewards');
 const competitionsRoutes = require('./routes/competitions');
+const usdtRoutes = require('./routes/usdt');
 
 const app = express();
 
@@ -75,6 +76,7 @@ app.use('/api/transactions', ensureDb, transactionRoutes);
 app.use('/api/admin', ensureDb, adminRoutes);
 app.use('/api/rewards', ensureDb, rewardsRoutes);
 app.use('/api/competitions', ensureDb, competitionsRoutes);
+app.use('/api/transactions/usdt', ensureDb, usdtRoutes);
 
 // Serve frontend static files if they exist (production build)
 const distPath = path.join(__dirname, '../frontend/dist');

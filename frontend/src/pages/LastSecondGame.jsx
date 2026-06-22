@@ -32,9 +32,6 @@ export default function LastSecondGame({ socket, onBackToLobby, addNotification 
     activeBetsCount: 0,
     activeBetsList: []
   });
-
-  const [tickingMultiplier, setTickingMultiplier] = useState(1.00);
-
   // Betting states
   const [betAmount, setBetAmount] = useState(10);
   const [betType, setBetType] = useState('goal'); // 'goal' or 'no_goal'
@@ -70,7 +67,7 @@ export default function LastSecondGame({ socket, onBackToLobby, addNotification 
 
   // Match clock formatting helper
   const getFormattedMatchTime = () => {
-    if (round.status !== 'ticking') {
+    if (round.status !== 'ticking' && round.status !== 'ended') {
       const mm = String(match.minute).padStart(2, '0');
       return `${mm}:00`;
     }
@@ -110,16 +107,15 @@ export default function LastSecondGame({ socket, onBackToLobby, addNotification 
           ...data
         };
       });
-      setTickingMultiplier(data.multiplier);
     });
 
     // Listen to live ticks
     socket.on('lastsecond:round:tick', (data) => {
       console.log("LastSecond: Live Tick received:", data);
-      setTickingMultiplier(data.multiplier);
       setRound(prev => ({
         ...prev,
-        elapsed: data.elapsed
+        elapsed: data.elapsed,
+        multiplier: data.multiplier
       }));
     });
 
@@ -748,9 +744,9 @@ export default function LastSecondGame({ socket, onBackToLobby, addNotification 
             </span>
 
             {/* Multiplier pill inline on the right of the score panel */}
-            {round.status === 'ticking' && (
+            {(round.status === 'ticking' || round.status === 'ended') && (
               <span className="font-mono text-emerald-400 text-xs sm:text-sm font-black bg-emerald-950 border border-emerald-500/30 px-2 py-0.5 rounded-xl whitespace-nowrap animate-pulse shadow-md shadow-emerald-500/25">
-                {tickingMultiplier.toFixed(2)}x
+                {round.multiplier.toFixed(2)}x
               </span>
             )}
           </div>
@@ -997,12 +993,12 @@ export default function LastSecondGame({ socket, onBackToLobby, addNotification 
 
             {/* Main Action Wager Button */}
             <div className="w-full">
-              {myBet && myBet.status === 'placed' && tickingMultiplier > 1.00 && round.status === 'ticking' && betType === 'goal' ? (
+              {myBet && myBet.status === 'placed' && round.multiplier > 1.00 && round.status === 'ticking' && betType === 'goal' ? (
                 <button
                   onClick={handleCashout}
                   className="w-full py-3 px-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl text-sm tracking-widest transition-all duration-150 transform active:scale-95 glow-emerald animate-shake cursor-pointer animate-pulse"
                 >
-                  CASH OUT ({(betAmount * tickingMultiplier).toFixed(0)} {currencyLabel})
+                  CASH OUT ({(betAmount * round.multiplier).toFixed(0)} {currencyLabel})
                 </button>
               ) : myBet && myBet.status === 'placed' ? (
                 <button

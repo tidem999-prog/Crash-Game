@@ -41,6 +41,7 @@ let currentRound = {
   target_duration: 0,
   seed_hash: '',
   server_seed: '',
+  nogoal_multiplier: 1.20,
   history: []
 };
 
@@ -162,6 +163,10 @@ const startWaitingPhase = async () => {
   currentRound.server_seed = crypto.randomBytes(32).toString('hex');
   currentRound.seed_hash = crypto.createHash('sha256').update(currentRound.server_seed).digest('hex');
 
+  // Load nogoal multiplier setting
+  const nogoalMultiplier = parseFloat(await getSetting('ls_nogoal_multiplier', '1.20'));
+  currentRound.nogoal_multiplier = nogoalMultiplier;
+
   // Pre-determine result
   // 40% chance of goal, 60% chance of no_goal
   const isGoal = Math.random() < 0.40;
@@ -217,7 +222,14 @@ const startTickingPhase = () => {
     const elapsed = (Date.now() - startTime) / 1000;
     currentRound.elapsed = elapsed;
 
-    const mult = calculateMultiplier(elapsed, currentMatch.minute);
+    let mult;
+    if (currentRound.crash_type === 'no_goal') {
+      const maxDuration = 30.0;
+      const progress = Math.min(1.0, elapsed / maxDuration);
+      mult = Math.pow(currentRound.nogoal_multiplier, progress);
+    } else {
+      mult = calculateMultiplier(elapsed, currentMatch.minute);
+    }
     currentRound.multiplier = parseFloat(mult.toFixed(2));
 
     // Emit live ticks

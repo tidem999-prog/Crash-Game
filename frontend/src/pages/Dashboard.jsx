@@ -13,6 +13,7 @@ import KothGame from './KothGame';
 import BloodmoneyGame from './BloodmoneyGame';
 import LastSecondGame from './LastSecondGame';
 import Competitions from './Competitions';
+import VideosTab from '../components/VideosTab';
 import { initAudio, playTakeoff, playCrash, playCashout, playClick, startEngineSound, stopEngineSound, updateEnginePitch, setMuted } from '../utils/audio';
 
 export default function Dashboard() {
@@ -3416,6 +3417,11 @@ export default function Dashboard() {
         {/* Tab content 8: COMPETITIONS */}
         {activeTab === 'competitions' && (
           <Competitions onNotificationAdded={addNotification} />
+        )}
+
+        {/* Tab content 9: TUTORIAL VIDEOS */}
+        {activeTab === 'videos' && (
+          <VideosTab addNotification={addNotification} />
         )}
 
       </div>

@@ -495,6 +495,18 @@ const initializeDatabase = async () => {
     `);
     console.log('Database: Table "usdt_conversions" checked/created.');
 
+    // 8.21 Create Videos Table for tutorial videos
+    await query(`
+      CREATE TABLE IF NOT EXISTS videos (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        title VARCHAR(255) NOT NULL,
+        url VARCHAR(500) NOT NULL,
+        type VARCHAR(20) DEFAULT 'youtube' CHECK (type IN ('youtube', 'file')),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    console.log('Database: Table "videos" checked/created.');
+
     // Seed default competition configurations if empty
     const configCheck = await query("SELECT COUNT(*) FROM comp_configs");
     if (parseInt(configCheck.rows[0].count) === 0) {

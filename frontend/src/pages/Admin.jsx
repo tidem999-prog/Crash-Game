@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { apiRequest } from '../context/AuthContext';
 import { 
   ShieldAlert, Landmark, CheckCircle, XCircle, Users, 
-  TrendingUp, ArrowDownRight, ArrowUpRight, Ban, Check, AlertTriangle, Eye, Coins, ArrowLeft, Search
+  TrendingUp, ArrowDownRight, ArrowUpRight, Ban, Check, AlertTriangle, Eye, Coins, ArrowLeft, Search,
+  Film, Video
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -56,6 +57,82 @@ export default function Admin() {
     }
   };
 
+  // Videos Management
+  const [videos, setVideos] = useState([]);
+  const [videoTitle, setVideoTitle] = useState('');
+  const [videoType, setVideoType] = useState('youtube');
+  const [youtubeUrl, setYoutubeUrl] = useState('');
+  const [videoFile, setVideoFile] = useState(null);
+  const [videoUploadLoading, setVideoUploadLoading] = useState(false);
+
+  const fetchVideos = async () => {
+    try {
+      const data = await apiRequest('/api/videos');
+      setVideos(data);
+    } catch (err) {
+      console.error('Error fetching videos in admin:', err);
+    }
+  };
+
+  const handleAddVideo = async (e) => {
+    e.preventDefault();
+    setAdminError('');
+    setAdminSuccess('');
+    setVideoUploadLoading(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('title', videoTitle);
+      formData.append('type', videoType);
+      if (videoType === 'youtube') {
+        formData.append('youtubeUrl', youtubeUrl);
+      } else if (videoFile) {
+        formData.append('videoFile', videoFile);
+      } else {
+        throw new Error('Veuillez uploader un fichier vidéo.');
+      }
+
+      const token = localStorage.getItem('token');
+      const res = await fetch(`${backendUrl}/api/videos/admin`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Erreur lors de l'ajout.");
+      }
+
+      setAdminSuccess('La vidéo a été ajoutée avec succès.');
+      setVideoTitle('');
+      setYoutubeUrl('');
+      setVideoFile(null);
+      const fileInput = document.getElementById('adminVideoFileInput');
+      if (fileInput) fileInput.value = '';
+      await fetchVideos();
+    } catch (err) {
+      setAdminError(err.message || 'Erreur lors de la sauvegarde.');
+    } finally {
+      setVideoUploadLoading(false);
+    }
+  };
+
+  const handleDeleteVideo = async (id) => {
+    if (!window.confirm('Voulez-vous vraiment supprimer cette vidéo ?')) return;
+    setAdminError('');
+    setAdminSuccess('');
+    try {
+      await apiRequest(`/api/videos/admin/${id}`, { method: 'DELETE' });
+      setAdminSuccess('La vidéo a été supprimée.');
+      await fetchVideos();
+    } catch (err) {
+      setAdminError(err.message || 'Erreur lors de la suppression.');
+    }
+  };
+
   const fetchAdminData = async () => {
     setLoading(true);
     setAdminError('');
@@ -74,6 +151,8 @@ export default function Admin() {
 
       const settingsData = await apiRequest('/api/admin/settings');
       setGlobalSettings(settingsData);
+
+      await fetchVideos();
     } catch (err) {
       setAdminError(err.message || 'Erreur lors du chargement des données administratives.');
     } finally {
@@ -891,6 +970,122 @@ export default function Admin() {
           </form>
         </div>
       )}
+
+      {/* Gestion des Vidéos Panel */}
+      <div className="glass-panel p-6 rounded-3xl space-y-6">
+        <h3 className="font-display font-black text-lg text-slate-200 border-b border-slate-900 pb-3 flex items-center space-x-2">
+          <Film className="h-5 w-5 text-rose-500" />
+          <span>Gestion des Vidéos Tutoriels</span>
+        </h3>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          
+          {/* Add Video Form */}
+          <div className="bg-slate-950/40 p-5 rounded-2xl border border-slate-900 space-y-4">
+            <h4 className="font-bold text-slate-350 text-sm">Ajouter un nouveau tutoriel</h4>
+            
+            <form onSubmit={handleAddVideo} className="space-y-4 text-xs">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-slate-400 font-bold uppercase text-[10px]">Titre du tutoriel</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: Comment effectuer un dépôt ?"
+                  value={videoTitle}
+                  onChange={(e) => setVideoTitle(e.target.value)}
+                  className="bg-slate-950 border border-slate-800 text-white rounded-xl px-4 py-2 w-full focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-slate-400 font-bold uppercase text-[10px]">Source de la vidéo</label>
+                <select
+                  value={videoType}
+                  onChange={(e) => setVideoType(e.target.value)}
+                  className="bg-slate-950 border border-slate-800 text-white rounded-xl px-3 py-2 w-full focus:outline-none focus:border-indigo-500 font-bold"
+                >
+                  <option value="youtube">Lien YouTube / Shorts</option>
+                  <option value="file">Fichier Vidéo (Upload direct)</option>
+                </select>
+              </div>
+
+              {videoType === 'youtube' ? (
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-slate-400 font-bold uppercase text-[10px]">Lien YouTube</label>
+                  <input
+                    type="url"
+                    required
+                    placeholder="https://www.youtube.com/watch?v=..."
+                    value={youtubeUrl}
+                    onChange={(e) => setYoutubeUrl(e.target.value)}
+                    className="bg-slate-950 border border-slate-800 text-white rounded-xl px-4 py-2 w-full focus:outline-none focus:border-indigo-500 font-mono"
+                  />
+                </div>
+              ) : (
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-slate-400 font-bold uppercase text-[10px]">Fichier Vidéo (.mp4, .webm... Max 100MB)</label>
+                  <input
+                    type="file"
+                    id="adminVideoFileInput"
+                    required
+                    accept="video/*"
+                    onChange={(e) => setVideoFile(e.target.files[0])}
+                    className="bg-slate-950 border border-slate-800 text-white rounded-xl px-3 py-2.5 w-full focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={videoUploadLoading}
+                className="w-full py-3 bg-rose-600 hover:bg-rose-500 text-white font-bold rounded-xl text-sm transition-all shadow-md shadow-rose-900/10 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {videoUploadLoading ? 'Upload en cours...' : 'Ajouter la vidéo'}
+              </button>
+            </form>
+          </div>
+
+          {/* Video List */}
+          <div className="lg:col-span-2 space-y-4">
+            <h4 className="font-bold text-slate-350 text-sm">Vidéos publiées</h4>
+            
+            {videos.length === 0 ? (
+              <p className="text-xs text-slate-500 py-10 text-center bg-slate-950/20 rounded-2xl border border-slate-900/60">
+                Aucune vidéo tutoriel n'a été ajoutée pour le moment.
+              </p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[380px] overflow-y-auto pr-1">
+                {videos.map((vid) => (
+                  <div key={vid.id} className="bg-slate-950/40 p-4 rounded-xl border border-slate-900 flex items-center justify-between gap-3">
+                    <div className="flex items-center space-x-3 overflow-hidden">
+                      <div className="h-10 w-10 bg-rose-950/40 border border-rose-900/30 text-rose-450 rounded-lg flex items-center justify-center shrink-0">
+                        <Video size={20} />
+                      </div>
+                      <div className="overflow-hidden">
+                        <span className="text-xs font-bold text-slate-200 block truncate" title={vid.title}>
+                          {vid.title}
+                        </span>
+                        <span className={`inline-block mt-0.5 text-[8px] font-bold uppercase px-1.5 py-0.2 rounded ${
+                          vid.type === 'youtube' ? 'bg-red-950/60 border border-red-500/20 text-red-400' : 'bg-blue-950/60 border border-blue-500/20 text-blue-400'
+                        }`}>
+                          {vid.type === 'youtube' ? 'YouTube' : 'Fichier local'}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteVideo(vid.id)}
+                      className="text-[10px] bg-red-950/40 hover:bg-red-900/40 text-red-400 border border-red-500/20 px-2.5 py-1.5 rounded-lg transition-all font-bold uppercase cursor-pointer"
+                    >
+                      Supprimer
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+        </div>
+      </div>
 
       {/* Screenshot Viewer Overlay Modal */}
       {selectedScreenshot && (

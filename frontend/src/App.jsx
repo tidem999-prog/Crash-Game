@@ -261,6 +261,15 @@ const Navbar = () => {
             <span className="nav-item-icon"><Award className="h-5 w-5 text-indigo-400" /></span>
             <span className="nav-item-label">Récompenses</span>
           </button>
+          <button className="sidebar-nav-item animate-pulse-subtle" onClick={() => navigateTo('/dashboard?tab=videos')}>
+            <span className="nav-item-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-rose-450">
+                <polygon points="23 7 16 12 23 17 23 7"></polygon>
+                <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+              </svg>
+            </span>
+            <span className="nav-item-label">Tutoriels Vidéos</span>
+          </button>
           {user.role === 'admin' && (
             <>
               <div className="sidebar-divider"></div>

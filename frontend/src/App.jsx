@@ -227,6 +227,22 @@ const Navbar = () => {
           </button>
         </div>
 
+        {/* Side-by-side small balances */}
+        <div className="px-4 py-3 flex items-center justify-between gap-3 border-b border-slate-900 bg-slate-950/20 select-none">
+          <div className="flex-1 bg-slate-900/30 border border-slate-800/60 rounded-xl p-2 flex flex-col items-start min-w-0">
+            <span className="text-[8px] font-black text-slate-500 uppercase tracking-wider">Solde HTG</span>
+            <span className="text-xs font-mono font-black text-emerald-450 truncate w-full mt-0.5">
+              {((user.balance || 0) + (user.bonus_balance || 0) + (user.locked_winnings || 0)).toLocaleString('en-US', { minimumFractionDigits: 2 })} <span className="text-[9px] text-slate-400 font-bold">G</span>
+            </span>
+          </div>
+          <div className="flex-1 bg-slate-900/30 border border-slate-800/60 rounded-xl p-2 flex flex-col items-start min-w-0">
+            <span className="text-[8px] font-black text-slate-500 uppercase tracking-wider">Solde USDT</span>
+            <span className="text-xs font-mono font-black text-indigo-400 truncate w-full mt-0.5">
+              {(user.usdt_balance || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} <span className="text-[9px] text-slate-400 font-bold">USDT</span>
+            </span>
+          </div>
+        </div>
+
         <nav className="sidebar-nav">
           <div className="nav-section-label">Navigation</div>
           <button className="sidebar-nav-item" onClick={() => navigateTo('/dashboard?tab=play')}>
@@ -288,17 +304,6 @@ const Navbar = () => {
             </>
           )}
         </nav>
-
-        <div className="sidebar-footer" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          <div className="sidebar-balance-card">
-            <div className="sbc-label">Solde disponible (HTG)</div>
-            <div className="sbc-value">{((user.balance || 0) + (user.bonus_balance || 0) + (user.locked_winnings || 0)).toLocaleString('fr-FR', { minimumFractionDigits: 2 })} <span>HTG</span></div>
-          </div>
-          <div className="sidebar-balance-card" style={{ marginTop: '0' }}>
-            <div className="sbc-label">Solde disponible (USDT)</div>
-            <div className="sbc-value">{(user.usdt_balance || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 6 })} <span>USDT</span></div>
-          </div>
-        </div>
       </aside>
 
       {/* ===== RIGHT SLIDE PROFILE PANEL ===== */}

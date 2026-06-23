@@ -3588,18 +3588,6 @@ export default function Dashboard() {
             )}
           </div>
         </div>
-
-        {/* Small informational widget */}
-        <div className="glass-panel p-4 rounded-xl space-y-2 bg-gradient-to-br from-indigo-950/15 to-purple-950/10 border border-indigo-900/20 w-full">
-          <h4 className="font-bold text-[10px] text-indigo-300 uppercase tracking-wider">Comment Jouer ?</h4>
-          <ol className="list-decimal pl-4 text-[10px] text-slate-400 space-y-1 leading-relaxed">
-            <li>Déposez des fonds en HTG sur MonCash ou NatCash.</li>
-            <li>Placez votre pari avant que l'avion ne décolle.</li>
-            <li>Observez le multiplicateur augmenter.</li>
-            <li>Cliquez sur <strong className="text-emerald-400 font-bold">CASH OUT</strong> pour récupérer vos gains avant l'écrasement.</li>
-            <li>Si l'avion s'écrase avant, le pari est perdu.</li>
-          </ol>
-        </div>
       </div>
       )}
 

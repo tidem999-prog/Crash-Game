@@ -8,16 +8,18 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
-        display: ['Outfit', 'sans-serif'],
+        sans: ['"Chakra Petch"', 'sans-serif'],
+        display: ['"Russo One"', 'sans-serif'],
       },
       colors: {
         brand: {
-          dark: '#030712',      // Deep slate-950
-          card: '#0f172a',      // Slate-900
-          accent: '#c084fc',    // Light purple-400
-          primary: '#6366f1',   // Indigo-500
-          danger: '#ef4444',    // Red-500
+          dark: '#0F0F23',      // Deep slate/purple
+          card: '#0f172a',      // Slate-900 (keeping this as a fallback if needed)
+          accent: '#F43F5E',    // Rose/Neon
+          primary: '#7C3AED',   // Violet électrique
+          secondary: '#A78BFA', // Violet clair
+          border: '#4C1D95',    // Violet profond
+          danger: '#EF4444',    // Red-500
           success: '#10b981',   // Emerald-500
           warning: '#f59e0b',   // Amber-500
         }

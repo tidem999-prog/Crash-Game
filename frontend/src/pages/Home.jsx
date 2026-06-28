@@ -25,105 +25,7 @@ const tiltCard = {
   hover: { scale: 1.03, y: -8, transition: { type: "spring", stiffness: 300, damping: 20 } }
 };
 
-// --- 3D HERO ANIMATIONS COMPONENT ---
-const Hero3DAnimations = () => {
-  return (
-    <div className="absolute right-0 top-10 md:top-20 w-[400px] h-[500px] pointer-events-none z-0 hidden lg:block perspective-1000">
-      
-      {/* 3D Crash Plane (taking off from bottom left to top right) */}
-      <motion.div
-        animate={{
-          x: [0, 300, 350],
-          y: [400, 50, 0],
-          rotate: [-15, -25, 10],
-          scale: [0.6, 1.2, 0]
-        }}
-        transition={{
-          duration: 4.5,
-          repeat: Infinity,
-          ease: "easeIn"
-        }}
-        className="absolute bottom-0 left-0 flex flex-col items-center drop-shadow-[0_0_20px_rgba(99,102,241,0.8)]"
-      >
-        <Plane className="w-20 h-20 text-indigo-400 rotate-45" fill="currentColor" />
-        {/* Multiplier */}
-        <div className="absolute top-16 bg-slate-900/80 px-2 py-1 rounded border border-slate-700 text-[10px] font-mono text-indigo-300 font-bold">
-           <motion.span animate={{ opacity: [1, 1, 0] }} transition={{ duration: 4.5, repeat: Infinity }}>
-             2.50x
-           </motion.span>
-        </div>
-        
-        {/* Explosion Effect at the end */}
-        <motion.div
-           animate={{ opacity: [0, 0, 1, 0], scale: [0, 0, 4, 0] }}
-           transition={{ duration: 4.5, repeat: Infinity, ease: "easeOut" }}
-           className="absolute -top-10 -right-10 w-32 h-32 bg-red-600 rounded-full blur-xl z-10"
-        />
-        <motion.div
-           animate={{ opacity: [0, 0, 1, 0], scale: [0, 0, 2, 0] }}
-           transition={{ duration: 4.5, repeat: Infinity, ease: "easeOut" }}
-           className="absolute -top-5 -right-5 w-20 h-20 bg-yellow-400 rounded-full blur-lg z-20"
-        />
-      </motion.div>
-
-      {/* Snake Animation (slithering on the bottom right) */}
-      <motion.div
-        animate={{
-          x: [150, 30, 150],
-          y: [350, 330, 350],
-        }}
-        transition={{
-          duration: 6,
-          repeat: Infinity,
-          ease: "easeInOut"
-        }}
-        className="absolute top-0 left-0"
-      >
-        {/* Snake Name Tag */}
-        <div className="absolute top-[0px] left-24 bg-slate-950/80 border border-slate-800 px-2 py-0.5 rounded text-[9px] flex flex-col items-center shadow-lg">
-           <span className="text-white font-bold tracking-wider">haiticashpam</span>
-           <span className="text-yellow-400 font-mono font-bold">104.40 G</span>
-        </div>
-
-        {/* Snake Body (SVG) */}
-        <svg width="220" height="80" viewBox="0 0 220 80" className="drop-shadow-[0_0_12px_rgba(253,224,71,0.6)] mt-8">
-           <circle cx="180" cy="40" r="14" fill="#d8b4fe" />
-           <circle cx="160" cy="40" r="14" fill="#c084fc" />
-           <circle cx="140" cy="40" r="14" fill="#a855f7" />
-           <circle cx="120" cy="40" r="14" fill="#9333ea" />
-           {/* Head */}
-           <circle cx="200" cy="40" r="16" fill="#e9d5ff" />
-           {/* Eyes */}
-           <circle cx="205" cy="34" r="3" fill="#0f172a" />
-           <circle cx="205" cy="46" r="3" fill="#0f172a" />
-           {/* White/Orange dots inside body like the screenshot */}
-           <circle cx="120" cy="40" r="4" fill="#f97316" />
-           <circle cx="140" cy="40" r="4" fill="#ffffff" />
-           <circle cx="160" cy="40" r="4" fill="#f97316" />
-           <circle cx="180" cy="40" r="4" fill="#ffffff" />
-        </svg>
-      </motion.div>
-
-      {/* 3D KET & HTG Coins being chased by Snake */}
-      <motion.div
-        animate={{ y: [0, -10, 0], rotateY: [0, 360] }}
-        transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute bottom-24 right-10 w-14 h-14 rounded-full bg-gradient-to-br from-yellow-300 to-yellow-600 border-4 border-yellow-200 shadow-[0_0_20px_rgba(250,204,21,0.6)] flex items-center justify-center"
-      >
-        <span className="text-yellow-900 font-black text-xs">KET</span>
-      </motion.div>
-
-      <motion.div
-        animate={{ y: [0, 10, 0], rotateY: [360, 0] }}
-        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-        className="absolute bottom-36 right-32 w-12 h-12 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-700 border-4 border-emerald-300 shadow-[0_0_20px_rgba(16,185,129,0.5)] flex items-center justify-center"
-      >
-        <span className="text-emerald-950 font-black text-[10px]">HTG</span>
-      </motion.div>
-
-    </div>
-  );
-};
+// Removed 3D HERO ANIMATIONS COMPONENT as requested by user
 
 export default function Home() {
   const { user } = useAuth();
@@ -178,8 +80,7 @@ export default function Home() {
         </motion.div>
       </motion.section>
 
-      {/* 3D Animations Right Side */}
-      <Hero3DAnimations />
+      {/* Hero 3D Animations Removed */}
 
       {/* Statistics Section */}
       <motion.section 

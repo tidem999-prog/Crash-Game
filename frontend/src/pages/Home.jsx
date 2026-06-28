@@ -28,7 +28,7 @@ const tiltCard = {
 // --- 3D HERO ANIMATIONS COMPONENT ---
 const Hero3DAnimations = () => {
   return (
-    <div className="relative w-full lg:w-[500px] h-[500px] pointer-events-none z-0 perspective-1000 mt-10 lg:mt-0 flex-shrink-0">
+    <div className="absolute right-0 top-10 md:top-20 w-[400px] h-[500px] pointer-events-none z-0 hidden lg:block perspective-1000">
       
       {/* 3D Crash Plane (taking off from bottom left to top right) */}
       <motion.div
@@ -141,47 +141,45 @@ export default function Home() {
         variants={staggerContainer}
         initial="hidden"
         animate="visible"
-        className="relative flex flex-col lg:flex-row justify-between items-center px-4 pt-24 pb-16 max-w-6xl mx-auto z-10 w-full"
+        className="relative flex flex-col justify-center items-center px-4 pt-24 pb-16 text-center max-w-4xl mx-auto z-10 w-full"
       >
-        <div className="flex flex-col items-center lg:items-start text-center lg:text-left w-full lg:w-1/2">
-          {/* Animated Badge */}
-          <motion.div variants={fadeInUp} className="inline-flex items-center space-x-2 bg-indigo-950/45 border border-indigo-500/20 px-3 py-1 rounded-full text-indigo-400 text-xs font-semibold mb-8 animate-pulse">
-            <Zap className="h-3 w-3" />
-            <span>La plateforme de jeux multijoueurs #1 en Haïti</span>
-          </motion.div>
+        {/* Animated Badge */}
+        <motion.div variants={fadeInUp} className="inline-flex items-center space-x-2 bg-indigo-950/45 border border-indigo-500/20 px-3 py-1 rounded-full text-indigo-400 text-xs font-semibold mb-8 animate-pulse">
+          <Zap className="h-3 w-3" />
+          <span>La plateforme de jeux multijoueurs #1 en Haïti</span>
+        </motion.div>
 
-          {/* Hero Headline */}
-          <motion.h1 variants={fadeInUp} className="font-display font-black text-5xl sm:text-7xl tracking-tight text-white mb-6 leading-tight">
-            Jouez et multipliez vos <br className="hidden lg:block"/><span className="bg-gradient-to-r from-yellow-400 via-indigo-400 to-purple-500 bg-clip-text text-transparent">HTG en direct</span>
-          </motion.h1>
+        {/* Hero Headline */}
+        <motion.h1 variants={fadeInUp} className="font-display font-black text-5xl sm:text-7xl tracking-tight text-white mb-6 leading-tight">
+          Jouez et multipliez vos <span className="bg-gradient-to-r from-yellow-400 via-indigo-400 to-purple-500 bg-clip-text text-transparent">HTG en direct</span>
+        </motion.h1>
 
-          <motion.p variants={fadeInUp} className="text-slate-400 text-lg sm:text-xl max-w-2xl mb-10 leading-relaxed">
-            Déposez par <span className="text-white font-semibold">MonCash</span> ou <span className="text-white font-semibold">NatCash</span>, affrontez les joueurs sur <span className="text-yellow-400 font-semibold">KetMesye (Snake)</span> ou pariez sur <span className="text-emerald-400 font-semibold">Last Second</span> pour faire de gros bénéfices !
-          </motion.p>
+        <motion.p variants={fadeInUp} className="text-slate-400 text-lg sm:text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
+          Déposez par <span className="text-white font-semibold">MonCash</span> ou <span className="text-white font-semibold">NatCash</span>, affrontez les joueurs sur <span className="text-yellow-400 font-semibold">KetMesye (Snake)</span> ou pariez sur <span className="text-emerald-400 font-semibold">Last Second</span> pour faire de gros bénéfices !
+        </motion.p>
 
-          {/* Action Button */}
-          <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto">
+        {/* Action Button */}
+        <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-10 w-full max-w-md mx-auto">
+          <Link
+            to={user ? "/dashboard" : "/auth"}
+            className="w-full sm:w-auto flex items-center justify-center space-x-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-8 py-4 rounded-xl shadow-lg shadow-indigo-500/25 transition-all duration-300 transform hover:-translate-y-1 hover:scale-105"
+          >
+            <span>{user ? "Accéder à l'Arena" : "Jouer Maintenant"}</span>
+            <ArrowRight className="h-5 w-5" />
+          </Link>
+          {!user && (
             <Link
-              to={user ? "/dashboard" : "/auth"}
-              className="w-full sm:w-auto flex items-center justify-center space-x-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-8 py-4 rounded-xl shadow-lg shadow-indigo-500/25 transition-all duration-300 transform hover:-translate-y-1 hover:scale-105"
+              to="/auth"
+              className="w-full sm:w-auto flex items-center justify-center bg-slate-900 hover:bg-slate-800 text-slate-300 font-semibold px-8 py-4 rounded-xl border border-slate-800 transition-all duration-200"
             >
-              <span>{user ? "Accéder à l'Arena" : "Jouer Maintenant"}</span>
-              <ArrowRight className="h-5 w-5" />
+              Créer un compte
             </Link>
-            {!user && (
-              <Link
-                to="/auth"
-                className="w-full sm:w-auto flex items-center justify-center bg-slate-900 hover:bg-slate-800 text-slate-300 font-semibold px-8 py-4 rounded-xl border border-slate-800 transition-all duration-200"
-              >
-                Créer un compte
-              </Link>
-            )}
-          </motion.div>
-        </div>
-
-        {/* 3D Animations Right Side */}
-        <Hero3DAnimations />
+          )}
+        </motion.div>
       </motion.section>
+
+      {/* 3D Animations Right Side */}
+      <Hero3DAnimations />
 
       {/* Statistics Section */}
       <motion.section 

@@ -28,99 +28,97 @@ const tiltCard = {
 // --- 3D HERO ANIMATIONS COMPONENT ---
 const Hero3DAnimations = () => {
   return (
-    <div className="absolute right-0 top-10 md:top-20 w-[400px] h-[500px] pointer-events-none z-0 hidden lg:block perspective-1000">
+    <div className="relative w-full lg:w-[500px] h-[500px] pointer-events-none z-0 perspective-1000 mt-10 lg:mt-0 flex-shrink-0">
       
-      {/* 3D KET Coin */}
-      <motion.div
-        animate={{ 
-          y: [0, -20, 0], 
-          rotateY: [0, 360]
-        }}
-        transition={{ 
-          y: { duration: 3, repeat: Infinity, ease: "easeInOut" },
-          rotateY: { duration: 4, repeat: Infinity, ease: "linear" }
-        }}
-        className="absolute top-20 right-32 w-16 h-16 rounded-full bg-gradient-to-br from-yellow-300 to-yellow-600 border-4 border-yellow-200 shadow-[0_0_20px_rgba(250,204,21,0.6)] flex items-center justify-center transform-gpu"
-        style={{ transformStyle: 'preserve-3d' }}
-      >
-        <span className="text-yellow-900 font-black text-sm" style={{ transform: 'translateZ(10px)' }}>KET</span>
-      </motion.div>
-
-      {/* 3D HTG Coin */}
-      <motion.div
-        animate={{ 
-          y: [0, 20, 0], 
-          rotateY: [360, 0]
-        }}
-        transition={{ 
-          y: { duration: 4, repeat: Infinity, ease: "easeInOut", delay: 1 },
-          rotateY: { duration: 5, repeat: Infinity, ease: "linear" }
-        }}
-        className="absolute top-48 right-16 w-14 h-14 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-700 border-4 border-emerald-300 shadow-[0_0_20px_rgba(16,185,129,0.5)] flex items-center justify-center transform-gpu"
-        style={{ transformStyle: 'preserve-3d' }}
-      >
-        <span className="text-emerald-950 font-black text-xs" style={{ transform: 'translateZ(10px)' }}>HTG</span>
-      </motion.div>
-
-      {/* Animated Snake eating coins */}
+      {/* 3D Crash Plane (taking off from bottom left to top right) */}
       <motion.div
         animate={{
-          x: [100, -20, 100],
-          y: [200, 100, 200],
-          rotate: [-15, 10, -15]
+          x: [0, 300, 350],
+          y: [400, 50, 0],
+          rotate: [-15, -25, 10],
+          scale: [0.6, 1.2, 0]
         }}
         transition={{
-          duration: 5,
-          repeat: Infinity,
-          ease: "easeInOut"
-        }}
-        className="absolute top-10 right-0 flex items-center drop-shadow-[0_0_15px_rgba(234,179,8,0.5)]"
-      >
-        {/* Snake SVG */}
-        <svg width="200" height="100" viewBox="0 0 200 100" className="text-yellow-500 fill-current">
-          <path d="M 20,50 Q 50,10 80,50 T 140,50" stroke="currentColor" strokeWidth="20" fill="none" strokeLinecap="round" />
-          <circle cx="140" cy="50" r="16" />
-          <circle cx="145" cy="43" r="3" fill="black" />
-          <circle cx="145" cy="57" r="3" fill="black" />
-          {/* Animated Tongue */}
-          <motion.path 
-            d="M 156,50 L 175,45 M 156,50 L 175,55" 
-            stroke="#ef4444" 
-            strokeWidth="3"
-            strokeLinecap="round"
-            animate={{ opacity: [0, 1, 0], scaleX: [0.3, 1, 0.3], x: [0, 10, 0] }}
-            transition={{ duration: 0.6, repeat: Infinity }}
-          />
-        </svg>
-      </motion.div>
-
-      {/* 3D Crash Plane */}
-      <motion.div
-        animate={{
-          x: [-80, 50, 120],
-          y: [300, 100, 20],
-          rotate: [30, 45, 60],
-          scale: [0.8, 1.2, 0.5]
-        }}
-        transition={{
-          duration: 3.5,
+          duration: 4.5,
           repeat: Infinity,
           ease: "easeIn"
         }}
-        className="absolute top-0 right-32 flex flex-col items-center justify-center drop-shadow-[0_0_25px_rgba(99,102,241,0.8)]"
+        className="absolute bottom-0 left-0 flex flex-col items-center drop-shadow-[0_0_20px_rgba(99,102,241,0.8)]"
       >
-        <Plane className="w-24 h-24 text-indigo-400" fill="currentColor" />
-        {/* Explosion Effect at the end of the animation cycle */}
+        <Plane className="w-20 h-20 text-indigo-400 rotate-45" fill="currentColor" />
+        {/* Multiplier */}
+        <div className="absolute top-16 bg-slate-900/80 px-2 py-1 rounded border border-slate-700 text-[10px] font-mono text-indigo-300 font-bold">
+           <motion.span animate={{ opacity: [1, 1, 0] }} transition={{ duration: 4.5, repeat: Infinity }}>
+             2.50x
+           </motion.span>
+        </div>
+        
+        {/* Explosion Effect at the end */}
         <motion.div
-           animate={{ opacity: [0, 0, 1, 0], scale: [0, 0, 3, 0] }}
-           transition={{ duration: 3.5, repeat: Infinity, ease: "easeOut" }}
-           className="absolute w-32 h-32 bg-red-500 rounded-full blur-2xl z-10"
+           animate={{ opacity: [0, 0, 1, 0], scale: [0, 0, 4, 0] }}
+           transition={{ duration: 4.5, repeat: Infinity, ease: "easeOut" }}
+           className="absolute -top-10 -right-10 w-32 h-32 bg-red-600 rounded-full blur-xl z-10"
         />
         <motion.div
-           animate={{ opacity: [0, 0, 1, 0], scale: [0, 0, 1.5, 0] }}
-           transition={{ duration: 3.5, repeat: Infinity, ease: "easeOut" }}
-           className="absolute w-20 h-20 bg-yellow-400 rounded-full blur-xl z-20"
+           animate={{ opacity: [0, 0, 1, 0], scale: [0, 0, 2, 0] }}
+           transition={{ duration: 4.5, repeat: Infinity, ease: "easeOut" }}
+           className="absolute -top-5 -right-5 w-20 h-20 bg-yellow-400 rounded-full blur-lg z-20"
         />
+      </motion.div>
+
+      {/* Snake Animation (slithering on the bottom right) */}
+      <motion.div
+        animate={{
+          x: [150, 30, 150],
+          y: [350, 330, 350],
+        }}
+        transition={{
+          duration: 6,
+          repeat: Infinity,
+          ease: "easeInOut"
+        }}
+        className="absolute top-0 left-0"
+      >
+        {/* Snake Name Tag */}
+        <div className="absolute top-[0px] left-24 bg-slate-950/80 border border-slate-800 px-2 py-0.5 rounded text-[9px] flex flex-col items-center shadow-lg">
+           <span className="text-white font-bold tracking-wider">haiticashpam</span>
+           <span className="text-yellow-400 font-mono font-bold">104.40 G</span>
+        </div>
+
+        {/* Snake Body (SVG) */}
+        <svg width="220" height="80" viewBox="0 0 220 80" className="drop-shadow-[0_0_12px_rgba(253,224,71,0.6)] mt-8">
+           <circle cx="180" cy="40" r="14" fill="#d8b4fe" />
+           <circle cx="160" cy="40" r="14" fill="#c084fc" />
+           <circle cx="140" cy="40" r="14" fill="#a855f7" />
+           <circle cx="120" cy="40" r="14" fill="#9333ea" />
+           {/* Head */}
+           <circle cx="200" cy="40" r="16" fill="#e9d5ff" />
+           {/* Eyes */}
+           <circle cx="205" cy="34" r="3" fill="#0f172a" />
+           <circle cx="205" cy="46" r="3" fill="#0f172a" />
+           {/* White/Orange dots inside body like the screenshot */}
+           <circle cx="120" cy="40" r="4" fill="#f97316" />
+           <circle cx="140" cy="40" r="4" fill="#ffffff" />
+           <circle cx="160" cy="40" r="4" fill="#f97316" />
+           <circle cx="180" cy="40" r="4" fill="#ffffff" />
+        </svg>
+      </motion.div>
+
+      {/* 3D KET & HTG Coins being chased by Snake */}
+      <motion.div
+        animate={{ y: [0, -10, 0], rotateY: [0, 360] }}
+        transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute bottom-24 right-10 w-14 h-14 rounded-full bg-gradient-to-br from-yellow-300 to-yellow-600 border-4 border-yellow-200 shadow-[0_0_20px_rgba(250,204,21,0.6)] flex items-center justify-center"
+      >
+        <span className="text-yellow-900 font-black text-xs">KET</span>
+      </motion.div>
+
+      <motion.div
+        animate={{ y: [0, 10, 0], rotateY: [360, 0] }}
+        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+        className="absolute bottom-36 right-32 w-12 h-12 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-700 border-4 border-emerald-300 shadow-[0_0_20px_rgba(16,185,129,0.5)] flex items-center justify-center"
+      >
+        <span className="text-emerald-950 font-black text-[10px]">HTG</span>
       </motion.div>
 
     </div>
@@ -143,45 +141,47 @@ export default function Home() {
         variants={staggerContainer}
         initial="hidden"
         animate="visible"
-        className="relative flex flex-col justify-center items-center px-4 pt-24 pb-16 text-center max-w-4xl mx-auto z-10 w-full"
+        className="relative flex flex-col lg:flex-row justify-between items-center px-4 pt-24 pb-16 max-w-6xl mx-auto z-10 w-full"
       >
-        {/* Animated Badge */}
-        <motion.div variants={fadeInUp} className="inline-flex items-center space-x-2 bg-indigo-950/45 border border-indigo-500/20 px-3 py-1 rounded-full text-indigo-400 text-xs font-semibold mb-8 animate-pulse">
-          <Zap className="h-3 w-3" />
-          <span>La plateforme de jeux multijoueurs #1 en Haïti</span>
-        </motion.div>
+        <div className="flex flex-col items-center lg:items-start text-center lg:text-left w-full lg:w-1/2">
+          {/* Animated Badge */}
+          <motion.div variants={fadeInUp} className="inline-flex items-center space-x-2 bg-indigo-950/45 border border-indigo-500/20 px-3 py-1 rounded-full text-indigo-400 text-xs font-semibold mb-8 animate-pulse">
+            <Zap className="h-3 w-3" />
+            <span>La plateforme de jeux multijoueurs #1 en Haïti</span>
+          </motion.div>
 
-        {/* Hero Headline */}
-        <motion.h1 variants={fadeInUp} className="font-display font-black text-5xl sm:text-7xl tracking-tight text-white mb-6 leading-tight">
-          Jouez et multipliez vos <span className="bg-gradient-to-r from-yellow-400 via-indigo-400 to-purple-500 bg-clip-text text-transparent">HTG en direct</span>
-        </motion.h1>
+          {/* Hero Headline */}
+          <motion.h1 variants={fadeInUp} className="font-display font-black text-5xl sm:text-7xl tracking-tight text-white mb-6 leading-tight">
+            Jouez et multipliez vos <br className="hidden lg:block"/><span className="bg-gradient-to-r from-yellow-400 via-indigo-400 to-purple-500 bg-clip-text text-transparent">HTG en direct</span>
+          </motion.h1>
 
-        <motion.p variants={fadeInUp} className="text-slate-400 text-lg sm:text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
-          Déposez par <span className="text-white font-semibold">MonCash</span> ou <span className="text-white font-semibold">NatCash</span>, affrontez les joueurs sur <span className="text-yellow-400 font-semibold">KetMesye (Snake)</span> ou pariez sur <span className="text-emerald-400 font-semibold">Last Second</span> pour faire de gros bénéfices !
-        </motion.p>
+          <motion.p variants={fadeInUp} className="text-slate-400 text-lg sm:text-xl max-w-2xl mb-10 leading-relaxed">
+            Déposez par <span className="text-white font-semibold">MonCash</span> ou <span className="text-white font-semibold">NatCash</span>, affrontez les joueurs sur <span className="text-yellow-400 font-semibold">KetMesye (Snake)</span> ou pariez sur <span className="text-emerald-400 font-semibold">Last Second</span> pour faire de gros bénéfices !
+          </motion.p>
 
-        {/* Action Button */}
-        <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-10 w-full max-w-md mx-auto">
-          <Link
-            to={user ? "/dashboard" : "/auth"}
-            className="w-full sm:w-auto flex items-center justify-center space-x-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-8 py-4 rounded-xl shadow-lg shadow-indigo-500/25 transition-all duration-300 transform hover:-translate-y-1 hover:scale-105"
-          >
-            <span>{user ? "Accéder à l'Arena" : "Jouer Maintenant"}</span>
-            <ArrowRight className="h-5 w-5" />
-          </Link>
-          {!user && (
+          {/* Action Button */}
+          <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto">
             <Link
-              to="/auth"
-              className="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-slate-300 font-semibold px-8 py-4 rounded-xl border border-slate-800 transition-all duration-200"
+              to={user ? "/dashboard" : "/auth"}
+              className="w-full sm:w-auto flex items-center justify-center space-x-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-8 py-4 rounded-xl shadow-lg shadow-indigo-500/25 transition-all duration-300 transform hover:-translate-y-1 hover:scale-105"
             >
-              Créer un compte
+              <span>{user ? "Accéder à l'Arena" : "Jouer Maintenant"}</span>
+              <ArrowRight className="h-5 w-5" />
             </Link>
-          )}
-        </motion.div>
-      </motion.section>
+            {!user && (
+              <Link
+                to="/auth"
+                className="w-full sm:w-auto flex items-center justify-center bg-slate-900 hover:bg-slate-800 text-slate-300 font-semibold px-8 py-4 rounded-xl border border-slate-800 transition-all duration-200"
+              >
+                Créer un compte
+              </Link>
+            )}
+          </motion.div>
+        </div>
 
-      {/* Decorative Game Icon floating REPLACED by 3D ANIMATIONS */}
-      <Hero3DAnimations />
+        {/* 3D Animations Right Side */}
+        <Hero3DAnimations />
+      </motion.section>
 
       {/* Statistics Section */}
       <motion.section 

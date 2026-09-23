@@ -64,7 +64,20 @@ const tickSandbox = async (currency) => {
   // 1. Move snakes
   socketIds.forEach(id => {
     const snake = sandboxSnakes[id];
+    if (!snake) return;
     
+    // Pa kouri toutotan jwè a poko manyen joystick la
+    if (!snake.hasStartedMoving) {
+      if (now - snake.spawnTime > 15000) {
+        snake.hasStartedMoving = true;
+        snake.spawnTime = now;
+        snake.isInvincible = true;
+      } else {
+        snake.isInvincible = true;
+        return;
+      }
+    }
+
     // Check invincibility timeout
     if (snake.isInvincible && now - snake.spawnTime > INVINCIBLE_TIME_MS) {
       snake.isInvincible = false;
@@ -113,6 +126,7 @@ const tickSandbox = async (currency) => {
   // 2. Collision checking
   socketIds.forEach(idA => {
     const snakeA = sandboxSnakes[idA];
+    if (!snakeA || !snakeA.hasStartedMoving) return;
     const headA = snakeA.segments[0];
 
     // Out-of-bounds collision
@@ -125,6 +139,7 @@ const tickSandbox = async (currency) => {
     socketIds.forEach(idB => {
       if (deadSnakes.has(idA)) return; // Already flagged as dead
       const snakeB = sandboxSnakes[idB];
+      if (!snakeB || !snakeB.hasStartedMoving) return;
 
       // Tête-à-tête (Head-to-head) collision
       if (idA !== idB) {
@@ -245,6 +260,7 @@ const tickSandbox = async (currency) => {
   // 4. Food eating
   Object.keys(sandboxSnakes).forEach(id => {
     const snake = sandboxSnakes[id];
+    if (!snake || !snake.hasStartedMoving) return;
     const head = snake.segments[0];
 
     for (let i = sandboxPellets.length - 1; i >= 0; i--) {
@@ -289,6 +305,7 @@ const tickSandbox = async (currency) => {
         color: s.color,
         eliminations: s.eliminations,
         isInvincible: s.isInvincible,
+        hasStartedMoving: s.hasStartedMoving !== false,
         energy: s.energy
       };
       return acc;
@@ -411,6 +428,19 @@ const handleDuelTick = async (duelId) => {
   // 1. Move snakes
   socketIds.forEach(id => {
     const snake = duel.snakes[id];
+    if (!snake) return;
+
+    if (!snake.hasStartedMoving) {
+      if (now - snake.spawnTime > 15000) {
+        snake.hasStartedMoving = true;
+        snake.spawnTime = now;
+        snake.isInvincible = true;
+      } else {
+        snake.isInvincible = true;
+        return;
+      }
+    }
+
     if (snake.isInvincible && now - snake.spawnTime > INVINCIBLE_TIME_MS) {
       snake.isInvincible = false;
     }
@@ -451,6 +481,7 @@ const handleDuelTick = async (duelId) => {
 
   socketIds.forEach(idA => {
     const snakeA = duel.snakes[idA];
+    if (!snakeA || !snakeA.hasStartedMoving) return;
     const headA = snakeA.segments[0];
 
     // Bounds check
@@ -463,6 +494,7 @@ const handleDuelTick = async (duelId) => {
     socketIds.forEach(idB => {
       if (deadSnakes.has(idA)) return;
       const snakeB = duel.snakes[idB];
+      if (!snakeB || !snakeB.hasStartedMoving) return;
 
       if (idA !== idB) {
         const headB = snakeB.segments[0];
@@ -563,6 +595,7 @@ const handleDuelTick = async (duelId) => {
   // 4. Eating pellets in duel
   socketIds.forEach(id => {
     const snake = duel.snakes[id];
+    if (!snake || !snake.hasStartedMoving) return;
     const head = snake.segments[0];
 
     for (let i = duel.pellets.length - 1; i >= 0; i--) {
@@ -615,6 +648,7 @@ const handleDuelTick = async (duelId) => {
         eliminations: s.eliminations,
         deaths: s.deaths,
         isInvincible: s.isInvincible,
+        hasStartedMoving: s.hasStartedMoving !== false,
         energy: s.energy
       };
       return acc;
@@ -891,6 +925,7 @@ const initKetmesyeEngine = (socketIoInstance) => {
           color: getRandomColor(),
           eliminations: 0,
           isInvincible: true,
+          hasStartedMoving: false,
           spawnTime: Date.now(),
           betId: null,
           isBoosting: false,
@@ -992,6 +1027,7 @@ const initKetmesyeEngine = (socketIoInstance) => {
           color: getRandomColor(),
           eliminations: 0,
           isInvincible: true,
+          hasStartedMoving: false,
           spawnTime: Date.now(),
           betId,
           isBoosting: false,
@@ -1034,11 +1070,21 @@ const initKetmesyeEngine = (socketIoInstance) => {
         const snake = activeDuels[duelId].snakes[socket.id];
         if (snake && typeof angle === 'number') {
           snake.angle = angle;
+          if (!snake.hasStartedMoving) {
+            snake.hasStartedMoving = true;
+            snake.spawnTime = Date.now();
+            snake.isInvincible = true;
+          }
         }
       } else {
         const snake = snakes.HTG[socket.id] || snakes.KET[socket.id] || (snakes.PIECES && snakes.PIECES[socket.id]);
         if (snake && typeof angle === 'number') {
           snake.angle = angle;
+          if (!snake.hasStartedMoving) {
+            snake.hasStartedMoving = true;
+            snake.spawnTime = Date.now();
+            snake.isInvincible = true;
+          }
         }
       }
     });
@@ -1050,11 +1096,21 @@ const initKetmesyeEngine = (socketIoInstance) => {
         const snake = activeDuels[duelId].snakes[socket.id];
         if (snake) {
           snake.isBoosting = !!data.isBoosting;
+          if (data.isBoosting && !snake.hasStartedMoving) {
+            snake.hasStartedMoving = true;
+            snake.spawnTime = Date.now();
+            snake.isInvincible = true;
+          }
         }
       } else {
         const snake = snakes.HTG[socket.id] || snakes.KET[socket.id] || (snakes.PIECES && snakes.PIECES[socket.id]);
         if (snake) {
           snake.isBoosting = !!data.isBoosting;
+          if (data.isBoosting && !snake.hasStartedMoving) {
+            snake.hasStartedMoving = true;
+            snake.spawnTime = Date.now();
+            snake.isInvincible = true;
+          }
         }
       }
     });
@@ -1316,6 +1372,7 @@ const initKetmesyeEngine = (socketIoInstance) => {
         eliminations: 0,
         deaths: 0,
         isInvincible: true,
+        hasStartedMoving: false,
         spawnTime: Date.now(),
         isBoosting: false,
         energy: 100,

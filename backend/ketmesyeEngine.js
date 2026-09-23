@@ -166,9 +166,9 @@ const tickSandbox = async (currency) => {
       }
 
       // Tête-à-corps (Head-to-body) collision
-      if (idA === idB && socketIds.length > 5) return; // Self collision is ignored if > 5 players
-      const startSegmentIndex = (idA === idB) ? 3 : 0; // Prevent colliding with own neck
-      for (let i = startSegmentIndex; i < snakeB.segments.length; i++) {
+      // Zewo self-collision: Yon jwè pa janm mouri lè l pase sou pwòp kò pa l!
+      if (idA === idB) return;
+      for (let i = 0; i < snakeB.segments.length; i++) {
         if (snakeA.isInvincible || snakeB.isInvincible) continue;
 
         const segment = snakeB.segments[i];
@@ -176,9 +176,7 @@ const tickSandbox = async (currency) => {
 
         if (dist < 18) { // Collision threshold
           deadSnakes.add(idA);
-          if (idA !== idB) {
-            collisionKills.push({ killerId: idB, deadId: idA });
-          }
+          collisionKills.push({ killerId: idB, deadId: idA });
           break;
         }
       }
@@ -516,16 +514,15 @@ const handleDuelTick = async (duelId) => {
       }
 
       // Head to body collision
-      const startSegmentIndex = (idA === idB) ? 3 : 0;
-      for (let i = startSegmentIndex; i < snakeB.segments.length; i++) {
+      // Zewo self-collision: Yon jwè pa janm mouri lè l pase sou pwòp kò pa l!
+      if (idA === idB) return;
+      for (let i = 0; i < snakeB.segments.length; i++) {
         if (snakeA.isInvincible || snakeB.isInvincible) continue;
         const segment = snakeB.segments[i];
         const dist = Math.hypot(headA.x - segment.x, headA.y - segment.y);
         if (dist < 18) {
           deadSnakes.add(idA);
-          if (idA !== idB) {
-            collisionKills.push({ killerId: idB, deadId: idA });
-          }
+          collisionKills.push({ killerId: idB, deadId: idA });
           break;
         }
       }

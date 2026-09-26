@@ -66,16 +66,10 @@ const tickSandbox = async (currency) => {
     const snake = sandboxSnakes[id];
     if (!snake) return;
     
-    // Pa kouri toutotan jwè a poko manyen joystick la
+    // Pa kouri toutotan jwè a poko kòmanse jwe ak joystick la!
     if (!snake.hasStartedMoving) {
-      if (now - snake.spawnTime > 15000) {
-        snake.hasStartedMoving = true;
-        snake.spawnTime = now;
-        snake.isInvincible = true;
-      } else {
-        snake.isInvincible = true;
-        return;
-      }
+      snake.isInvincible = true;
+      return;
     }
 
     // Check invincibility timeout
@@ -429,14 +423,8 @@ const handleDuelTick = async (duelId) => {
     if (!snake) return;
 
     if (!snake.hasStartedMoving) {
-      if (now - snake.spawnTime > 15000) {
-        snake.hasStartedMoving = true;
-        snake.spawnTime = now;
-        snake.isInvincible = true;
-      } else {
-        snake.isInvincible = true;
-        return;
-      }
+      snake.isInvincible = true;
+      return;
     }
 
     if (snake.isInvincible && now - snake.spawnTime > INVINCIBLE_TIME_MS) {

@@ -47,10 +47,10 @@ const spawnNormalPellets = (currency, count) => {
   }
 };
 
-// Initialize the pellets pool (2000 normal pellets per sandbox)
-spawnNormalPellets('HTG', 2000);
-spawnNormalPellets('KET', 2000);
-spawnNormalPellets('PIECES', 2000);
+// Initialize the pellets pool (450 normal pellets per sandbox: smooth network, zero lag)
+spawnNormalPellets('HTG', 450);
+spawnNormalPellets('KET', 450);
+spawnNormalPellets('PIECES', 450);
 
 // Tick sandbox routine for a specific currency sandbox
 const tickSandbox = async (currency) => {

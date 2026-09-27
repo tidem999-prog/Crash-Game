@@ -282,13 +282,28 @@ const tickSandbox = async (currency) => {
         snake.value = parseFloat((snake.value + pellet.value).toFixed(2));
         
         snake.growthPoints = (snake.growthPoints || 0) + pellet.value;
-        const growthStep = currency === 'KET' ? 1.6 : 0.20; // 1 segment per 2 pellets (0.20 HTG / 1.6 KET)
-        const segmentsToAdd = Math.floor(snake.growthPoints / growthStep);
-        if (segmentsToAdd > 0) {
-          snake.growthPoints -= segmentsToAdd * growthStep;
-          for (let g = 0; g < segmentsToAdd; g++) {
-            const lastSegment = snake.segments[snake.segments.length - 1];
-            snake.segments.push({ ...lastSegment });
+
+        // Kwasans Balanse: Koulèv la pa dwe janm vin enfini (max 85 segman)
+        const maxSegments = 85;
+        let growthCost;
+        if (currency === 'PIECES') {
+          growthCost = 15.0 + (snake.segments.length * 0.6);
+        } else if (currency === 'KET') {
+          growthCost = 4.0 + (snake.segments.length * 0.15);
+        } else {
+          growthCost = 1.0 + (snake.segments.length * 0.05);
+        }
+
+        while (snake.growthPoints >= growthCost && snake.segments.length < maxSegments) {
+          snake.growthPoints -= growthCost;
+          const lastSegment = snake.segments[snake.segments.length - 1];
+          snake.segments.push({ ...lastSegment });
+          if (currency === 'PIECES') {
+            growthCost = 15.0 + (snake.segments.length * 0.6);
+          } else if (currency === 'KET') {
+            growthCost = 4.0 + (snake.segments.length * 0.15);
+          } else {
+            growthCost = 1.0 + (snake.segments.length * 0.05);
           }
         }
 
@@ -631,13 +646,26 @@ const handleDuelTick = async (duelId) => {
         snake.value = parseFloat((snake.value + pellet.value).toFixed(2));
         
         snake.growthPoints = (snake.growthPoints || 0) + pellet.value;
-        const growthStep = duel.currency === 'KET' ? 1.6 : 0.20;
-        const segmentsToAdd = Math.floor(snake.growthPoints / growthStep);
-        if (segmentsToAdd > 0) {
-          snake.growthPoints -= segmentsToAdd * growthStep;
-          for (let g = 0; g < segmentsToAdd; g++) {
-            const lastSegment = snake.segments[snake.segments.length - 1];
-            snake.segments.push({ ...lastSegment });
+        const maxSegments = 85;
+        let growthCost;
+        if (duel.currency === 'PIECES') {
+          growthCost = 15.0 + (snake.segments.length * 0.6);
+        } else if (duel.currency === 'KET') {
+          growthCost = 4.0 + (snake.segments.length * 0.15);
+        } else {
+          growthCost = 1.0 + (snake.segments.length * 0.05);
+        }
+
+        while (snake.growthPoints >= growthCost && snake.segments.length < maxSegments) {
+          snake.growthPoints -= growthCost;
+          const lastSegment = snake.segments[snake.segments.length - 1];
+          snake.segments.push({ ...lastSegment });
+          if (duel.currency === 'PIECES') {
+            growthCost = 15.0 + (snake.segments.length * 0.6);
+          } else if (duel.currency === 'KET') {
+            growthCost = 4.0 + (snake.segments.length * 0.15);
+          } else {
+            growthCost = 1.0 + (snake.segments.length * 0.05);
           }
         }
 

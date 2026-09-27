@@ -293,6 +293,8 @@ const tickSandbox = async (currency) => {
 
   // 5. Broadcast game state to everyone in this currency's sandbox
   const broadcastPayload = {
+    mapWidth: MAP_WIDTH,
+    mapHeight: MAP_HEIGHT,
     snakes: Object.keys(sandboxSnakes).reduce((acc, id) => {
       const s = sandboxSnakes[id];
       acc[id] = {

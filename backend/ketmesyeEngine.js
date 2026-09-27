@@ -6,8 +6,8 @@ const { deductWager, creditPayout, broadcastBalanceUpdate } = require('./utils/b
 let io;
 
 // Game Config
-const MAP_WIDTH = 2000;
-const MAP_HEIGHT = 2000;
+const MAP_WIDTH = 10000;
+const MAP_HEIGHT = 10000;
 const TICK_RATE_MS = 50; // 20 updates per second
 const PATH_SPACING = 2; // Spacing of path history indices for body segments
 const INVINCIBLE_TIME_MS = 2000; // 2 seconds invincibility on spawn
@@ -47,10 +47,10 @@ const spawnNormalPellets = (currency, count) => {
   }
 };
 
-// Initialize the pellets pool (150 normal pellets per sandbox)
-spawnNormalPellets('HTG', 150);
-spawnNormalPellets('KET', 150);
-spawnNormalPellets('PIECES', 150);
+// Initialize the pellets pool (800 normal pellets per sandbox)
+spawnNormalPellets('HTG', 800);
+spawnNormalPellets('KET', 800);
+spawnNormalPellets('PIECES', 800);
 
 // Tick sandbox routine for a specific currency sandbox
 const tickSandbox = async (currency) => {
@@ -79,10 +79,10 @@ const tickSandbox = async (currency) => {
 
     // Energy and Boost speed logic
     if (snake.isBoosting && snake.energy > 0) {
-      snake.speed = 16; // Faster speed
+      snake.speed = 12; // Boost speed
       snake.energy = Math.max(0, snake.energy - 2); // Drain energy
     } else {
-      snake.speed = 10; // Normal speed
+      snake.speed = 6.5; // Vitès nòmal byen kontwole
       snake.energy = Math.min(100, snake.energy + 1.5); // Recover energy
     }
 

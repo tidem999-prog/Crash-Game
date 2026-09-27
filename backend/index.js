@@ -20,7 +20,9 @@ const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:5000',
   'https://ketarena.com',
-  'https://www.ketarena.com'
+  'https://www.ketarena.com',
+  'https://vibeht.com',
+  'https://www.vibeht.com'
 ];
 if (process.env.FRONTEND_URL) {
   allowedOrigins.push(process.env.FRONTEND_URL);

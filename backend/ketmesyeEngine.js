@@ -912,6 +912,16 @@ const initKetmesyeEngine = (socketIoInstance) => {
           initialPath.push({ x: spawnX, y: spawnY + i * (15 / PATH_SPACING) });
         }
 
+        // Netwaye nenpòt ansyen koulèv fantom pou menm jwè a
+        if (snakes.PIECES) {
+          Object.keys(snakes.PIECES).forEach(sId => {
+            const s = snakes.PIECES[sId];
+            if (s && (sId === socket.id || (email && s.email === email) || (userId && s.userId === userId))) {
+              delete snakes.PIECES[sId];
+            }
+          });
+        }
+
         snakes.PIECES[socket.id] = {
           id: socket.id,
           userId: userId || socket.id,
@@ -921,7 +931,7 @@ const initKetmesyeEngine = (socketIoInstance) => {
           segments: startSegments,
           pathHistory: initialPath,
           angle: -Math.PI / 2,
-          speed: 10,
+          speed: 6.5,
           color: getRandomColor(),
           eliminations: 0,
           isInvincible: true,

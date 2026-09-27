@@ -86,11 +86,18 @@ const tickSandbox = async (currency) => {
       snake.energy = Math.min(100, snake.energy + 1.5); // Recover energy
     }
 
+    if (!Number.isFinite(snake.angle)) {
+      snake.angle = 0.0;
+    }
+
     const head = { ...snake.segments[0] };
+    if (!head || !Number.isFinite(head.x) || !Number.isFinite(head.y)) return;
     
     // Update head position
     head.x += Math.cos(snake.angle) * snake.speed;
     head.y += Math.sin(snake.angle) * snake.speed;
+
+    if (!Number.isFinite(head.x) || !Number.isFinite(head.y)) return;
 
     // Unshift head to path history
     snake.pathHistory.unshift(head);
@@ -439,9 +446,17 @@ const handleDuelTick = async (duelId) => {
       snake.energy = Math.min(100, snake.energy + 1.5);
     }
 
+    if (!Number.isFinite(snake.angle)) {
+      snake.angle = 0.0;
+    }
+
     const head = { ...snake.segments[0] };
+    if (!head || !Number.isFinite(head.x) || !Number.isFinite(head.y)) return;
+
     head.x += Math.cos(snake.angle) * snake.speed;
     head.y += Math.sin(snake.angle) * snake.speed;
+
+    if (!Number.isFinite(head.x) || !Number.isFinite(head.y)) return;
 
     snake.pathHistory.unshift(head);
 
@@ -1053,7 +1068,7 @@ const initKetmesyeEngine = (socketIoInstance) => {
       const duelId = activeDuelPlayers[socket.id];
       if (duelId && activeDuels[duelId]) {
         const snake = activeDuels[duelId].snakes[socket.id];
-        if (snake && typeof angle === 'number') {
+        if (snake && typeof angle === 'number' && Number.isFinite(angle)) {
           snake.angle = angle;
           if (!snake.hasStartedMoving) {
             snake.hasStartedMoving = true;
@@ -1063,7 +1078,7 @@ const initKetmesyeEngine = (socketIoInstance) => {
         }
       } else {
         const snake = snakes.HTG[socket.id] || snakes.KET[socket.id] || (snakes.PIECES && snakes.PIECES[socket.id]);
-        if (snake && typeof angle === 'number') {
+        if (snake && typeof angle === 'number' && Number.isFinite(angle)) {
           snake.angle = angle;
           if (!snake.hasStartedMoving) {
             snake.hasStartedMoving = true;

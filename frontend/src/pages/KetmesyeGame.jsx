@@ -15,8 +15,8 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
   const { user, refreshBalance, updateBalance } = useAuth();
 
   // Game configuration
-  const MAP_WIDTH = 2000;
-  const MAP_HEIGHT = 2000;
+  const MAP_WIDTH = 10000;
+  const MAP_HEIGHT = 10000;
   const TICK_RATE = 50;
   const PATH_SPACING = 2;
   const INVINCIBLE_TIME_MS = 2000;
@@ -26,17 +26,20 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
   const [duelState, setDuelState] = useState('lobby'); // lobby, waiting, playing, finished
   const [pendingDuels, setPendingDuels] = useState([]);
   const activeCurrency = user?.active_currency || 'HTG';
-  const [duelWager, setDuelWager] = useState(activeCurrency === 'KET' ? '100' : '150');
+  const [duelWager, setDuelWager] = useState(activeCurrency === 'KET' ? '100' : (activeCurrency === 'PIECES' ? '500' : '150'));
   const [duelData, setDuelData] = useState(null);
   const [duelResult, setDuelResult] = useState(null);
   const [currentDuelId, setCurrentDuelId] = useState(null);
 
-  const [wager, setWager] = useState(activeCurrency === 'KET' ? 100 : 125);
+  const [wager, setWager] = useState(activeCurrency === 'KET' ? 100 : (activeCurrency === 'PIECES' ? 500 : 125));
 
   useEffect(() => {
     if (activeCurrency === 'KET') {
       setWager(100);
       setDuelWager('100');
+    } else if (activeCurrency === 'PIECES') {
+      setWager(500);
+      setDuelWager('500');
     } else {
       setWager(125);
       setDuelWager('150');
@@ -65,6 +68,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
   const pelletsRef = useRef([]);
   const localLoopRef = useRef(null);
   const mySnakeIdRef = useRef(null);
+  const mapBoundsRef = useRef({ width: 10000, height: 10000 });
   
   // Sound states and refs
   const [isAudioMuted, setIsAudioMuted] = useState(getMuted());
@@ -177,6 +181,8 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
       }
 
       // Update refs with new tick data
+      if (data.mapWidth) mapBoundsRef.current.width = data.mapWidth;
+      if (data.mapHeight) mapBoundsRef.current.height = data.mapHeight;
       snakesRef.current = data.snakes;
       pelletsRef.current = data.pellets;
       setLeaderboard(data.leaderboard || []);
@@ -305,6 +311,8 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
 
       setDuelData(data);
       setIsPlaying(true);
+      if (data.mapWidth) mapBoundsRef.current.width = data.mapWidth;
+      if (data.mapHeight) mapBoundsRef.current.height = data.mapHeight;
       snakesRef.current = data.snakes;
       pelletsRef.current = data.pellets;
 
@@ -677,8 +685,10 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
 
       const w = canvas.width;
       const h = canvas.height;
+      const curMapW = mapBoundsRef.current?.width || MAP_WIDTH;
+      const curMapH = mapBoundsRef.current?.height || MAP_HEIGHT;
 
-      let camera = { x: MAP_WIDTH / 2, y: MAP_HEIGHT / 2 };
+      let camera = { x: curMapW / 2, y: curMapH / 2 };
       const myId = mySnakeIdRef.current;
       const localSnake = snakesRef.current[myId];
       if (localSnake && localSnake.segments && localSnake.segments[0]) {
@@ -688,7 +698,26 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
       const offsetX = w / 2 - camera.x;
       const offsetY = h / 2 - camera.y;
 
-      // Draw Grid
+      // Magnetic suction client-side for local snake
+      if (localSnake && localSnake.segments && localSnake.segments[0]) {
+        const hx = localSnake.segments[0].x;
+        const hy = localSnake.segments[0].y;
+        const pullRadius = 120;
+        const pellets = pelletsRef.current || [];
+        for (let i = 0; i < pellets.length; i++) {
+          const p = pellets[i];
+          const dx = hx - p.x;
+          const dy = hy - p.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist < pullRadius && dist > 1) {
+            const factor = (pullRadius - dist) / pullRadius;
+            p.x += (dx / dist) * (factor * 11);
+            p.y += (dy / dist) * (factor * 11);
+          }
+        }
+      }
+
+      // Draw Grid (Hexagonal grid with viewport culling)
       ctx.strokeStyle = '#1e293b';
       ctx.lineWidth = 1;
       const hexSize = 50;
@@ -715,49 +744,69 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
         }
       }
 
-      // Draw Arena Borders
+      // Draw Arena Borders (Glowing boundary + danger zone)
       ctx.strokeStyle = '#ef4444';
       ctx.lineWidth = 6;
       ctx.shadowColor = '#ef4444';
-      ctx.shadowBlur = 15;
-      ctx.strokeRect(offsetX, offsetY, MAP_WIDTH, MAP_HEIGHT);
+      ctx.shadowBlur = 16;
+      ctx.strokeRect(offsetX, offsetY, curMapW, curMapH);
       ctx.shadowBlur = 0;
 
-      ctx.fillStyle = 'rgba(239, 68, 68, 0.03)';
-      ctx.fillRect(offsetX - 2000, offsetY - 2000, MAP_WIDTH + 4000, 2000);
-      ctx.fillRect(offsetX - 2000, offsetY + MAP_HEIGHT, MAP_WIDTH + 4000, 2000);
-      ctx.fillRect(offsetX - 2000, offsetY, 2000, MAP_HEIGHT);
-      ctx.fillRect(offsetX + MAP_WIDTH, offsetY, 2000, MAP_HEIGHT);
+      ctx.fillStyle = 'rgba(239, 68, 68, 0.04)';
+      ctx.fillRect(offsetX - 2000, offsetY - 2000, curMapW + 4000, 2000);
+      ctx.fillRect(offsetX - 2000, offsetY + curMapH, curMapW + 4000, 2000);
+      ctx.fillRect(offsetX - 2000, offsetY, 2000, curMapH);
+      ctx.fillRect(offsetX + curMapW, offsetY, 2000, curMapH);
 
-      // Draw Pellets
-      pelletsRef.current.forEach(p => {
+      // Draw Pellets with Viewport Culling and Specular Sheen
+      const pellets = pelletsRef.current || [];
+      for (let i = 0; i < pellets.length; i++) {
+        const p = pellets[i];
         const px = p.x + offsetX;
         const py = p.y + offsetY;
 
-        if (px < -30 || px > w + 30 || py < -30 || py > h + 30) return;
+        // Viewport culling
+        if (px < -25 || px > w + 25 || py < -25 || py > h + 25) continue;
 
-        ctx.fillStyle = p.color;
-        ctx.beginPath();
         if (p.isCashDrop) {
           ctx.shadowColor = '#fbbf24';
           ctx.shadowBlur = 10;
-          ctx.arc(px, py, 9, 0, Math.PI * 2);
+          ctx.fillStyle = '#f59e0b';
+          ctx.beginPath();
+          ctx.arc(px, py, 9.5, 0, Math.PI * 2);
           ctx.fill();
-          
+
+          ctx.strokeStyle = '#fef08a';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+
+          ctx.shadowBlur = 0;
           ctx.fillStyle = '#1e293b';
-          ctx.font = 'bold 10px Inter';
+          ctx.font = '900 9px Inter';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.fillText('G', px, py);
-          ctx.shadowBlur = 0;
+          ctx.fillText('G', px, py + 0.5);
         } else {
-          ctx.arc(px, py, 5, 0, Math.PI * 2);
+          // Shiny multi-color normal pellet
+          ctx.fillStyle = p.color || '#38bdf8';
+          ctx.beginPath();
+          ctx.arc(px, py, 5.5, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Specular highlight dot (gives glossy 3D orb look)
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+          ctx.beginPath();
+          ctx.arc(px - 1.5, py - 1.5, 1.8, 0, Math.PI * 2);
           ctx.fill();
         }
-      });
+      }
 
-      // Draw Snakes
-      Object.keys(snakesRef.current).forEach(id => {
+      // Draw Snakes with Slither.io continuous spine & dorsal sheen
+      const snakeIds = Object.keys(snakesRef.current);
+      // Draw other snakes first, local snake last for clear visibility
+      snakeIds.sort((a, b) => (a === myId ? 1 : b === myId ? -1 : 0));
+
+      snakeIds.forEach(id => {
         const s = snakesRef.current[id];
         if (!s || !s.segments || s.segments.length === 0) return;
 
@@ -765,115 +814,231 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
         const segments = s.segments;
         const head = segments[0];
 
-        ctx.beginPath();
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-        ctx.lineWidth = 24;
-        ctx.strokeStyle = '#e2e8f0';
+        // Quick screen bounding box check for culling distant snakes
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        for (let i = 0; i < segments.length; i++) {
+          const sx = segments[i].x + offsetX;
+          const sy = segments[i].y + offsetY;
+          if (sx < minX) minX = sx;
+          if (sx > maxX) maxX = sx;
+          if (sy < minY) minY = sy;
+          if (sy > maxY) maxY = sy;
+        }
+        if (maxX < -50 || minX > w + 50 || maxY < -50 || minY > h + 50) return;
 
+        // Dynamic body radius: starts small (13.5px) and grows smoothly as it eats
+        const segCount = segments.length;
+        const maxRadius = Math.min(26, 13.5 + Math.sqrt(Math.max(0, segCount - 5)) * 1.4);
+
+        // Build continuous dense interpolated spine
+        const spine = [];
+        for (let i = 0; i < segments.length - 1; i++) {
+          const p0 = segments[i];
+          const p1 = segments[i + 1];
+          const dist = Math.hypot(p1.x - p0.x, p1.y - p0.y);
+          const steps = Math.max(1, Math.ceil(dist / 4));
+          for (let step = 0; step < steps; step++) {
+            const frac = step / steps;
+            const overallT = (i + frac) / (segments.length - 1);
+            spine.push({
+              x: p0.x + (p1.x - p0.x) * frac + offsetX,
+              y: p0.y + (p1.y - p0.y) * frac + offsetY,
+              radius: maxRadius * (1.0 - overallT * 0.42) // tail tapers smoothly
+            });
+          }
+        }
+        spine.push({
+          x: segments[segments.length - 1].x + offsetX,
+          y: segments[segments.length - 1].y + offsetY,
+          radius: maxRadius * 0.58
+        });
+
+        // Determine body color & invincible blink
+        let bodyColor = s.color || '#3b82f6';
+        if (s.isInvincible && Math.floor(Date.now() / 150) % 2 === 0) {
+          bodyColor = 'rgba(255, 255, 255, 0.5)';
+        }
+
+        // Layer 1: Body Outer Aura / Shadow
         if (isLocal) {
           ctx.shadowColor = '#fbbf24';
-          ctx.shadowBlur = 10;
+          ctx.shadowBlur = 12;
         } else {
           ctx.shadowBlur = 0;
         }
 
-        let pathStarted = false;
-        for (let i = 0; i < segments.length; i++) {
-          const seg = segments[i];
-          const sx = seg.x + offsetX;
-          const sy = seg.y + offsetY;
-          if (!pathStarted) {
-            ctx.moveTo(sx, sy);
-            pathStarted = true;
-          } else {
-            ctx.lineTo(sx, sy);
-          }
+        // Layer 2: Continuous Body (drawn from tail to head)
+        ctx.fillStyle = bodyColor;
+        for (let i = spine.length - 1; i >= 0; i--) {
+          const pt = spine[i];
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, pt.radius, 0, Math.PI * 2);
+          ctx.fill();
         }
-        ctx.stroke();
         ctx.shadowBlur = 0;
 
-        for (let i = segments.length - 1; i >= 0; i--) {
-          const seg = segments[i];
-          const sx = seg.x + offsetX;
-          const sy = seg.y + offsetY;
-
-          if (sx < -40 || sx > w + 40 || sy < -40 || sy > h + 40) continue;
-
-          const segmentRadius = 10;
-
-          if (s.isInvincible && Math.floor(Date.now() / 150) % 2 === 0) {
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-          } else {
-            ctx.fillStyle = s.color;
-          }
-
+        // Layer 3: Dorsal Spine Sheen (Slither 3D highlight)
+        if (spine.length > 2) {
           ctx.beginPath();
-          ctx.arc(sx, sy, segmentRadius, 0, Math.PI * 2);
-          ctx.fill();
-          
-          ctx.strokeStyle = 'rgba(0, 0, 0, 0.1)';
-          ctx.lineWidth = 1;
+          ctx.moveTo(spine[0].x, spine[0].y);
+          for (let i = 1; i < spine.length; i++) {
+            ctx.lineTo(spine[i].x, spine[i].y);
+          }
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)';
+          ctx.lineWidth = maxRadius * 0.42;
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
           ctx.stroke();
         }
 
+        // Layer 4: Head & Expressive Eyes
         const hx = head.x + offsetX;
         const hy = head.y + offsetY;
+        const headRadius = maxRadius * 1.08;
 
+        // Head base circle
+        ctx.fillStyle = bodyColor;
+        ctx.beginPath();
+        ctx.arc(hx, hy, headRadius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Front shield arc for local player
         if (isLocal) {
           ctx.beginPath();
-          ctx.arc(hx, hy, 16, s.angle - Math.PI/1.5, s.angle + Math.PI/1.5);
+          ctx.arc(hx, hy, headRadius + 4, s.angle - Math.PI / 1.6, s.angle + Math.PI / 1.6);
           ctx.strokeStyle = '#fbbf24';
           ctx.lineWidth = 3;
           ctx.lineCap = 'round';
           ctx.stroke();
         }
 
-        const eyeOffsetRadius = 5;
-        const eyeAngleSpacing = 0.55; 
+        // Eyes placement based on angle
+        const eyeAngleOffset = 0.54;
+        const eyeDist = headRadius * 0.56;
+        const eyeRadius = Math.max(3.2, headRadius * 0.28);
+        const pupilRadius = eyeRadius * 0.54;
 
-        const eyeLeftX = hx + Math.cos(s.angle - eyeAngleSpacing) * eyeOffsetRadius;
-        const eyeLeftY = hy + Math.sin(s.angle - eyeAngleSpacing) * eyeOffsetRadius;
-        const eyeRightX = hx + Math.cos(s.angle + eyeAngleSpacing) * eyeOffsetRadius;
-        const eyeRightY = hy + Math.sin(s.angle + eyeAngleSpacing) * eyeOffsetRadius;
+        const eyeLeftX = hx + Math.cos(s.angle - eyeAngleOffset) * eyeDist;
+        const eyeLeftY = hy + Math.sin(s.angle - eyeAngleOffset) * eyeDist;
+        const eyeRightX = hx + Math.cos(s.angle + eyeAngleOffset) * eyeDist;
+        const eyeRightY = hy + Math.sin(s.angle + eyeAngleOffset) * eyeDist;
 
+        // Sclera (white)
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
-        ctx.arc(eyeLeftX, eyeLeftY, 3.5, 0, Math.PI * 2);
-        ctx.arc(eyeRightX, eyeRightY, 3.5, 0, Math.PI * 2);
+        ctx.arc(eyeLeftX, eyeLeftY, eyeRadius, 0, Math.PI * 2);
+        ctx.arc(eyeRightX, eyeRightY, eyeRadius, 0, Math.PI * 2);
         ctx.fill();
 
+        // Pupils (looking towards snake direction)
+        const pupilDist = eyeRadius * 0.35;
         ctx.fillStyle = '#000000';
         ctx.beginPath();
-        ctx.arc(eyeLeftX + Math.cos(s.angle) * 1.5, eyeLeftY + Math.sin(s.angle) * 1.5, 1.8, 0, Math.PI * 2);
-        ctx.arc(eyeRightX + Math.cos(s.angle) * 1.5, eyeRightY + Math.sin(s.angle) * 1.5, 1.8, 0, Math.PI * 2);
+        ctx.arc(eyeLeftX + Math.cos(s.angle) * pupilDist, eyeLeftY + Math.sin(s.angle) * pupilDist, pupilRadius, 0, Math.PI * 2);
+        ctx.arc(eyeRightX + Math.cos(s.angle) * pupilDist, eyeRightY + Math.sin(s.angle) * pupilDist, pupilRadius, 0, Math.PI * 2);
         ctx.fill();
 
-        const tagText = gameMode === 'duel' ? `${s.deaths} Mort(s) | ${s.value.toFixed(1)} G` : `${s.value.toFixed(2)} G`;
+        // Value Badge & Name Tag
+        const tagText = gameMode === 'duel' ? `${s.deaths} Mò | ${s.value.toFixed(1)} G` : `${s.value.toFixed(2)} G`;
         ctx.font = 'bold 10px Inter';
         const textWidth = ctx.measureText(tagText).width;
-        const tagWidth = textWidth + 12;
-        const tagHeight = 16;
+        const tagWidth = textWidth + 14;
+        const tagHeight = 17;
         const tagX = hx - tagWidth / 2;
-        const tagY = hy - 30;
+        const tagY = hy - headRadius - 18;
 
-        ctx.fillStyle = '#111111';
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.88)';
         ctx.beginPath();
-        ctx.roundRect(tagX, tagY, tagWidth, tagHeight, 4);
+        if (ctx.roundRect) ctx.roundRect(tagX, tagY, tagWidth, tagHeight, 5);
+        else ctx.rect(tagX, tagY, tagWidth, tagHeight);
         ctx.fill();
-        ctx.strokeStyle = '#fbbf24';
+        ctx.strokeStyle = isLocal ? '#fbbf24' : 'rgba(255, 255, 255, 0.2)';
         ctx.lineWidth = 1;
         ctx.stroke();
 
-        ctx.fillStyle = '#fbbf24';
+        ctx.fillStyle = isLocal ? '#fbbf24' : '#f8fafc';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(tagText, hx, tagY + tagHeight / 2 + 0.5);
 
-        ctx.fillStyle = '#e2e8f0';
+        ctx.fillStyle = '#94a3b8';
         ctx.font = 'bold 9px Inter';
         ctx.fillText(s.email ? s.email.split('@')[0] : 'Joueur', hx, tagY - 6);
       });
+
+      // --- RADAR MINIMAP (Bottom-Left) ---
+      if (isPlaying) {
+        const mapSize = 85;
+        const mapX = 18;
+        const mapY = h - mapSize - 18;
+
+        // Minimap background
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.78)';
+        ctx.beginPath();
+        if (ctx.roundRect) ctx.roundRect(mapX, mapY, mapSize, mapSize, 10);
+        else ctx.rect(mapX, mapY, mapSize, mapSize);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(234, 179, 8, 0.5)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        // Arena crosshairs
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(mapX + mapSize / 2, mapY);
+        ctx.lineTo(mapX + mapSize / 2, mapY + mapSize);
+        ctx.moveTo(mapX, mapY + mapSize / 2);
+        ctx.lineTo(mapX + mapSize, mapY + mapSize / 2);
+        ctx.stroke();
+
+        // Cash drop pellets on minimap
+        pellets.forEach(p => {
+          if (p.isCashDrop) {
+            const mx = mapX + (p.x / curMapW) * mapSize;
+            const my = mapY + (p.y / curMapH) * mapSize;
+            ctx.fillStyle = '#fbbf24';
+            ctx.fillRect(mx - 1, my - 1, 2, 2);
+          }
+        });
+
+        // Other snakes (red dots)
+        snakeIds.forEach(id => {
+          if (id === myId) return;
+          const s = snakesRef.current[id];
+          if (!s || !s.segments || !s.segments[0]) return;
+          const mx = mapX + (s.segments[0].x / curMapW) * mapSize;
+          const my = mapY + (s.segments[0].y / curMapH) * mapSize;
+          ctx.fillStyle = '#ef4444';
+          ctx.beginPath();
+          ctx.arc(mx, my, 2.5, 0, Math.PI * 2);
+          ctx.fill();
+        });
+
+        // Local player snake (pulsing beacon dot)
+        if (localSnake && localSnake.segments && localSnake.segments[0]) {
+          const mx = mapX + (localSnake.segments[0].x / curMapW) * mapSize;
+          const my = mapY + (localSnake.segments[0].y / curMapH) * mapSize;
+
+          const pulse = (Date.now() % 1200) / 1200;
+          ctx.strokeStyle = `rgba(34, 197, 94, ${1 - pulse})`;
+          ctx.lineWidth = 1.2;
+          ctx.beginPath();
+          ctx.arc(mx, my, 3 + pulse * 6, 0, Math.PI * 2);
+          ctx.stroke();
+
+          ctx.fillStyle = '#22c55e';
+          ctx.beginPath();
+          ctx.arc(mx, my, 3.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Radar tag
+        ctx.fillStyle = '#64748b';
+        ctx.font = 'bold 8px Inter';
+        ctx.textAlign = 'left';
+        ctx.fillText('RADAR', mapX + 6, mapY + 11);
+      }
 
       requestRef.current = requestAnimationFrame(draw);
     };
@@ -1403,7 +1568,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
 
                 <div className="flex flex-col space-y-4 text-left mb-6">
                   <div>
-                    <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Mise d'entrée (Min: {activeCurrency === 'KET' ? '100' : '125'} {activeCurrency})</label>
+                    <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Mise d'entrée (Min: {activeCurrency === 'KET' ? '100' : (activeCurrency === 'PIECES' ? '250' : '125')} {activeCurrency})</label>
                     <div className="flex border border-slate-800 bg-slate-950 rounded-xl overflow-hidden mt-1.5">
                       <span className="bg-slate-900 px-3 py-2 text-xs font-bold text-slate-500 flex items-center border-r border-slate-800">{activeCurrency}</span>
                       <input
@@ -1414,7 +1579,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
                           setWager(val === '' ? '' : parseInt(val) || 0);
                         }}
                         onBlur={() => {
-                          const minWager = activeCurrency === 'KET' ? 100 : 125;
+                          const minWager = activeCurrency === 'KET' ? 100 : (activeCurrency === 'PIECES' ? 250 : 125);
                           if (!wager || wager < minWager) setWager(minWager);
                         }}
                         className="block w-full px-3 py-2 bg-transparent text-slate-200 text-sm font-bold font-mono focus:outline-none"
@@ -1423,7 +1588,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
                   </div>
 
                   <div className="grid grid-cols-4 gap-2">
-                    {(activeCurrency === 'KET' ? [100, 250, 500, 1000] : [125, 250, 625, 1250]).map(val => (
+                    {(activeCurrency === 'KET' ? [100, 250, 500, 1000] : (activeCurrency === 'PIECES' ? [250, 500, 1000, 2500] : [125, 250, 625, 1250])).map(val => (
                       <button
                         key={val}
                         onClick={() => setWager(val)}
@@ -1464,7 +1629,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
 
                     <div className="flex flex-col space-y-4 mb-6">
                       <div>
-                        <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Mise du duel (Min: {activeCurrency === 'KET' ? '100' : '150'} {activeCurrency})</label>
+                        <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Mise du duel (Min: {activeCurrency === 'KET' ? '100' : (activeCurrency === 'PIECES' ? '250' : '150')} {activeCurrency})</label>
                         <div className="flex border border-slate-800 bg-slate-950 rounded-xl overflow-hidden mt-1.5">
                           <span className="bg-slate-900 px-3 py-2 text-xs font-bold text-slate-500 flex items-center border-r border-slate-800">{activeCurrency}</span>
                           <input
@@ -1477,7 +1642,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
                       </div>
 
                       <div className="grid grid-cols-3 gap-2">
-                        {(activeCurrency === 'KET' ? [100, 250, 500] : [150, 300, 750]).map(val => (
+                        {(activeCurrency === 'KET' ? [100, 250, 500] : (activeCurrency === 'PIECES' ? [250, 500, 1000] : [150, 300, 750])).map(val => (
                           <button
                             key={val}
                             onClick={() => setDuelWager(val.toString())}

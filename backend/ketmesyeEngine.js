@@ -256,21 +256,33 @@ const tickSandbox = async (currency) => {
     }
   }
 
-  // 4. Food eating
+  // 4. Food Magnet Attraction & Consumption
   Object.keys(sandboxSnakes).forEach(id => {
     const snake = sandboxSnakes[id];
     if (!snake || !snake.hasStartedMoving) return;
     const head = snake.segments[0];
+    const segCount = snake.segments.length;
+
+    // Magnet distance increases slightly as snake grows
+    const magnetRadius = Math.min(160, 95 + segCount * 0.4);
+    const eatThreshold = Math.max(26, 18 + segCount * 0.15);
 
     for (let i = sandboxPellets.length - 1; i >= 0; i--) {
       const pellet = sandboxPellets[i];
       const dist = Math.hypot(head.x - pellet.x, head.y - pellet.y);
 
-      if (dist < 20) { // Consumption threshold
+      // Magnet effect: attract pellet directly towards snake head
+      if (dist < magnetRadius && dist > 1.0) {
+        const pullFactor = 0.55;
+        pellet.x += (head.x - pellet.x) * pullFactor;
+        pellet.y += (head.y - pellet.y) * pullFactor;
+      }
+
+      if (dist < eatThreshold) { // Consumption threshold
         snake.value = parseFloat((snake.value + pellet.value).toFixed(2));
         
         snake.growthPoints = (snake.growthPoints || 0) + pellet.value;
-        const growthStep = currency === 'KET' ? 80.0 : 10.0; // grow 1 segment per 80 KET or 10 HTG
+        const growthStep = currency === 'KET' ? 1.6 : 0.20; // 1 segment per 2 pellets (0.20 HTG / 1.6 KET)
         const segmentsToAdd = Math.floor(snake.growthPoints / growthStep);
         if (segmentsToAdd > 0) {
           snake.growthPoints -= segmentsToAdd * growthStep;
@@ -594,21 +606,32 @@ const handleDuelTick = async (duelId) => {
     }
   });
 
-  // 4. Eating pellets in duel
+  // 4. Eating pellets in duel with Magnet Attraction
   socketIds.forEach(id => {
     const snake = duel.snakes[id];
     if (!snake || !snake.hasStartedMoving) return;
     const head = snake.segments[0];
+    const segCount = snake.segments.length;
+
+    const magnetRadius = Math.min(160, 95 + segCount * 0.4);
+    const eatThreshold = Math.max(26, 18 + segCount * 0.15);
 
     for (let i = duel.pellets.length - 1; i >= 0; i--) {
       const pellet = duel.pellets[i];
       const dist = Math.hypot(head.x - pellet.x, head.y - pellet.y);
 
-      if (dist < 20) {
+      // Magnet attraction
+      if (dist < magnetRadius && dist > 1.0) {
+        const pullFactor = 0.55;
+        pellet.x += (head.x - pellet.x) * pullFactor;
+        pellet.y += (head.y - pellet.y) * pullFactor;
+      }
+
+      if (dist < eatThreshold) {
         snake.value = parseFloat((snake.value + pellet.value).toFixed(2));
         
         snake.growthPoints = (snake.growthPoints || 0) + pellet.value;
-        const growthStep = duel.currency === 'KET' ? 80.0 : 10.0;
+        const growthStep = duel.currency === 'KET' ? 1.6 : 0.20;
         const segmentsToAdd = Math.floor(snake.growthPoints / growthStep);
         if (segmentsToAdd > 0) {
           snake.growthPoints -= segmentsToAdd * growthStep;

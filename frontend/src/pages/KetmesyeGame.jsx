@@ -388,6 +388,63 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
     }
     pelletsRef.current = initialPellets;
 
+    const respawnBot = (botId) => {
+      const bx = Math.random() * (MAP_WIDTH - 400) + 200;
+      const by = Math.random() * (MAP_HEIGHT - 400) + 200;
+      const bSegments = [];
+      for (let s = 0; s < 6; s++) {
+        bSegments.push({ x: bx, y: by + s * 15 });
+      }
+      snakesRef.current[botId] = {
+        id: botId,
+        email: `Bot_${botId.split('_')[1] || Math.floor(Math.random() * 5 + 1)}`,
+        value: 15,
+        segments: bSegments,
+        pathHistory: Array(50).fill({ x: bx, y: by }),
+        angle: Math.random() * Math.PI * 2,
+        speed: 7,
+        color: '#a78bfa',
+        eliminations: 0,
+        isInvincible: false,
+        isBoosting: false,
+        energy: 100
+      };
+    };
+
+    const killBot = (botId, killerSnake) => {
+      const sks = snakesRef.current;
+      const bot = sks[botId];
+      if (!bot) return;
+
+      if (killerSnake) {
+        killerSnake.eliminations = (killerSnake.eliminations || 0) + 1;
+        if (killerSnake.id === mySnakeIdRef.current) {
+          addNotification(`Vous avez éliminé ${bot.email} !`, 'success');
+        }
+      }
+
+      // Drop pellets strictly worth 0.000001 to prevent economy exploit
+      const pls = [...(pelletsRef.current || [])];
+      bot.segments.forEach(seg => {
+        pls.push({
+          id: Math.random().toString(),
+          x: seg.x + (Math.random() * 8 - 4),
+          y: seg.y + (Math.random() * 8 - 4),
+          value: 0.000001,
+          color: '#c084fc',
+          isCashDrop: false,
+          isBotDrop: true
+        });
+      });
+      pelletsRef.current = pls;
+
+      delete sks[botId];
+
+      setTimeout(() => {
+        respawnBot(botId);
+      }, 3500);
+    };
+
     const bots = {};
     for (let i = 1; i <= 5; i++) {
       const bx = Math.random() * (MAP_WIDTH - 200) + 100;
@@ -406,7 +463,9 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
         speed: 7,
         color: '#a78bfa',
         eliminations: 0,
-        isInvincible: false
+        isInvincible: false,
+        isBoosting: false,
+        energy: 100
       };
     }
     snakesRef.current = bots;
@@ -414,23 +473,117 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
     const interval = setInterval(() => {
       const sks = { ...snakesRef.current };
       const pls = [...pelletsRef.current];
+      const myId = mySnakeIdRef.current;
+      const me = myId ? sks[myId] : null;
 
+      // 1. Move snakes & Smart Human-like AI for bots
       Object.keys(sks).forEach(id => {
         const s = sks[id];
+        if (!s || !s.segments || s.segments.length === 0) return;
         
         if (id.startsWith('bot_')) {
-          if (Math.random() < 0.05) {
-            s.angle += (Math.random() - 0.5) * 2;
+          s.energy = s.energy ?? 100;
+          let desiredAngle = s.angle;
+          let huntingPlayer = false;
+
+          // A. Hunter instinct: Hunt player, predict trajectory and sprint with boost to cut off
+          if (me && me.segments && me.segments[0]) {
+            const myHead = me.segments[0];
+            const distToPlayer = Math.hypot(myHead.x - s.segments[0].x, myHead.y - s.segments[0].y);
+
+            if (distToPlayer < 700) {
+              huntingPlayer = true;
+              const leadSteps = Math.min(130, distToPlayer * 0.45);
+              const targetX = myHead.x + Math.cos(me.angle) * leadSteps;
+              const targetY = myHead.y + Math.sin(me.angle) * leadSteps;
+              desiredAngle = Math.atan2(targetY - s.segments[0].y, targetX - s.segments[0].x);
+
+              if (distToPlayer < 300 && s.energy > 25) {
+                s.isBoosting = true;
+                s.speed = 14;
+                s.energy = Math.max(0, s.energy - 2);
+              } else {
+                s.isBoosting = false;
+                s.speed = 7.5;
+                s.energy = Math.min(100, s.energy + 1.2);
+              }
+            }
           }
-          const nextX = s.segments[0].x + Math.cos(s.angle) * s.speed;
-          const nextY = s.segments[0].y + Math.sin(s.angle) * s.speed;
-          if (nextX < 100 || nextX > MAP_WIDTH - 100 || nextY < 100 || nextY > MAP_HEIGHT - 100) {
-            s.angle += Math.PI;
+
+          // B. Search for closest pellet if not hunting
+          if (!huntingPlayer) {
+            s.isBoosting = false;
+            s.speed = 7;
+            s.energy = Math.min(100, (s.energy || 0) + 1.5);
+
+            let closestP = null;
+            let minDist = 350;
+            const botHead = s.segments[0];
+            for (let pi = 0; pi < pls.length; pi += 6) {
+              const p = pls[pi];
+              const d = Math.hypot(botHead.x - p.x, botHead.y - p.y);
+              if (d < minDist) {
+                minDist = d;
+                closestP = p;
+              }
+            }
+            if (closestP) {
+              desiredAngle = Math.atan2(closestP.y - botHead.y, closestP.x - botHead.x);
+            } else if (Math.random() < 0.03) {
+              desiredAngle += (Math.random() - 0.5) * 1.2;
+            }
           }
+
+          // C. Obstacle Avoidance (Survival reflex): look 45px ahead
+          const lookAheadX = s.segments[0].x + Math.cos(desiredAngle) * 45;
+          const lookAheadY = s.segments[0].y + Math.sin(desiredAngle) * 45;
+
+          let danger = false;
+          if (me && me.segments) {
+            for (let seg of me.segments) {
+              if (Math.hypot(lookAheadX - seg.x, lookAheadY - seg.y) < 24) {
+                danger = true;
+                break;
+              }
+            }
+          }
+          if (!danger) {
+            for (let otherId of Object.keys(sks)) {
+              if (otherId === id) continue;
+              const otherSnake = sks[otherId];
+              if (!otherSnake || !otherSnake.segments) continue;
+              for (let seg of otherSnake.segments) {
+                if (Math.hypot(lookAheadX - seg.x, lookAheadY - seg.y) < 22) {
+                  danger = true;
+                  break;
+                }
+              }
+              if (danger) break;
+            }
+          }
+
+          if (danger) {
+            desiredAngle += Math.PI * 0.55;
+            s.isBoosting = false;
+            s.speed = 6.5;
+          }
+
+          // D. Wall Avoidance
+          const bHead = s.segments[0];
+          if (bHead.x < 250) desiredAngle = 0;
+          else if (bHead.x > MAP_WIDTH - 250) desiredAngle = Math.PI;
+          else if (bHead.y < 250) desiredAngle = Math.PI / 2;
+          else if (bHead.y > MAP_HEIGHT - 250) desiredAngle = -Math.PI / 2;
+
+          // E. Smooth angle turn
+          let angleDiff = desiredAngle - s.angle;
+          while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+          while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+          s.angle += Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), 0.22);
         }
 
         if (s.isBoosting && s.energy > 0) {
-          s.speed = 16;
+          s.speed = 15;
           s.energy = Math.max(0, s.energy - 2);
         } else {
           s.speed = id.startsWith('bot_') ? 7 : 10;
@@ -455,96 +608,124 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
         }
       });
 
-      const myId = mySnakeIdRef.current;
-      if (myId && sks[myId]) {
-        const me = sks[myId];
+      // 2. COLLISION DETECTION (Bidirectional: bot dies if it hits player or other bot body)
+      let playerDead = false;
+      const deadBots = new Set();
+
+      if (me && me.segments && me.segments[0]) {
         const myHead = me.segments[0];
-
         if (myHead.x < 0 || myHead.x > MAP_WIDTH || myHead.y < 0 || myHead.y > MAP_HEIGHT) {
-          handleLocalDeath(me);
-          return;
+          playerDead = true;
         }
+      }
 
-        let hasCrashed = false;
-        Object.keys(sks).forEach(botId => {
-          if (botId === myId) return;
-          const bot = sks[botId];
+      const allSnakeIds = Object.keys(sks);
+      allSnakeIds.forEach(idA => {
+        const snakeA = sks[idA];
+        if (!snakeA || !snakeA.segments || snakeA.segments.length === 0) return;
+        const headA = snakeA.segments[0];
 
-          bot.segments.forEach((seg) => {
-            if (hasCrashed) return;
-            const dist = Math.hypot(myHead.x - seg.x, myHead.y - seg.y);
-            if (dist < 18) {
-              hasCrashed = true;
+        allSnakeIds.forEach(idB => {
+          if (idA === idB) return;
+          const snakeB = sks[idB];
+          if (!snakeB || !snakeB.segments || snakeB.segments.length === 0) return;
+
+          // Head-to-head
+          const headB = snakeB.segments[0];
+          const headDist = Math.hypot(headA.x - headB.x, headA.y - headB.y);
+          if (headDist < 20) {
+            if (idA === myId) {
+              if (snakeA.value >= snakeB.value) {
+                deadBots.add(idB);
+                if (me) me.eliminations = (me.eliminations || 0) + 1;
+              } else {
+                playerDead = true;
+              }
+            } else if (idB === myId) {
+              if (snakeB.value >= snakeA.value) {
+                deadBots.add(idA);
+                if (me) me.eliminations = (me.eliminations || 0) + 1;
+              } else {
+                playerDead = true;
+              }
+            } else {
+              if (snakeA.value >= snakeB.value) deadBots.add(idB);
+              else deadBots.add(idA);
             }
-          });
+            return;
+          }
+
+          // Head A into Body B
+          for (let segIdx = 1; segIdx < snakeB.segments.length; segIdx++) {
+            const segB = snakeB.segments[segIdx];
+            const dist = Math.hypot(headA.x - segB.x, headA.y - segB.y);
+            if (dist < 18) {
+              if (idA === myId) {
+                playerDead = true;
+              } else {
+                // Bot crashed into body! Bot DIES!
+                deadBots.add(idA);
+                if (idB === myId && me) {
+                  me.eliminations = (me.eliminations || 0) + 1;
+                  addNotification(`Vous avez éliminé ${snakeA.email} !`, 'success');
+                }
+              }
+              break;
+            }
+          }
         });
+      });
 
-        if (hasCrashed) {
-          handleLocalDeath(me);
-          return;
-        }
+      // Process dead bots (drop pellets worth 0.000001)
+      deadBots.forEach(botId => {
+        killBot(botId, me);
+      });
 
+      if (playerDead && me) {
+        handleLocalDeath(me);
+        return;
+      }
+
+      // 3. Pellets eating
+      if (myId && sks[myId]) {
+        const myHead = me.segments[0];
         for (let i = pls.length - 1; i >= 0; i--) {
           const pellet = pls[i];
           const dist = Math.hypot(myHead.x - pellet.x, myHead.y - pellet.y);
           if (dist < 20) {
-            me.value = parseFloat((me.value + pellet.value).toFixed(2));
-            me.growthPoints = (me.growthPoints || 0) + pellet.value;
-            const segsToAdd = Math.floor(me.growthPoints / 2.0);
+            let pVal = pellet.value;
+            if (pellet.isBotDrop) {
+              pVal = 0.000001; // Dead bot drop value strictly 0.000001!
+            }
+            me.value = parseFloat((me.value + pVal).toFixed(6));
+            me.growthPoints = (me.growthPoints || 0) + (pellet.isBotDrop ? 0.35 : pellet.value);
+            const segsToAdd = Math.floor(me.growthPoints / 1.5);
             if (segsToAdd > 0) {
-              me.growthPoints -= segsToAdd * 2.0;
+              me.growthPoints -= segsToAdd * 1.5;
               for (let g = 0; g < segsToAdd; g++) {
-                me.segments.push({ ...me.segments[me.segments.length - 1] });
+                if (me.segments.length < 120) {
+                  me.segments.push({ ...me.segments[me.segments.length - 1] });
+                }
               }
             }
             pls.splice(i, 1);
             playSnakeEat();
 
-            if (!pellet.isCashDrop) {
+            if (!pellet.isCashDrop && !pellet.isBotDrop) {
               pls.push({
                 id: Math.random().toString(),
                 x: Math.random() * (MAP_WIDTH - 40) + 20,
                 y: Math.random() * (MAP_HEIGHT - 40) + 20,
                 value: 0.10,
                 color: me.color,
-                isCashDrop: false
+                isCashDrop: false,
+                isBotDrop: false
               });
             }
           }
         }
         setMySnake({ value: me.value, eliminations: me.eliminations, length: me.segments.length, energy: me.energy || 0 });
       }
-
-      Object.keys(sks).forEach(botId => {
-        if (!botId.startsWith('bot_')) return;
-        const bot = sks[botId];
-        const botHead = bot.segments[0];
-        
-        pls.forEach((p, idx) => {
-          const dist = Math.hypot(botHead.x - p.x, botHead.y - p.y);
-          if (dist < 20) {
-            bot.value = parseFloat((bot.value + p.value).toFixed(2));
-            bot.growthPoints = (bot.growthPoints || 0) + p.value;
-            const segsToAdd = Math.floor(bot.growthPoints / 2.0);
-            if (segsToAdd > 0) {
-              bot.growthPoints -= segsToAdd * 2.0;
-              for (let g = 0; g < segsToAdd; g++) {
-                bot.segments.push({ ...bot.segments[bot.segments.length - 1] });
-              }
-            }
-            pls.splice(idx, 1);
-            
-            pls.push({
-              id: Math.random().toString(),
-              x: Math.random() * (MAP_WIDTH - 40) + 20,
-              y: Math.random() * (MAP_HEIGHT - 40) + 20,
-              value: 0.10,
-              color: bot.color,
-              isCashDrop: false
-            });
-          }
-        });
-      });
 
       snakesRef.current = sks;
       pelletsRef.current = pls;

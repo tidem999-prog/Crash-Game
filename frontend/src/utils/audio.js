@@ -46,6 +46,7 @@ export function setMuted(muted) {
     stopEngineSound();
     stopBmEngineSound();
     stopSnakeBoost();
+    stopSnakeBackgroundMusic();
   }
 }
 
@@ -743,6 +744,7 @@ export function stopSnakeBoost() {
 // 18. KetMesye - Death sound (Retro explosion crash + pitch sweep down)
 export function playSnakeDeath() {
   stopSnakeBoost(); // stop boost if active
+  stopSnakeBackgroundMusic();
 
   if (isMuted) return;
   const ctx = getAudioContext();
@@ -1039,3 +1041,132 @@ export function playMinesCashout() {
     osc.stop(now + 0.04 + idx * 0.05 + 0.15);
   });
 }
+
+// 26. Ambient Background Music for Ketmesye (Snake Arena)
+// Volim ba (0.028), bèl anbyans synth ki ap jwe pandan user a ap jwe, epi kanpe lè li mouri
+let bgMusicMasterGain = null;
+let bgMusicInterval = null;
+let bgMusicActiveNodes = [];
+let isBgMusicPlaying = false;
+
+export function startSnakeBackgroundMusic() {
+  if (isMuted) return;
+  const ctx = getAudioContext();
+  if (!ctx) return;
+
+  stopSnakeBackgroundMusic();
+  isBgMusicPlaying = true;
+
+  bgMusicMasterGain = ctx.createGain();
+  bgMusicMasterGain.gain.setValueAtTime(0.0001, ctx.currentTime);
+  bgMusicMasterGain.gain.linearRampToValueAtTime(0.028, ctx.currentTime + 1.2);
+  bgMusicMasterGain.connect(ctx.destination);
+
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.setValueAtTime(480, ctx.currentTime);
+  filter.Q.setValueAtTime(1.8, ctx.currentTime);
+  filter.connect(bgMusicMasterGain);
+
+  const chordFrequencies = [
+    [130.81, 155.56, 196.00, 293.66],
+    [103.83, 155.56, 207.65, 261.63],
+    [87.31, 130.81, 174.61, 261.63],
+    [116.54, 174.61, 233.08, 293.66]
+  ];
+
+  let currentChordIdx = 0;
+
+  const playChordStep = () => {
+    if (!isBgMusicPlaying || !audioCtx) return;
+    const now = audioCtx.currentTime;
+    const chord = chordFrequencies[currentChordIdx % chordFrequencies.length];
+    currentChordIdx++;
+
+    chord.forEach((freq, i) => {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+
+      osc.type = i === 0 ? 'sine' : 'triangle';
+      osc.frequency.setValueAtTime(freq, now);
+
+      if (i > 0) {
+        osc.detune.setValueAtTime((i % 2 === 0 ? 4 : -4), now);
+      }
+
+      const noteDuration = 3.6;
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.linearRampToValueAtTime(0.024 / (i + 1), now + 0.8);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + noteDuration);
+
+      osc.connect(gain);
+      gain.connect(filter);
+
+      osc.start(now);
+      osc.stop(now + noteDuration);
+
+      bgMusicActiveNodes.push({ osc, gain });
+    });
+
+    const arpNotes = [523.25, 587.33, 659.25, 783.99];
+    const arpFreq = arpNotes[Math.floor(Math.random() * arpNotes.length)];
+    const arpOsc = audioCtx.createOscillator();
+    const arpGain = audioCtx.createGain();
+    arpOsc.type = 'sine';
+    arpOsc.frequency.setValueAtTime(arpFreq, now + 1.2);
+    arpGain.gain.setValueAtTime(0.0001, now + 1.2);
+    arpGain.gain.linearRampToValueAtTime(0.012, now + 1.4);
+    arpGain.gain.exponentialRampToValueAtTime(0.0001, now + 2.8);
+
+    arpOsc.connect(arpGain);
+    arpGain.connect(filter);
+    arpOsc.start(now + 1.2);
+    arpOsc.stop(now + 2.8);
+
+    bgMusicActiveNodes.push({ osc: arpOsc, gain: arpGain });
+
+    if (bgMusicActiveNodes.length > 30) {
+      bgMusicActiveNodes = bgMusicActiveNodes.slice(-15);
+    }
+  };
+
+  playChordStep();
+  bgMusicInterval = setInterval(playChordStep, 3500);
+}
+
+export function stopSnakeBackgroundMusic() {
+  isBgMusicPlaying = false;
+
+  if (bgMusicInterval) {
+    clearInterval(bgMusicInterval);
+    bgMusicInterval = null;
+  }
+
+  const ctx = audioCtx;
+  if (bgMusicMasterGain && ctx) {
+    try {
+      const now = ctx.currentTime;
+      bgMusicMasterGain.gain.setValueAtTime(bgMusicMasterGain.gain.value, now);
+      bgMusicMasterGain.gain.linearRampToValueAtTime(0.0001, now + 0.35);
+    } catch (_) {}
+  }
+
+  setTimeout(() => {
+    bgMusicActiveNodes.forEach(item => {
+      try {
+        item.osc?.stop();
+        item.osc?.disconnect();
+        item.gain?.disconnect();
+      } catch (_) {}
+    });
+    bgMusicActiveNodes = [];
+
+    if (bgMusicMasterGain) {
+      try {
+        bgMusicMasterGain.disconnect();
+      } catch (_) {}
+      bgMusicMasterGain = null;
+    }
+  }, 400);
+}
+

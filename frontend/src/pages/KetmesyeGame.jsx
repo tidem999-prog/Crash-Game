@@ -8,6 +8,7 @@ import {
   initAudio, playSnakeSpawn, playSnakeCashout, 
   startSnakeBoost, stopSnakeBoost, playSnakeDeath, playSnakeEat,
   playSnakeBoostStart, playSnakeEatCash,
+  startSnakeBackgroundMusic, stopSnakeBackgroundMusic,
   getMuted, setMuted 
 } from '../utils/audio';
 
@@ -50,6 +51,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
   const [leaderboard, setLeaderboard] = useState([]);
   const [isLocalSim, setIsLocalSim] = useState(false);
   const [onlinePlayers, setOnlinePlayers] = useState(0);
+  const [isBoostingState, setIsBoostingState] = useState(false);
 
   // Modals / Stats state
   const [cashoutStats, setCashoutStats] = useState(null); // { payout, multiplier, timeSurvived, eliminations }
@@ -81,6 +83,9 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
     setMuted(muted);
     if (muted) {
       stopSnakeBoost();
+      stopSnakeBackgroundMusic();
+    } else if (isPlaying) {
+      startSnakeBackgroundMusic();
     }
   };
 
@@ -99,6 +104,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
   useEffect(() => {
     return () => {
       stopSnakeBoost();
+      stopSnakeBackgroundMusic();
     };
   }, []);
 
@@ -217,10 +223,12 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
       updateBalance(data.newBalance, data.currency || activeCurrency);
       addNotification(`Vous avez rejoint l'arène avec ${data.wager} ${data.currency || activeCurrency} !`, 'success');
       playSnakeSpawn();
+      startSnakeBackgroundMusic();
     });
 
     socket.on('ketmesye_death', (data) => {
       setIsPlaying(false);
+      stopSnakeBackgroundMusic();
       setDeathStats({
         timeSurvived: data.timeSurvived,
         eliminations: data.eliminations,
@@ -237,6 +245,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
 
     socket.on('ketmesye_cashout_success', (data) => {
       setIsPlaying(false);
+      stopSnakeBackgroundMusic();
       setCashoutStats({
         payout: data.payout,
         multiplier: data.multiplier,
@@ -411,7 +420,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
       };
     };
 
-    const killBot = (botId, killerSnake) => {
+    const killBot = (botId, killerSnake, targetPls) => {
       const sks = snakesRef.current;
       const bot = sks[botId];
       if (!bot) return;
@@ -423,20 +432,47 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
         }
       }
 
+      playSnakeDeath();
+
       // Drop pellets strictly worth 0.000001 to prevent economy exploit
-      const pls = [...(pelletsRef.current || [])];
-      bot.segments.forEach(seg => {
-        pls.push({
-          id: Math.random().toString(),
-          x: seg.x + (Math.random() * 8 - 4),
-          y: seg.y + (Math.random() * 8 - 4),
-          value: 0.000001,
-          color: '#c084fc',
-          isCashDrop: false,
-          isBotDrop: true
+      const plsArray = targetPls || pelletsRef.current || [];
+      const botColors = ['#f43f5e', '#a855f7', '#38bdf8', '#fbbf24', '#34d399', '#ec4899'];
+      const dropColor = bot.color || botColors[Math.floor(Math.random() * botColors.length)];
+
+      if (bot.segments && bot.segments.length > 0) {
+        bot.segments.forEach((seg, sIdx) => {
+          for (let k = 0; k < 2; k++) {
+            const angle = Math.random() * Math.PI * 2;
+            const dist = Math.random() * 22;
+            plsArray.push({
+              id: `bot_drop_${botId}_${sIdx}_${k}_${Math.random()}`,
+              x: Math.max(25, Math.min(MAP_WIDTH - 25, seg.x + Math.cos(angle) * dist)),
+              y: Math.max(25, Math.min(MAP_HEIGHT - 25, seg.y + Math.sin(angle) * dist)),
+              value: 0.000001,
+              color: dropColor,
+              isCashDrop: false,
+              isBotDrop: true
+            });
+          }
         });
-      });
-      pelletsRef.current = pls;
+
+        // Extra burst around head (8 glowing pellets)
+        const head = bot.segments[0];
+        for (let b = 0; b < 8; b++) {
+          const angle = (b / 8) * Math.PI * 2;
+          const dist = 10 + Math.random() * 24;
+          plsArray.push({
+            id: `bot_drop_head_${botId}_${b}_${Math.random()}`,
+            x: Math.max(25, Math.min(MAP_WIDTH - 25, head.x + Math.cos(angle) * dist)),
+            y: Math.max(25, Math.min(MAP_HEIGHT - 25, head.y + Math.sin(angle) * dist)),
+            value: 0.000001,
+            color: '#fbbf24',
+            isCashDrop: false,
+            isBotDrop: true
+          });
+        }
+      }
+      pelletsRef.current = plsArray;
 
       delete sks[botId];
 
@@ -678,7 +714,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
 
       // Process dead bots (drop pellets worth 0.000001)
       deadBots.forEach(botId => {
-        killBot(botId, me);
+        killBot(botId, me, pls);
       });
 
       if (playerDead && me) {
@@ -789,10 +825,12 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
     prevSnakeValueRef.current = initialValue;
     addNotification(`[Mode Démo] Spawn réussi !`, 'success');
     playSnakeSpawn();
+    startSnakeBackgroundMusic();
   };
 
   const handleLocalDeath = (me) => {
     setIsPlaying(false);
+    stopSnakeBackgroundMusic();
     const pls = [...pelletsRef.current];
     const valPerDrop = parseFloat(((me.value * 0.5) / me.segments.length).toFixed(4));
     me.segments.forEach(seg => {
@@ -838,6 +876,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
     });
 
     setIsPlaying(false);
+    stopSnakeBackgroundMusic();
     delete snakesRef.current[myId];
     mySnakeIdRef.current = null;
     setMySnake(null);
@@ -967,6 +1006,25 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.fillText('G', px, py + 0.5);
+        } else if (p.isBotDrop) {
+          // Dead bot scattered pellet - glowing neon purple/amber crystal orb
+          ctx.save();
+          ctx.fillStyle = p.color || '#c084fc';
+          ctx.globalAlpha = 0.45;
+          ctx.beginPath();
+          ctx.arc(px, py, 8.5, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.globalAlpha = 1.0;
+          ctx.beginPath();
+          ctx.arc(px, py, 5.2, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+          ctx.beginPath();
+          ctx.arc(px - 1.5, py - 1.5, 1.8, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
         } else {
           // Shiny multi-color normal pellet
           ctx.fillStyle = p.color || '#38bdf8';
@@ -1263,6 +1321,7 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
   };
 
   const handleBoostChange = (isBoosting) => {
+    setIsBoostingState(isBoosting);
     if (lastBoostEmitRef.current === isBoosting || !isPlaying) return;
     lastBoostEmitRef.current = isBoosting;
 
@@ -1282,8 +1341,22 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
     }
   };
 
-  // Keyboard controls for boost
+  // PC Controls: Left click (klik gauche) & Keyboard Spacebar for rapid boost
   useEffect(() => {
+    if (!isPlaying) return;
+
+    const handleGlobalMouseDown = (e) => {
+      if (e.button === 0) {
+        handleBoostChange(true);
+      }
+    };
+
+    const handleGlobalMouseUp = (e) => {
+      if (e.button === 0) {
+        handleBoostChange(false);
+      }
+    };
+
     const handleKeyDown = (e) => {
       if (e.code === 'Space') {
         e.preventDefault();
@@ -1296,11 +1369,17 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
         handleBoostChange(false);
       }
     };
+
+    window.addEventListener('mousedown', handleGlobalMouseDown);
+    window.addEventListener('mouseup', handleGlobalMouseUp);
     window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('keyup', handleKeyUp);
     return () => {
+      window.removeEventListener('mousedown', handleGlobalMouseDown);
+      window.removeEventListener('mouseup', handleGlobalMouseUp);
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
+      handleBoostChange(false);
     };
   }, [isPlaying]);
 
@@ -1517,8 +1596,12 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
           <canvas 
             ref={canvasRef} 
             onMouseMove={handleMouseMove}
-            onMouseDown={() => handleBoostChange(true)}
-            onMouseUp={() => handleBoostChange(false)}
+            onMouseDown={(e) => {
+              if (e.button === 0) handleBoostChange(true);
+            }}
+            onMouseUp={(e) => {
+              if (e.button === 0) handleBoostChange(false);
+            }}
             onMouseLeave={() => handleBoostChange(false)}
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
@@ -1608,18 +1691,27 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
                 </div>
               )}
 
-              {/* Mobile Boost Button */}
-              <button 
-                className="absolute bottom-16 right-4 bg-yellow-500/80 backdrop-blur-md p-3.5 rounded-full border-2 border-yellow-400 shadow-[0_0_15px_rgba(234,179,8,0.5)] touch-none select-none z-30"
-                onTouchStart={(e) => { e.preventDefault(); handleBoostChange(true); }}
-                onTouchEnd={(e) => { e.preventDefault(); handleBoostChange(false); }}
-                onTouchCancel={(e) => { e.preventDefault(); handleBoostChange(false); }}
-                onMouseDown={(e) => { e.preventDefault(); handleBoostChange(true); }}
-                onMouseUp={(e) => { e.preventDefault(); handleBoostChange(false); }}
-                onMouseLeave={(e) => { e.preventDefault(); handleBoostChange(false); }}
-              >
-                <Zap className="h-6 w-6 text-white fill-white" />
-              </button>
+              {/* Dedicated Mobile / Android BOOST Button (Duel) */}
+              <div className="absolute bottom-20 right-4 sm:right-6 z-40 select-none">
+                <button 
+                  onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); handleBoostChange(true); }}
+                  onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); handleBoostChange(false); }}
+                  onTouchCancel={(e) => { e.preventDefault(); e.stopPropagation(); handleBoostChange(false); }}
+                  onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); handleBoostChange(true); }}
+                  onMouseUp={(e) => { e.preventDefault(); e.stopPropagation(); handleBoostChange(false); }}
+                  className={`w-[68px] h-[68px] rounded-full border-2 border-white/40 flex flex-col items-center justify-center shadow-2xl transition-all duration-150 active:scale-90 cursor-pointer ${
+                    isBoostingState
+                      ? 'bg-gradient-to-tr from-amber-500 via-orange-500 to-red-500 shadow-[0_0_25px_rgba(249,115,22,0.85)] scale-95'
+                      : 'bg-gradient-to-tr from-cyan-500 via-blue-600 to-indigo-600 shadow-[0_0_18px_rgba(6,182,212,0.6)]'
+                  }`}
+                  title="Kenbe pou kouri rapid (Boost)"
+                >
+                  <Zap className="h-6 w-6 text-white fill-white drop-shadow-md animate-pulse" />
+                  <span className="text-[9px] font-black text-white tracking-widest uppercase mt-0.5 drop-shadow">
+                    BOOST
+                  </span>
+                </button>
+              </div>
             </>
           )}
 
@@ -1668,17 +1760,27 @@ export default function KetmesyeGame({ socket, onBackToLobby, addNotification, o
                 </button>
               </div>
 
-              <button 
-                className="absolute bottom-24 right-4 sm:hidden bg-yellow-500/80 backdrop-blur-md p-3.5 rounded-full border-2 border-yellow-400 shadow-[0_0_15px_rgba(234,179,8,0.5)] touch-none select-none z-30"
-                onTouchStart={(e) => { e.preventDefault(); handleBoostChange(true); }}
-                onTouchEnd={(e) => { e.preventDefault(); handleBoostChange(false); }}
-                onTouchCancel={(e) => { e.preventDefault(); handleBoostChange(false); }}
-                onMouseDown={(e) => { e.preventDefault(); handleBoostChange(true); }}
-                onMouseUp={(e) => { e.preventDefault(); handleBoostChange(false); }}
-                onMouseLeave={(e) => { e.preventDefault(); handleBoostChange(false); }}
-              >
-                <Zap className="h-6 w-6 text-white fill-white" />
-              </button>
+              {/* Dedicated Mobile / Android BOOST Button (Sandbox) */}
+              <div className="absolute bottom-24 sm:bottom-28 right-4 sm:right-6 z-40 select-none">
+                <button 
+                  onTouchStart={(e) => { e.preventDefault(); e.stopPropagation(); handleBoostChange(true); }}
+                  onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); handleBoostChange(false); }}
+                  onTouchCancel={(e) => { e.preventDefault(); e.stopPropagation(); handleBoostChange(false); }}
+                  onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); handleBoostChange(true); }}
+                  onMouseUp={(e) => { e.preventDefault(); e.stopPropagation(); handleBoostChange(false); }}
+                  className={`w-[70px] h-[70px] rounded-full border-2 border-white/40 flex flex-col items-center justify-center shadow-2xl transition-all duration-150 active:scale-90 cursor-pointer ${
+                    isBoostingState
+                      ? 'bg-gradient-to-tr from-amber-500 via-orange-500 to-red-500 shadow-[0_0_25px_rgba(249,115,22,0.85)] scale-95'
+                      : 'bg-gradient-to-tr from-cyan-500 via-blue-600 to-indigo-600 shadow-[0_0_18px_rgba(6,182,212,0.6)]'
+                  }`}
+                  title="Kenbe pou kouri rapid (Boost)"
+                >
+                  <Zap className="h-7 w-7 text-white fill-white drop-shadow-md animate-pulse" />
+                  <span className="text-[9px] font-black text-white tracking-widest uppercase mt-0.5 drop-shadow">
+                    BOOST
+                  </span>
+                </button>
+              </div>
             </>
           )}
 

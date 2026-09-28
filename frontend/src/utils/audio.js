@@ -1054,18 +1054,22 @@ export function startSnakeBackgroundMusic() {
   const ctx = getAudioContext();
   if (!ctx) return;
 
+  if (ctx.state === 'suspended') {
+    ctx.resume().catch(() => {});
+  }
+
   stopSnakeBackgroundMusic();
   isBgMusicPlaying = true;
 
   bgMusicMasterGain = ctx.createGain();
-  bgMusicMasterGain.gain.setValueAtTime(0.0001, ctx.currentTime);
-  bgMusicMasterGain.gain.linearRampToValueAtTime(0.028, ctx.currentTime + 1.2);
+  bgMusicMasterGain.gain.setValueAtTime(0.001, ctx.currentTime);
+  bgMusicMasterGain.gain.linearRampToValueAtTime(0.16, ctx.currentTime + 1.0);
   bgMusicMasterGain.connect(ctx.destination);
 
   const filter = ctx.createBiquadFilter();
   filter.type = 'lowpass';
-  filter.frequency.setValueAtTime(480, ctx.currentTime);
-  filter.Q.setValueAtTime(1.8, ctx.currentTime);
+  filter.frequency.setValueAtTime(650, ctx.currentTime);
+  filter.Q.setValueAtTime(1.4, ctx.currentTime);
   filter.connect(bgMusicMasterGain);
 
   const chordFrequencies = [
@@ -1091,12 +1095,12 @@ export function startSnakeBackgroundMusic() {
       osc.frequency.setValueAtTime(freq, now);
 
       if (i > 0) {
-        osc.detune.setValueAtTime((i % 2 === 0 ? 4 : -4), now);
+        osc.detune.setValueAtTime((i % 2 === 0 ? 5 : -5), now);
       }
 
       const noteDuration = 3.6;
       gain.gain.setValueAtTime(0.001, now);
-      gain.gain.linearRampToValueAtTime(0.024 / (i + 1), now + 0.8);
+      gain.gain.linearRampToValueAtTime(0.18 / (i + 1), now + 0.6);
       gain.gain.exponentialRampToValueAtTime(0.0001, now + noteDuration);
 
       osc.connect(gain);
@@ -1113,15 +1117,15 @@ export function startSnakeBackgroundMusic() {
     const arpOsc = audioCtx.createOscillator();
     const arpGain = audioCtx.createGain();
     arpOsc.type = 'sine';
-    arpOsc.frequency.setValueAtTime(arpFreq, now + 1.2);
-    arpGain.gain.setValueAtTime(0.0001, now + 1.2);
-    arpGain.gain.linearRampToValueAtTime(0.012, now + 1.4);
-    arpGain.gain.exponentialRampToValueAtTime(0.0001, now + 2.8);
+    arpOsc.frequency.setValueAtTime(arpFreq, now + 1.0);
+    arpGain.gain.setValueAtTime(0.001, now + 1.0);
+    arpGain.gain.linearRampToValueAtTime(0.09, now + 1.2);
+    arpGain.gain.exponentialRampToValueAtTime(0.0001, now + 2.5);
 
     arpOsc.connect(arpGain);
     arpGain.connect(filter);
-    arpOsc.start(now + 1.2);
-    arpOsc.stop(now + 2.8);
+    arpOsc.start(now + 1.0);
+    arpOsc.stop(now + 2.5);
 
     bgMusicActiveNodes.push({ osc: arpOsc, gain: arpGain });
 

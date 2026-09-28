@@ -14,8 +14,8 @@ const INVINCIBLE_TIME_MS = 2000; // 2 seconds invincibility on spawn
 const GAME_DURATION_MS = 2 * 60 * 1000; // 2 minutes for a duel
 
 // Game State (Public Sandbox partitioned by currency)
-let snakes = { HTG: {}, KET: {}, PIECES: {} };
-let pellets = { HTG: [], KET: [], PIECES: [] };
+let snakes = { HTG: {}, KET: {}, PIECES: {}, FREE: {} };
+let pellets = { HTG: [], KET: [], PIECES: [], FREE: [] };
 
 // Game State (1v1 Duels)
 const pendingDuels = {}; // maps duelId -> { id, betAmount, creatorEmail, playerAId, currency }
@@ -40,7 +40,7 @@ const spawnNormalPellets = (currency, count) => {
       id: Math.random().toString(36).substring(2, 9),
       x: Math.floor(Math.random() * (MAP_WIDTH - 40)) + 20,
       y: Math.floor(Math.random() * (MAP_HEIGHT - 40)) + 20,
-      value: currency === 'KET' ? 0.80 : 0.10, // KET pellets worth 0.80 KET, HTG pellets worth 0.10 HTG
+      value: currency === 'KET' ? 0.80 : (currency === 'FREE' ? 1.0 : 0.10), // FREE pellets worth 1 pt
       color: getRandomColor(),
       isCashDrop: false
     });
@@ -51,6 +51,7 @@ const spawnNormalPellets = (currency, count) => {
 spawnNormalPellets('HTG', 450);
 spawnNormalPellets('KET', 450);
 spawnNormalPellets('PIECES', 450);
+spawnNormalPellets('FREE', 450);
 
 // Tick sandbox routine for a specific currency sandbox
 const tickSandbox = async (currency) => {
@@ -206,24 +207,24 @@ const tickSandbox = async (currency) => {
         }
       }
 
-      // Spawn cash pellets from the dead body
+      // Spawn cash/points pellets from the dead body
       const segmentCount = snake.segments.length;
       const totalValueToDrop = snake.value * 0.5;
       const valuePerDrop = parseFloat((totalValueToDrop / segmentCount).toFixed(4));
 
-      // Drop a yellow cash pellet at every segment
+      // Drop pellets at every segment (random normal pellets if FREE; shiny yellow cash if real money)
       snake.segments.forEach(segment => {
         sandboxPellets.push({
           id: Math.random().toString(36).substring(2, 9),
           x: segment.x + (Math.random() * 10 - 5),
           y: segment.y + (Math.random() * 10 - 5),
-          value: valuePerDrop,
-          color: '#fbbf24', // Shiny yellow
-          isCashDrop: true
+          value: currency === 'FREE' ? 1.0 : valuePerDrop,
+          color: currency === 'FREE' ? getRandomColor() : '#fbbf24', // Shiny yellow for cash, random for FREE
+          isCashDrop: currency !== 'FREE'
         });
       });
 
-      // Update bet row to lost in database si se pa PIECES
+      // Update bet row to lost in database si se pa PIECES ni FREE
       if (snake.betId) {
         try {
           await query(
@@ -247,12 +248,15 @@ const tickSandbox = async (currency) => {
           timeSurvived: Math.floor((Date.now() - snake.spawnTime) / 1000),
           eliminations: snake.eliminations,
           valueLost: snake.value,
-          currency: snake.currency
+          currency: snake.currency,
+          isFreePractice: !!snake.isFreePractice
         });
       }
 
-      activePlayersStore.losePlayer(snake.userId, 'ketmesye', 'dead');
-      activePlayersStore.notify(`Le serpent de ${snake.email.split('@')[0]} est mort et a perdu ${snake.value.toFixed(0)} ${currency} !`, 'danger');
+      if (currency !== 'FREE' && currency !== 'PIECES') {
+        activePlayersStore.losePlayer(snake.userId, 'ketmesye', 'dead');
+        activePlayersStore.notify(`Le serpent de ${snake.email.split('@')[0]} est mort et a perdu ${snake.value.toFixed(0)} ${currency} !`, 'danger');
+      }
     }
   }
 
@@ -327,7 +331,8 @@ const tickSandbox = async (currency) => {
         eliminations: s.eliminations,
         isInvincible: s.isInvincible,
         hasStartedMoving: s.hasStartedMoving !== false,
-        energy: s.energy
+        energy: s.energy,
+        isFreePractice: !!s.isFreePractice
       };
       return acc;
     }, {}),
@@ -353,6 +358,7 @@ const handleGameTick = async () => {
   await tickSandbox('HTG');
   await tickSandbox('KET');
   await tickSandbox('PIECES');
+  await tickSandbox('FREE');
 };
 
 // Broadcast the list of pending duels to anyone listening
@@ -931,9 +937,72 @@ const initKetmesyeEngine = (socketIoInstance) => {
     socket.on('ketmesye_join', async (data) => {
       const { userId, email, wager, currency } = data;
       const requestedCurrency = (currency || 'HTG').toUpperCase();
+      const isFree = !!data.isFreeTrial || requestedCurrency === 'POINTS' || requestedCurrency === 'FREE';
 
-      if (snakes.HTG[socket.id] || snakes.KET[socket.id] || (snakes.PIECES && snakes.PIECES[socket.id])) {
+      if (snakes.HTG[socket.id] || snakes.KET[socket.id] || (snakes.PIECES && snakes.PIECES[socket.id]) || (snakes.FREE && snakes.FREE[socket.id])) {
         return socket.emit('ketmesye_error', { message: 'Vous êtes déjà dans la partie.' });
+      }
+
+      // Si se mòd Esè Gratis (3 fwa pa jou, sèlman ti boul, izole nèt de jwè 500+ pyès)
+      if (isFree) {
+        const spawnX = Math.floor(Math.random() * (MAP_WIDTH - 200)) + 100;
+        const spawnY = Math.floor(Math.random() * (MAP_HEIGHT - 200)) + 100;
+
+        const startSegments = [];
+        for (let i = 0; i < 5; i++) {
+          startSegments.push({ x: spawnX, y: spawnY + i * 15 });
+        }
+
+        const initialPath = [];
+        for (let i = 0; i < 50; i++) {
+          initialPath.push({ x: spawnX, y: spawnY + i * (15 / PATH_SPACING) });
+        }
+
+        // Netwaye nenpòt ansyen koulèv fantom nan FREE
+        if (snakes.FREE) {
+          Object.keys(snakes.FREE).forEach(sId => {
+            const s = snakes.FREE[sId];
+            if (s && (sId === socket.id || (email && s.email === email) || (userId && s.userId === userId))) {
+              delete snakes.FREE[sId];
+            }
+          });
+        }
+
+        snakes.FREE[socket.id] = {
+          id: socket.id,
+          userId: userId || socket.id,
+          email: email || `Player_${socket.id.substring(0, 5)}`,
+          wager: 0,
+          value: 0,
+          segments: startSegments,
+          pathHistory: initialPath,
+          angle: -Math.PI / 2,
+          speed: 6.5,
+          color: getRandomColor(),
+          eliminations: 0,
+          isInvincible: true,
+          hasStartedMoving: false,
+          spawnTime: Date.now(),
+          betId: null,
+          isBoosting: false,
+          energy: 100,
+          currency: 'FREE',
+          isFreePractice: true,
+          fundedByBonus: false
+        };
+
+        socket.join('ketmesye_sandbox_FREE');
+
+        socket.emit('ketmesye_join_success', {
+          wager: 0,
+          initialValue: 0,
+          newBalance: null,
+          currency: 'FREE',
+          isFreeTrial: true
+        });
+
+        console.log(`Snake Arena [FREE PRACTICE]: ${email || socket.id} joined free practice.`);
+        return;
       }
 
       // Si se PIECES (App Flutter / Standalone), nou kite jwè a antre dirèkteman san obligasyon baz SQL
@@ -1128,7 +1197,7 @@ const initKetmesyeEngine = (socketIoInstance) => {
           }
         }
       } else {
-        const snake = snakes.HTG[socket.id] || snakes.KET[socket.id] || (snakes.PIECES && snakes.PIECES[socket.id]);
+        const snake = snakes.HTG[socket.id] || snakes.KET[socket.id] || (snakes.PIECES && snakes.PIECES[socket.id]) || (snakes.FREE && snakes.FREE[socket.id]);
         if (snake && typeof angle === 'number' && Number.isFinite(angle)) {
           snake.angle = angle;
           if (!snake.hasStartedMoving) {
@@ -1154,7 +1223,7 @@ const initKetmesyeEngine = (socketIoInstance) => {
           }
         }
       } else {
-        const snake = snakes.HTG[socket.id] || snakes.KET[socket.id] || (snakes.PIECES && snakes.PIECES[socket.id]);
+        const snake = snakes.HTG[socket.id] || snakes.KET[socket.id] || (snakes.PIECES && snakes.PIECES[socket.id]) || (snakes.FREE && snakes.FREE[socket.id]);
         if (snake) {
           snake.isBoosting = !!data.isBoosting;
           if (data.isBoosting && !snake.hasStartedMoving) {
@@ -1168,13 +1237,18 @@ const initKetmesyeEngine = (socketIoInstance) => {
 
     // 3. Cash out event
     socket.on('ketmesye_cashout', async () => {
-      const snake = snakes.HTG[socket.id] || snakes.KET[socket.id] || (snakes.PIECES && snakes.PIECES[socket.id]);
+      const snake = snakes.HTG[socket.id] || snakes.KET[socket.id] || (snakes.PIECES && snakes.PIECES[socket.id]) || (snakes.FREE && snakes.FREE[socket.id]);
       if (!snake) {
         return socket.emit('ketmesye_error', { message: 'Aucun serpent actif à encaisser.' });
       }
 
       const payout = snake.value;
       const currency = snake.currency || 'HTG';
+
+      // Esè gratis pa gen cashout
+      if (currency === 'FREE') {
+        return socket.emit('ketmesye_error', { message: 'Mòd esè gratis la pa gen opsyon retire kòb (cashout).' });
+      }
 
       // Si se PIECES, pa bezwen pase nan ansyen SQL la
       if (currency === 'PIECES') {
@@ -1484,11 +1558,16 @@ const initKetmesyeEngine = (socketIoInstance) => {
         delete activeDuelPlayers[socket.id];
       }
 
-      const snake = snakes.HTG[socket.id] || snakes.KET[socket.id] || (snakes.PIECES && snakes.PIECES[socket.id]);
+      const snake = snakes.HTG[socket.id] || snakes.KET[socket.id] || (snakes.PIECES && snakes.PIECES[socket.id]) || (snakes.FREE && snakes.FREE[socket.id]);
       if (snake) {
         const currency = snake.currency || 'HTG';
         console.log(`Ketmesye: Player ${snake.email} disconnected. Cleaning up.`);
         
+        if (currency === 'FREE') {
+          delete snakes.FREE[socket.id];
+          return;
+        }
+
         // Spawn pellets along dead body path
         const segmentCount = snake.segments.length;
         const valuePerDrop = parseFloat(((snake.value * 0.5) / segmentCount).toFixed(4));
@@ -1504,23 +1583,27 @@ const initKetmesyeEngine = (socketIoInstance) => {
           });
         });
 
-        // Update bet row to lost in database on disconnect
-        try {
-          await query(
-            "UPDATE bets SET payout_amount = 0.00, is_won = false WHERE id = $1",
-            [snake.betId]
-          );
-          // Process progression settlement (awards KET on HTG losses)
-          await processBetSettlement(snake.userId, snake.wager, 0.00, currency, 'ketmesye');
-          
-          const { recordPlatformRevenue } = require('./utils/competitions');
-          await recordPlatformRevenue(parseFloat(snake.wager), currency, 'ketmesye');
-        } catch (err) {
-          console.error('Error updating bet row on disconnect:', err);
+        // Update bet row to lost in database on disconnect si se pa PIECES
+        if (snake.betId) {
+          try {
+            await query(
+              "UPDATE bets SET payout_amount = 0.00, is_won = false WHERE id = $1",
+              [snake.betId]
+            );
+            // Process progression settlement (awards KET on HTG losses)
+            await processBetSettlement(snake.userId, snake.wager, 0.00, currency, 'ketmesye');
+            
+            const { recordPlatformRevenue } = require('./utils/competitions');
+            await recordPlatformRevenue(parseFloat(snake.wager), currency, 'ketmesye');
+          } catch (err) {
+            console.error('Error updating bet row on disconnect:', err);
+          }
         }
 
-        activePlayersStore.losePlayer(snake.userId, 'ketmesye', 'dead');
-        activePlayersStore.notify(`Le serpent de ${snake.email.split('@')[0]} s'est déconnecté et a perdu ${snake.value.toFixed(0)} ${currency} !`, 'danger');
+        if (currency !== 'PIECES') {
+          activePlayersStore.losePlayer(snake.userId, 'ketmesye', 'dead');
+          activePlayersStore.notify(`Le serpent de ${snake.email.split('@')[0]} s'est déconnecté et a perdu ${snake.value.toFixed(0)} ${currency} !`, 'danger');
+        }
 
         delete snakes[currency][socket.id];
       }

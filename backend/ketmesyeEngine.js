@@ -281,29 +281,22 @@ const tickSandbox = async (currency) => {
       if (dist < eatThreshold) { // Consumption threshold
         snake.value = parseFloat((snake.value + pellet.value).toFixed(2));
         
-        snake.growthPoints = (snake.growthPoints || 0) + pellet.value;
-
-        // Kwasans Balanse: Koulèv la pa dwe janm vin enfini (max 85 segman)
-        const maxSegments = 85;
-        let growthCost;
-        if (currency === 'PIECES') {
-          growthCost = 15.0 + (snake.segments.length * 0.6);
-        } else if (currency === 'KET') {
-          growthCost = 4.0 + (snake.segments.length * 0.15);
+        // Règleman kwasans koulèv la:
+        // 1. Boul jòn (Cash Drops ki soti nan lòt koulèv ki mouri): bay +2 segman touswit
+        // 2. Ti boul nòmal: chak 3 ti boul vale bay +1 segman
+        const maxSegments = 150;
+        if (pellet.isCashDrop) {
+          for (let k = 0; k < 2; k++) {
+            if (snake.segments.length < maxSegments) {
+              const lastSegment = snake.segments[snake.segments.length - 1];
+              snake.segments.push({ ...lastSegment });
+            }
+          }
         } else {
-          growthCost = 1.0 + (snake.segments.length * 0.05);
-        }
-
-        while (snake.growthPoints >= growthCost && snake.segments.length < maxSegments) {
-          snake.growthPoints -= growthCost;
-          const lastSegment = snake.segments[snake.segments.length - 1];
-          snake.segments.push({ ...lastSegment });
-          if (currency === 'PIECES') {
-            growthCost = 15.0 + (snake.segments.length * 0.6);
-          } else if (currency === 'KET') {
-            growthCost = 4.0 + (snake.segments.length * 0.15);
-          } else {
-            growthCost = 1.0 + (snake.segments.length * 0.05);
+          snake.pelletsEaten = (snake.pelletsEaten || 0) + 1;
+          if (snake.pelletsEaten % 3 === 0 && snake.segments.length < maxSegments) {
+            const lastSegment = snake.segments[snake.segments.length - 1];
+            snake.segments.push({ ...lastSegment });
           }
         }
 
@@ -645,27 +638,22 @@ const handleDuelTick = async (duelId) => {
       if (dist < eatThreshold) {
         snake.value = parseFloat((snake.value + pellet.value).toFixed(2));
         
-        snake.growthPoints = (snake.growthPoints || 0) + pellet.value;
-        const maxSegments = 85;
-        let growthCost;
-        if (duel.currency === 'PIECES') {
-          growthCost = 15.0 + (snake.segments.length * 0.6);
-        } else if (duel.currency === 'KET') {
-          growthCost = 4.0 + (snake.segments.length * 0.15);
+        // Règleman kwasans koulèv la nan duel:
+        // 1. Boul jòn (Cash Drops ki soti nan lòt koulèv ki mouri): bay +2 segman touswit
+        // 2. Ti boul nòmal: chak 3 ti boul vale bay +1 segman
+        const maxSegments = 150;
+        if (pellet.isCashDrop) {
+          for (let k = 0; k < 2; k++) {
+            if (snake.segments.length < maxSegments) {
+              const lastSegment = snake.segments[snake.segments.length - 1];
+              snake.segments.push({ ...lastSegment });
+            }
+          }
         } else {
-          growthCost = 1.0 + (snake.segments.length * 0.05);
-        }
-
-        while (snake.growthPoints >= growthCost && snake.segments.length < maxSegments) {
-          snake.growthPoints -= growthCost;
-          const lastSegment = snake.segments[snake.segments.length - 1];
-          snake.segments.push({ ...lastSegment });
-          if (duel.currency === 'PIECES') {
-            growthCost = 15.0 + (snake.segments.length * 0.6);
-          } else if (duel.currency === 'KET') {
-            growthCost = 4.0 + (snake.segments.length * 0.15);
-          } else {
-            growthCost = 1.0 + (snake.segments.length * 0.05);
+          snake.pelletsEaten = (snake.pelletsEaten || 0) + 1;
+          if (snake.pelletsEaten % 3 === 0 && snake.segments.length < maxSegments) {
+            const lastSegment = snake.segments[snake.segments.length - 1];
+            snake.segments.push({ ...lastSegment });
           }
         }
 

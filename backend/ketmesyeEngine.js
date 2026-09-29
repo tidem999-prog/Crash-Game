@@ -373,7 +373,7 @@ const tickSandbox = async (currency) => {
               killerSocket.emit('ketmesye_kill', { 
                 killed: snake.email,
                 isBot: true,
-                rewardPieces: 0.00001
+                rewardPieces: 2.0
               });
             }
           }
@@ -509,7 +509,7 @@ const tickSandbox = async (currency) => {
     const segCount = snake.segments.length;
 
     // Kontak Fizik Sèlman (Zewo Leman): Ti boul yo rete an plas fiks, tèt la dwe frape yo fizikman pou vale yo
-    const eatThreshold = 18.0;
+    const eatThreshold = 26.0;
 
     for (let i = sandboxPellets.length - 1; i >= 0; i--) {
       const pellet = sandboxPellets[i];
@@ -861,7 +861,7 @@ const handleDuelTick = async (duelId) => {
     const segCount = snake.segments.length;
 
     // Kontak Fizik Sèlman (Zewo Leman nan Duel): Ti boul yo rete an plas fiks
-    const eatThreshold = 18.0;
+    const eatThreshold = 26.0;
 
     for (let i = duel.pellets.length - 1; i >= 0; i--) {
       const pellet = duel.pellets[i];
@@ -1408,13 +1408,16 @@ const initKetmesyeEngine = (socketIoInstance) => {
       }
     });
 
-    // 2. Input movement direction
+    // 2. Input movement direction & client position sync
     socket.on('ketmesye_input', (data) => {
-      const { angle } = data;
+      const { angle, x, y } = data || {};
       const duelId = activeDuelPlayers[socket.id];
-      if (duelId && activeDuels[duelId]) {
-        const snake = activeDuels[duelId].snakes[socket.id];
-        if (snake && typeof angle === 'number' && Number.isFinite(angle)) {
+      const snake = (duelId && activeDuels[duelId])
+        ? activeDuels[duelId].snakes[socket.id]
+        : (snakes.HTG[socket.id] || snakes.KET[socket.id] || (snakes.PIECES && snakes.PIECES[socket.id]) || (snakes.FREE && snakes.FREE[socket.id]));
+
+      if (snake) {
+        if (typeof angle === 'number' && Number.isFinite(angle)) {
           snake.angle = angle;
           if (!snake.hasStartedMoving) {
             snake.hasStartedMoving = true;
@@ -1422,14 +1425,20 @@ const initKetmesyeEngine = (socketIoInstance) => {
             snake.isInvincible = true;
           }
         }
-      } else {
-        const snake = snakes.HTG[socket.id] || snakes.KET[socket.id] || (snakes.PIECES && snakes.PIECES[socket.id]) || (snakes.FREE && snakes.FREE[socket.id]);
-        if (snake && typeof angle === 'number' && Number.isFinite(angle)) {
-          snake.angle = angle;
-          if (!snake.hasStartedMoving) {
-            snake.hasStartedMoving = true;
-            snake.spawnTime = Date.now();
-            snake.isInvincible = true;
+        // Senkronize pozisyon tèt la dirèkteman ak kliyan an pou zewo lag ak zewo drift
+        if (typeof x === 'number' && typeof y === 'number' && Number.isFinite(x) && Number.isFinite(y)) {
+          const clampedX = Math.max(15, Math.min(MAP_WIDTH - 15, x));
+          const clampedY = Math.max(15, Math.min(MAP_HEIGHT - 15, y));
+          const curHead = snake.segments && snake.segments[0];
+          if (curHead) {
+            const dist = Math.hypot(clampedX - curHead.x, clampedY - curHead.y);
+            if (dist < 250) {
+              curHead.x = clampedX;
+              curHead.y = clampedY;
+              if (snake.pathHistory && snake.pathHistory.length > 0) {
+                snake.pathHistory[0] = { x: clampedX, y: clampedY };
+              }
+            }
           }
         }
       }

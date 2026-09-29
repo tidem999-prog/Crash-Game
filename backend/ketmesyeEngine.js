@@ -78,13 +78,13 @@ const tickSandbox = async (currency) => {
       snake.isInvincible = false;
     }
 
-    // Energy and Boost speed logic
-    if (snake.isBoosting && snake.energy > 0) {
-      snake.speed = 12; // Boost speed
-      snake.energy = Math.max(0, snake.energy - 2); // Drain energy
+    // Energy and Boost speed logic (Egzak menm jan ak vibeht.com: 9 nòmal, 16 boost)
+    if (snake.isBoosting && snake.energy > 5) {
+      snake.speed = 16; // Boost speed
+      snake.energy = Math.max(0, snake.energy - 1.8); // Drain energy
     } else {
-      snake.speed = 6.5; // Vitès nòmal byen kontwole
-      snake.energy = Math.min(100, snake.energy + 1.5); // Recover energy
+      snake.speed = 9; // Vitès nòmal egzakteman menm jan ak vibeht.com
+      snake.energy = Math.min(100, snake.energy + 1.2); // Recover energy
     }
 
     if (!Number.isFinite(snake.angle)) {
@@ -458,12 +458,12 @@ const handleDuelTick = async (duelId) => {
       snake.isInvincible = false;
     }
 
-    if (snake.isBoosting && snake.energy > 0) {
+    if (snake.isBoosting && snake.energy > 5) {
       snake.speed = 16;
-      snake.energy = Math.max(0, snake.energy - 2);
+      snake.energy = Math.max(0, snake.energy - 1.8);
     } else {
-      snake.speed = 10;
-      snake.energy = Math.min(100, snake.energy + 1.5);
+      snake.speed = 9;
+      snake.energy = Math.min(100, snake.energy + 1.2);
     }
 
     if (!Number.isFinite(snake.angle)) {

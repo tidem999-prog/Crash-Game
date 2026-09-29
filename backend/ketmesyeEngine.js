@@ -508,8 +508,8 @@ const tickSandbox = async (currency) => {
     const head = snake.segments[0];
     const segCount = snake.segments.length;
 
-    // Kontak Fizik Sèlman (Zewo Leman): Ti boul yo rete an plas fiks, tèt la dwe frape yo fizikman pou vale yo
-    const eatThreshold = 26.0;
+    // Kontak Fizik Sèlman: Ti boul yo rete an plas fiks, tèt la dwe frape yo fizikman pou vale yo
+    const eatThreshold = 36.0;
 
     for (let i = sandboxPellets.length - 1; i >= 0; i--) {
       const pellet = sandboxPellets[i];
@@ -1465,6 +1465,76 @@ const initKetmesyeEngine = (socketIoInstance) => {
             snake.hasStartedMoving = true;
             snake.spawnTime = Date.now();
             snake.isInvincible = true;
+          }
+        }
+    });
+
+    // 2.7 Manje ti boul imedyatman lè kliyan touche yo (Instant Zero-Latency Eat)
+    socket.on('ketmesye_eat', (data) => {
+      const { pelletId } = data || {};
+      if (!pelletId) return;
+
+      const duelId = activeDuelPlayers[socket.id];
+      if (duelId && activeDuels[duelId]) {
+        const duel = activeDuels[duelId];
+        const snake = duel.snakes[socket.id];
+        if (!snake) return;
+        const idx = duel.pellets.findIndex(p => p.id === pelletId);
+        if (idx !== -1) {
+          const pellet = duel.pellets[idx];
+          snake.value = parseFloat((snake.value + pellet.value).toFixed(2));
+          if (pellet.isCashDrop) {
+            for (let k = 0; k < 2; k++) {
+              if (snake.segments.length < 150) {
+                const last = snake.segments[snake.segments.length - 1];
+                snake.segments.push({ ...last });
+              }
+            }
+          } else {
+            snake.pelletsEaten = (snake.pelletsEaten || 0) + 1;
+            if (snake.pelletsEaten % 3 === 0 && snake.segments.length < 150) {
+              const last = snake.segments[snake.segments.length - 1];
+              snake.segments.push({ ...last });
+            }
+          }
+          duel.pellets.splice(idx, 1);
+          if (!pellet.isCashDrop) {
+            duel.pellets.push({
+              id: Math.random().toString(36).substring(2, 9),
+              x: Math.floor(Math.random() * (MAP_WIDTH - 40)) + 20,
+              y: Math.floor(Math.random() * (MAP_HEIGHT - 40)) + 20,
+              value: 0.10,
+              color: getRandomColor(),
+            });
+          }
+        }
+      } else {
+        const snake = snakes.HTG[socket.id] || snakes.KET[socket.id] || (snakes.PIECES && snakes.PIECES[socket.id]) || (snakes.FREE && snakes.FREE[socket.id]);
+        if (!snake) return;
+        const currency = snake.currency || (snakes.FREE && snakes.FREE[socket.id] ? 'FREE' : 'PIECES');
+        const curPellets = pellets[currency] || pellets.PIECES || pellets.FREE;
+        if (!curPellets) return;
+        const idx = curPellets.findIndex(p => p.id === pelletId);
+        if (idx !== -1) {
+          const pellet = curPellets[idx];
+          snake.value = parseFloat((snake.value + pellet.value).toFixed(2));
+          if (pellet.isCashDrop || pellet.isBotDrop) {
+            for (let k = 0; k < 2; k++) {
+              if (snake.segments.length < 150) {
+                const last = snake.segments[snake.segments.length - 1];
+                snake.segments.push({ ...last });
+              }
+            }
+          } else {
+            snake.pelletsEaten = (snake.pelletsEaten || 0) + 1;
+            if (snake.pelletsEaten % 3 === 0 && snake.segments.length < 150) {
+              const last = snake.segments[snake.segments.length - 1];
+              snake.segments.push({ ...last });
+            }
+          }
+          curPellets.splice(idx, 1);
+          if (!pellet.isCashDrop && !pellet.isBotDrop) {
+            spawnNormalPellets(currency, 1);
           }
         }
       }

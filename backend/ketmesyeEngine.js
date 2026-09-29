@@ -53,8 +53,73 @@ spawnNormalPellets('KET', 450);
 spawnNormalPellets('PIECES', 450);
 spawnNormalPellets('FREE', 450);
 
+// --- 5-6 SMART HUNTER BOTS FOR FREE TRIAL (Esè Gratis) ---
+const BOT_NAMES = ['Viper99', 'Shadow', 'Mamba', 'Kobra', 'DragonX', 'Titan'];
+const BOT_COLORS = ['#ec4899', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4'];
+
+const spawnFreeBot = (botId, index = 0) => {
+  const name = BOT_NAMES[index % BOT_NAMES.length];
+  const color = BOT_COLORS[index % BOT_COLORS.length];
+  const spawnX = Math.floor(Math.random() * (MAP_WIDTH - 800)) + 400;
+  const spawnY = Math.floor(Math.random() * (MAP_HEIGHT - 800)) + 400;
+  const startSegments = [];
+  for (let s = 0; s < 8; s++) {
+    startSegments.push({ x: spawnX, y: spawnY + s * 14 });
+  }
+  const initialPath = [];
+  for (let p = 0; p < 60; p++) {
+    initialPath.push({ x: spawnX, y: spawnY + p * (14 / PATH_SPACING) });
+  }
+
+  snakes.FREE[botId] = {
+    id: botId,
+    userId: botId,
+    email: name,
+    wager: 0,
+    value: 100.0,
+    segments: startSegments,
+    pathHistory: initialPath,
+    angle: Math.random() * Math.PI * 2,
+    speed: 9,
+    color,
+    eliminations: 0,
+    isInvincible: false,
+    hasStartedMoving: true,
+    spawnTime: Date.now(),
+    isBoosting: false,
+    energy: 100,
+    currency: 'FREE',
+    isBot: true,
+    isFreePractice: true
+  };
+};
+
+const ensureFreeBots = () => {
+  if (!snakes.FREE) return;
+  const humanCount = Object.keys(snakes.FREE).filter(id => !snakes.FREE[id].isBot).length;
+  if (humanCount === 0) {
+    // If no human player is in FREE arena, clean up bots to save CPU
+    Object.keys(snakes.FREE).forEach(id => {
+      if (snakes.FREE[id].isBot) delete snakes.FREE[id];
+    });
+    return;
+  }
+
+  // Ensure exactly 5-6 bots are present in the arena
+  for (let i = 0; i < 6; i++) {
+    const botId = `bot_${i}`;
+    if (!snakes.FREE[botId]) {
+      spawnFreeBot(botId, i);
+    }
+  }
+};
+
 // Tick sandbox routine for a specific currency sandbox
 const tickSandbox = async (currency) => {
+  if (currency === 'FREE') {
+    ensureFreeBots();
+  }
+
   const sandboxSnakes = snakes[currency];
   const sandboxPellets = pellets[currency];
   const socketIds = Object.keys(sandboxSnakes);
@@ -66,25 +131,128 @@ const tickSandbox = async (currency) => {
   socketIds.forEach(id => {
     const snake = sandboxSnakes[id];
     if (!snake) return;
-    
-    // Pa kouri toutotan jwè a poko kòmanse jwe ak joystick la!
-    if (!snake.hasStartedMoving) {
-      snake.isInvincible = true;
-      return;
-    }
 
-    // Check invincibility timeout
-    if (snake.isInvincible && now - snake.spawnTime > INVINCIBLE_TIME_MS) {
-      snake.isInvincible = false;
-    }
+    // --- SMART HUNTER BOT AI ---
+    if (snake.isBot) {
+      snake.energy = snake.energy ?? 100;
+      let desiredAngle = snake.angle;
+      let huntingPlayer = false;
 
-    // Energy and Boost speed logic (Egzak menm jan ak vibeht.com: 9 nòmal, 16 boost)
-    if (snake.isBoosting && snake.energy > 5) {
-      snake.speed = 16; // Boost speed
-      snake.energy = Math.max(0, snake.energy - 1.8); // Drain energy
+      // Find closest human player
+      let closestHuman = null;
+      let closestHumanDist = 999999;
+      const botHead = snake.segments[0];
+
+      socketIds.forEach(otherId => {
+        const other = sandboxSnakes[otherId];
+        if (!other || other.isBot || !other.segments || !other.segments[0] || !other.hasStartedMoving) return;
+        const d = Math.hypot(other.segments[0].x - botHead.x, other.segments[0].y - botHead.y);
+        if (d < closestHumanDist) {
+          closestHumanDist = d;
+          closestHuman = other;
+        }
+      });
+
+      // A. Hunter instinct: If human player < 700px, predict path & try to cut them off to make them crash!
+      if (closestHuman && closestHumanDist < 700) {
+        huntingPlayer = true;
+        const humanHead = closestHuman.segments[0];
+        const leadSteps = Math.min(130, closestHumanDist * 0.45);
+        const targetX = humanHead.x + Math.cos(closestHuman.angle) * leadSteps;
+        const targetY = humanHead.y + Math.sin(closestHuman.angle) * leadSteps;
+        desiredAngle = Math.atan2(targetY - botHead.y, targetX - botHead.x);
+
+        // Sprint / Boost to whip body directly in front of human user
+        if (closestHumanDist < 300 && snake.energy > 25) {
+          snake.isBoosting = true;
+          snake.speed = 16;
+          snake.energy = Math.max(0, snake.energy - 2);
+        } else {
+          snake.isBoosting = false;
+          snake.speed = 9;
+          snake.energy = Math.min(100, snake.energy + 1.2);
+        }
+      }
+
+      // B. If not hunting human, seek nearest pellet to grow and become larger
+      if (!huntingPlayer) {
+        snake.isBoosting = false;
+        snake.speed = 9;
+        snake.energy = Math.min(100, (snake.energy || 0) + 1.5);
+
+        let closestP = null;
+        let minDist = 400;
+        for (let pi = 0; pi < sandboxPellets.length; pi += 5) {
+          const p = sandboxPellets[pi];
+          const d = Math.hypot(botHead.x - p.x, botHead.y - p.y);
+          if (d < minDist) {
+            minDist = d;
+            closestP = p;
+          }
+        }
+        if (closestP) {
+          desiredAngle = Math.atan2(closestP.y - botHead.y, closestP.x - botHead.x);
+        } else if (Math.random() < 0.04) {
+          desiredAngle += (Math.random() - 0.5) * 1.2;
+        }
+      }
+
+      // C. Obstacle avoidance (detect body 45px ahead to prevent trivial suicide)
+      const lookAheadX = botHead.x + Math.cos(desiredAngle) * 45;
+      const lookAheadY = botHead.y + Math.sin(desiredAngle) * 45;
+      let danger = false;
+
+      for (const otherId of socketIds) {
+        if (otherId === id) continue;
+        const otherSnake = sandboxSnakes[otherId];
+        if (!otherSnake || !otherSnake.segments) continue;
+        for (const seg of otherSnake.segments) {
+          if (Math.hypot(lookAheadX - seg.x, lookAheadY - seg.y) < 22) {
+            danger = true;
+            break;
+          }
+        }
+        if (danger) break;
+      }
+
+      if (danger) {
+        desiredAngle += Math.PI * 0.55;
+        snake.isBoosting = false;
+        snake.speed = 8;
+      }
+
+      // D. Wall avoidance
+      if (botHead.x < 250) desiredAngle = 0;
+      else if (botHead.x > MAP_WIDTH - 250) desiredAngle = Math.PI;
+      else if (botHead.y < 250) desiredAngle = Math.PI / 2;
+      else if (botHead.y > MAP_HEIGHT - 250) desiredAngle = -Math.PI / 2;
+
+      // E. Smooth angle turn
+      let angleDiff = desiredAngle - snake.angle;
+      while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+      while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+      snake.angle += Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), 0.22);
     } else {
-      snake.speed = 9; // Vitès nòmal egzakteman menm jan ak vibeht.com
-      snake.energy = Math.min(100, snake.energy + 1.2); // Recover energy
+      // --- HUMAN PLAYER MOVEMENT ---
+      // Pa kouri toutotan jwè a poko kòmanse jwe ak joystick la!
+      if (!snake.hasStartedMoving) {
+        snake.isInvincible = true;
+        return;
+      }
+
+      // Check invincibility timeout
+      if (snake.isInvincible && now - snake.spawnTime > INVINCIBLE_TIME_MS) {
+        snake.isInvincible = false;
+      }
+
+      // Energy and Boost speed logic (Egzak menm jan ak vibeht.com: 9 nòmal, 16 boost)
+      if (snake.isBoosting && snake.energy > 5) {
+        snake.speed = 16; // Boost speed
+        snake.energy = Math.max(0, snake.energy - 1.8); // Drain energy
+      } else {
+        snake.speed = 9; // Vitès nòmal egzakteman menm jan ak vibeht.com
+        snake.energy = Math.min(100, snake.energy + 1.2); // Recover energy
+      }
     }
 
     if (!Number.isFinite(snake.angle)) {
@@ -189,6 +357,79 @@ const tickSandbox = async (currency) => {
   for (const deadId of deadSnakes) {
     const snake = sandboxSnakes[deadId];
     if (snake) {
+      // --- A. BOT DEATH (FREE ARENA) ---
+      if (snake.isBot) {
+        console.log(`Ketmesye [FREE]: Bot ${snake.email} eliminated.`);
+        delete sandboxSnakes[deadId];
+
+        // Notify killer if human and award 0.00001 Pieces
+        const killInfo = collisionKills.find(k => k.deadId === deadId);
+        if (killInfo) {
+          const killer = sandboxSnakes[killInfo.killerId];
+          if (killer && !killer.isBot) {
+            killer.eliminations += 1;
+            const killerSocket = io.sockets.sockets.get(killInfo.killerId);
+            if (killerSocket) {
+              killerSocket.emit('ketmesye_kill', { 
+                killed: snake.email,
+                isBot: true,
+                rewardPieces: 0.00001
+              });
+            }
+          }
+        }
+
+        // Explode dead bot body into scattered glowing pellets for the player to collect!
+        if (snake.segments && snake.segments.length > 0) {
+          // 2 glowing pellets per segment
+          snake.segments.forEach((seg, sIdx) => {
+            for (let k = 0; k < 2; k++) {
+              const angle = Math.random() * Math.PI * 2;
+              const dist = Math.random() * 22;
+              sandboxPellets.push({
+                id: `bot_drop_${deadId}_${sIdx}_${k}_${Math.random().toString(36).substring(2, 6)}`,
+                x: Math.max(25, Math.min(MAP_WIDTH - 25, seg.x + Math.cos(angle) * dist)),
+                y: Math.max(25, Math.min(MAP_HEIGHT - 25, seg.y + Math.sin(angle) * dist)),
+                value: 1.0,
+                color: snake.color || getRandomColor(),
+                isCashDrop: false,
+                isBotDrop: true
+              });
+            }
+          });
+
+          // Extra 8 glowing pellets around head
+          const head = snake.segments[0];
+          for (let b = 0; b < 8; b++) {
+            const angle = (b / 8) * Math.PI * 2;
+            const dist = 10 + Math.random() * 24;
+            sandboxPellets.push({
+              id: `bot_head_drop_${deadId}_${b}_${Math.random().toString(36).substring(2, 6)}`,
+              x: Math.max(25, Math.min(MAP_WIDTH - 25, head.x + Math.cos(angle) * dist)),
+              y: Math.max(25, Math.min(MAP_HEIGHT - 25, head.y + Math.sin(angle) * dist)),
+              value: 1.0,
+              color: '#fbbf24',
+              isCashDrop: false,
+              isBotDrop: true
+            });
+          }
+        }
+
+        // Respawn this bot after 3.5 seconds to keep 5-6 bots in the arena
+        setTimeout(() => {
+          if (snakes.FREE) {
+            const humanCount = Object.keys(snakes.FREE).filter(id => !snakes.FREE[id].isBot).length;
+            if (humanCount > 0 && !snakes.FREE[deadId]) {
+              const idx = parseInt(deadId.replace('bot_', ''), 10) || 0;
+              spawnFreeBot(deadId, idx);
+            }
+          }
+        }, 3500);
+
+        continue;
+      }
+
+      // --- B. HUMAN PLAYER DEATH ---
       console.log(`Ketmesye: Snake owned by ${snake.email} died.`);
       
       // Delete from memory IMMEDIATELY
@@ -202,7 +443,7 @@ const tickSandbox = async (currency) => {
           killer.eliminations += 1;
           const killerSocket = io.sockets.sockets.get(killInfo.killerId);
           if (killerSocket) {
-            killerSocket.emit('ketmesye_kill', { killed: snake.email.split('@')[0] });
+            killerSocket.emit('ketmesye_kill', { killed: snake.email.split('@')[0], isBot: false, rewardPieces: 0.0 });
           }
         }
       }
@@ -278,10 +519,10 @@ const tickSandbox = async (currency) => {
         snake.value = parseFloat((snake.value + pellet.value).toFixed(2));
         
         // Règleman kwasans koulèv la:
-        // 1. Boul jòn (Cash Drops ki soti nan lòt koulèv ki mouri): bay +2 segman touswit
+        // 1. Boul jòn (Cash Drops ki soti nan lòt koulèv ki mouri oswa boul bot): bay +2 segman touswit
         // 2. Ti boul nòmal: chak 3 ti boul vale bay +1 segman
         const maxSegments = 150;
-        if (pellet.isCashDrop) {
+        if (pellet.isCashDrop || pellet.isBotDrop) {
           for (let k = 0; k < 2; k++) {
             if (snake.segments.length < maxSegments) {
               const lastSegment = snake.segments[snake.segments.length - 1];
@@ -299,8 +540,8 @@ const tickSandbox = async (currency) => {
         // Remove pellet
         sandboxPellets.splice(i, 1);
 
-        // Respawn normal pellet
-        if (!pellet.isCashDrop) {
+        // Respawn normal pellet (only for natural map pellets, not dropped pellets)
+        if (!pellet.isCashDrop && !pellet.isBotDrop) {
           spawnNormalPellets(currency, 1);
         }
       }

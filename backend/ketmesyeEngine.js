@@ -267,22 +267,14 @@ const tickSandbox = async (currency) => {
     const head = snake.segments[0];
     const segCount = snake.segments.length;
 
-    // Magnet distance increases slightly as snake grows
-    const magnetRadius = Math.min(160, 95 + segCount * 0.4);
-    const eatThreshold = Math.max(26, 18 + segCount * 0.15);
+    // Kontak Fizik Sèlman (Zewo Leman): Ti boul yo rete an plas fiks, tèt la dwe frape yo fizikman pou vale yo
+    const eatThreshold = 18.0;
 
     for (let i = sandboxPellets.length - 1; i >= 0; i--) {
       const pellet = sandboxPellets[i];
       const dist = Math.hypot(head.x - pellet.x, head.y - pellet.y);
 
-      // Magnet effect: attract pellet directly towards snake head
-      if (dist < magnetRadius && dist > 1.0) {
-        const pullFactor = 0.55;
-        pellet.x += (head.x - pellet.x) * pullFactor;
-        pellet.y += (head.y - pellet.y) * pullFactor;
-      }
-
-      if (dist < eatThreshold) { // Consumption threshold
+      if (dist < eatThreshold) { // Consumption on physical touch only
         snake.value = parseFloat((snake.value + pellet.value).toFixed(2));
         
         // Règleman kwasans koulèv la:
@@ -627,19 +619,12 @@ const handleDuelTick = async (duelId) => {
     const head = snake.segments[0];
     const segCount = snake.segments.length;
 
-    const magnetRadius = Math.min(160, 95 + segCount * 0.4);
-    const eatThreshold = Math.max(26, 18 + segCount * 0.15);
+    // Kontak Fizik Sèlman (Zewo Leman nan Duel): Ti boul yo rete an plas fiks
+    const eatThreshold = 18.0;
 
     for (let i = duel.pellets.length - 1; i >= 0; i--) {
       const pellet = duel.pellets[i];
       const dist = Math.hypot(head.x - pellet.x, head.y - pellet.y);
-
-      // Magnet attraction
-      if (dist < magnetRadius && dist > 1.0) {
-        const pullFactor = 0.55;
-        pellet.x += (head.x - pellet.x) * pullFactor;
-        pellet.y += (head.y - pellet.y) * pullFactor;
-      }
 
       if (dist < eatThreshold) {
         snake.value = parseFloat((snake.value + pellet.value).toFixed(2));

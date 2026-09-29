@@ -1467,6 +1467,7 @@ const initKetmesyeEngine = (socketIoInstance) => {
             snake.isInvincible = true;
           }
         }
+      }
     });
 
     // 2.7 Manje ti boul imedyatman lè kliyan touche yo (Instant Zero-Latency Eat)

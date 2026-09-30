@@ -33,14 +33,25 @@ const getRandomColor = () => {
   return colors[Math.floor(Math.random() * colors.length)];
 };
 
+// Helper to get any snake across all currency and championship sandboxes
+const getSnakeBySocketId = (socketId) => {
+  for (const c of Object.keys(snakes)) {
+    if (snakes[c] && snakes[c][socketId]) {
+      return snakes[c][socketId];
+    }
+  }
+  return null;
+};
+
 // Spawn random normal pellets for a specific sandbox
 const spawnNormalPellets = (currency, count) => {
+  if (!pellets[currency]) pellets[currency] = [];
   for (let i = 0; i < count; i++) {
     pellets[currency].push({
       id: Math.random().toString(36).substring(2, 9),
       x: Math.floor(Math.random() * (MAP_WIDTH - 40)) + 20,
       y: Math.floor(Math.random() * (MAP_HEIGHT - 40)) + 20,
-      value: currency === 'KET' ? 0.80 : (currency === 'FREE' ? 1.0 : 0.10), // FREE pellets worth 1 pt
+      value: currency === 'KET' ? 0.80 : (currency === 'FREE' || currency.startsWith('CHAMP_') ? 1.0 : 0.10), // FREE & CHAMP pellets worth 1 pt
       color: getRandomColor(),
       isCashDrop: false
     });
@@ -449,24 +460,28 @@ const tickSandbox = async (currency) => {
       }
 
       // Spawn cash/points pellets from the dead body
-      const segmentCount = snake.segments.length;
-      const totalValueToDrop = snake.value * 0.5;
-      const valuePerDrop = parseFloat((totalValueToDrop / segmentCount).toFixed(4));
+      // NAN CHANPYONA (currency.startsWith('CHAMP_') oswa snake.isChampionship):
+      // ZEWÒ PYÈS/BOUL KOULÈV MOURI! Espas la dwe rete 100% vid e pwòp san okenn kadav!
+      if (!currency.startsWith('CHAMP_') && !snake.isChampionship) {
+        const segmentCount = snake.segments.length;
+        const totalValueToDrop = snake.value * 0.5;
+        const valuePerDrop = parseFloat((totalValueToDrop / segmentCount).toFixed(4));
 
-      // Drop pellets at every segment (random normal pellets if FREE; shiny yellow cash if real money)
-      snake.segments.forEach(segment => {
-        sandboxPellets.push({
-          id: Math.random().toString(36).substring(2, 9),
-          x: segment.x + (Math.random() * 10 - 5),
-          y: segment.y + (Math.random() * 10 - 5),
-          value: currency === 'FREE' ? 1.0 : valuePerDrop,
-          color: currency === 'FREE' ? getRandomColor() : '#fbbf24', // Shiny yellow for cash, random for FREE
-          isCashDrop: currency !== 'FREE'
+        // Drop pellets at every segment (random normal pellets if FREE; shiny yellow cash if real money)
+        snake.segments.forEach(segment => {
+          sandboxPellets.push({
+            id: Math.random().toString(36).substring(2, 9),
+            x: segment.x + (Math.random() * 10 - 5),
+            y: segment.y + (Math.random() * 10 - 5),
+            value: currency === 'FREE' ? 1.0 : valuePerDrop,
+            color: currency === 'FREE' ? getRandomColor() : '#fbbf24', // Shiny yellow for cash, random for FREE
+            isCashDrop: currency !== 'FREE'
+          });
         });
-      });
+      }
 
-      // Update bet row to lost in database si se pa PIECES ni FREE
-      if (snake.betId) {
+      // Update bet row to lost in database si se pa PIECES ni FREE ni CHANPYONA
+      if (snake.betId && !currency.startsWith('CHAMP_')) {
         try {
           await query(
             "UPDATE bets SET payout_amount = 0.00, is_won = false WHERE id = $1",
@@ -488,13 +503,15 @@ const tickSandbox = async (currency) => {
         socket.emit('ketmesye_death', {
           timeSurvived: Math.floor((Date.now() - snake.spawnTime) / 1000),
           eliminations: snake.eliminations,
-          valueLost: snake.value,
+          valueLost: (currency.startsWith('CHAMP_') || currency === 'FREE') ? 0 : snake.value,
+          score: snake.value,
           currency: snake.currency,
-          isFreePractice: !!snake.isFreePractice
+          isFreePractice: !!snake.isFreePractice,
+          isChampionship: currency.startsWith('CHAMP_') || !!snake.isChampionship
         });
       }
 
-      if (currency !== 'FREE' && currency !== 'PIECES') {
+      if (currency !== 'FREE' && currency !== 'PIECES' && !currency.startsWith('CHAMP_')) {
         activePlayersStore.losePlayer(snake.userId, 'ketmesye', 'dead');
         activePlayersStore.notify(`Le serpent de ${snake.email.split('@')[0]} est mort et a perdu ${snake.value.toFixed(0)} ${currency} !`, 'danger');
       }
@@ -592,6 +609,11 @@ const handleGameTick = async () => {
   await tickSandbox('KET');
   await tickSandbox('PIECES');
   await tickSandbox('FREE');
+  for (const c of Object.keys(snakes)) {
+    if (c.startsWith('CHAMP_')) {
+      await tickSandbox(c);
+    }
+  }
 };
 
 // Broadcast the list of pending duels to anyone listening
@@ -1231,6 +1253,78 @@ const initKetmesyeEngine = (socketIoInstance) => {
         return;
       }
 
+      // Si se yon Chanpyona (Flash oswa Wikenn), nou kreye yon sal izole CHAMP_<id>
+      // ZEWÒ DEBRI, ZEWÒ BOUL KACH, ZEWÒ KOULÈV MOURI! Espas la dwe rete 100% vid e pwòp!
+      const isChampionship = !!data.isChampionship || !!data.tournamentId;
+      if (isChampionship) {
+        const champCode = 'CHAMP_' + (data.tournamentId || 'FLASH').toString().replace(/[^a-zA-Z0-9_-]/g, '');
+        if (!snakes[champCode]) snakes[champCode] = {};
+        if (!pellets[champCode] || pellets[champCode].length === 0 || Object.keys(snakes[champCode]).length === 0) {
+          pellets[champCode] = [];
+          spawnNormalPellets(champCode, 450);
+        }
+
+        // Netwaye nenpòt boul kach oswa boul lò ki ta ka egziste nan espas la
+        pellets[champCode] = pellets[champCode].filter(p => !p.isCashDrop && !p.id.includes('gold'));
+
+        // Netwaye nenpòt ansyen koulèv fantom pou menm jwè a
+        Object.keys(snakes[champCode]).forEach(sId => {
+          const s = snakes[champCode][sId];
+          if (s && (sId === socket.id || (email && s.email === email) || (userId && s.userId === userId))) {
+            delete snakes[champCode][sId];
+          }
+        });
+
+        const spawnX = Math.floor(Math.random() * (MAP_WIDTH - 200)) + 100;
+        const spawnY = Math.floor(Math.random() * (MAP_HEIGHT - 200)) + 100;
+
+        const startSegments = [];
+        for (let i = 0; i < 5; i++) {
+          startSegments.push({ x: spawnX, y: spawnY + i * 15 });
+        }
+
+        const initialPath = [];
+        for (let i = 0; i < 50; i++) {
+          initialPath.push({ x: spawnX, y: spawnY + i * (15 / PATH_SPACING) });
+        }
+
+        snakes[champCode][socket.id] = {
+          id: socket.id,
+          userId: userId || socket.id,
+          email: email || `Player_${socket.id.substring(0, 5)}`,
+          wager: 0,
+          value: 0, // Kòmanse a 0 pwen
+          segments: startSegments,
+          pathHistory: initialPath,
+          angle: -Math.PI / 2,
+          speed: 6.5,
+          color: getRandomColor(),
+          eliminations: 0,
+          isInvincible: true,
+          hasStartedMoving: false,
+          spawnTime: Date.now(),
+          betId: null,
+          isBoosting: false,
+          energy: 100,
+          currency: champCode,
+          isChampionship: true,
+          fundedByBonus: false
+        };
+
+        socket.join(`ketmesye_sandbox_${champCode}`);
+
+        socket.emit('ketmesye_join_success', {
+          wager: 0,
+          initialValue: 0,
+          newBalance: null,
+          currency: 'POINTS',
+          isChampionship: true
+        });
+
+        console.log(`Snake Arena [CHAMPIONSHIP]: ${email || socket.id} joined ${champCode} (ZERO DEAD SNAKE DEBRIS).`);
+        return;
+      }
+
       // Si se PIECES (App Flutter / Standalone), nou kite jwè a antre dirèkteman san obligasyon baz SQL
       if (requestedCurrency === 'PIECES') {
         const entryWager = parseFloat(wager) || 50;
@@ -1414,7 +1508,7 @@ const initKetmesyeEngine = (socketIoInstance) => {
       const duelId = activeDuelPlayers[socket.id];
       const snake = (duelId && activeDuels[duelId])
         ? activeDuels[duelId].snakes[socket.id]
-        : (snakes.HTG[socket.id] || snakes.KET[socket.id] || (snakes.PIECES && snakes.PIECES[socket.id]) || (snakes.FREE && snakes.FREE[socket.id]));
+        : getSnakeBySocketId(socket.id);
 
       if (snake) {
         if (typeof angle === 'number' && Number.isFinite(angle)) {
@@ -1447,25 +1541,16 @@ const initKetmesyeEngine = (socketIoInstance) => {
     // 2.5 Input Boost
     socket.on('ketmesye_boost', (data) => {
       const duelId = activeDuelPlayers[socket.id];
-      if (duelId && activeDuels[duelId]) {
-        const snake = activeDuels[duelId].snakes[socket.id];
-        if (snake) {
-          snake.isBoosting = !!data.isBoosting;
-          if (data.isBoosting && !snake.hasStartedMoving) {
-            snake.hasStartedMoving = true;
-            snake.spawnTime = Date.now();
-            snake.isInvincible = true;
-          }
-        }
-      } else {
-        const snake = snakes.HTG[socket.id] || snakes.KET[socket.id] || (snakes.PIECES && snakes.PIECES[socket.id]) || (snakes.FREE && snakes.FREE[socket.id]);
-        if (snake) {
-          snake.isBoosting = !!data.isBoosting;
-          if (data.isBoosting && !snake.hasStartedMoving) {
-            snake.hasStartedMoving = true;
-            snake.spawnTime = Date.now();
-            snake.isInvincible = true;
-          }
+      const snake = (duelId && activeDuels[duelId])
+        ? activeDuels[duelId].snakes[socket.id]
+        : getSnakeBySocketId(socket.id);
+
+      if (snake) {
+        snake.isBoosting = !!data.isBoosting;
+        if (data.isBoosting && !snake.hasStartedMoving) {
+          snake.hasStartedMoving = true;
+          snake.spawnTime = Date.now();
+          snake.isInvincible = true;
         }
       }
     });
@@ -1510,10 +1595,10 @@ const initKetmesyeEngine = (socketIoInstance) => {
           }
         }
       } else {
-        const snake = snakes.HTG[socket.id] || snakes.KET[socket.id] || (snakes.PIECES && snakes.PIECES[socket.id]) || (snakes.FREE && snakes.FREE[socket.id]);
+        const snake = getSnakeBySocketId(socket.id);
         if (!snake) return;
-        const currency = snake.currency || (snakes.FREE && snakes.FREE[socket.id] ? 'FREE' : 'PIECES');
-        const curPellets = pellets[currency] || pellets.PIECES || pellets.FREE;
+        const currency = snake.currency || 'PIECES';
+        const curPellets = pellets[currency] || pellets.PIECES;
         if (!curPellets) return;
         const idx = curPellets.findIndex(p => p.id === pelletId);
         if (idx !== -1) {
@@ -1543,7 +1628,7 @@ const initKetmesyeEngine = (socketIoInstance) => {
 
     // 3. Cash out event
     socket.on('ketmesye_cashout', async () => {
-      const snake = snakes.HTG[socket.id] || snakes.KET[socket.id] || (snakes.PIECES && snakes.PIECES[socket.id]) || (snakes.FREE && snakes.FREE[socket.id]);
+      const snake = getSnakeBySocketId(socket.id);
       if (!snake) {
         return socket.emit('ketmesye_error', { message: 'Aucun serpent actif à encaisser.' });
       }
@@ -1551,9 +1636,9 @@ const initKetmesyeEngine = (socketIoInstance) => {
       const payout = snake.value;
       const currency = snake.currency || 'HTG';
 
-      // Esè gratis pa gen cashout
-      if (currency === 'FREE') {
-        return socket.emit('ketmesye_error', { message: 'Mòd esè gratis la pa gen opsyon retire kòb (cashout).' });
+      // Esè gratis ak Chanpyona pa gen cashout dirèk
+      if (currency === 'FREE' || currency.startsWith('CHAMP_')) {
+        return socket.emit('ketmesye_error', { message: 'Mòd sa a pa gen opsyon retire kòb (cashout).' });
       }
 
       // Si se PIECES, pa bezwen pase nan ansyen SQL la
@@ -1864,13 +1949,20 @@ const initKetmesyeEngine = (socketIoInstance) => {
         delete activeDuelPlayers[socket.id];
       }
 
-      const snake = snakes.HTG[socket.id] || snakes.KET[socket.id] || (snakes.PIECES && snakes.PIECES[socket.id]) || (snakes.FREE && snakes.FREE[socket.id]);
+      const snake = getSnakeBySocketId(socket.id);
       if (snake) {
         const currency = snake.currency || 'HTG';
-        console.log(`Ketmesye: Player ${snake.email} disconnected. Cleaning up.`);
+        console.log(`Ketmesye: Player ${snake.email} disconnected from ${currency}. Cleaning up.`);
         
         if (currency === 'FREE') {
           delete snakes.FREE[socket.id];
+          return;
+        }
+
+        // NAN CHANPYONA: ZEWÒ DEBRI, ZEWÒ PYÈS KOULÈV MOURI NAN ESPAS LA!
+        if (currency.startsWith('CHAMP_')) {
+          if (snakes[currency]) delete snakes[currency][socket.id];
+          console.log(`Ketmesye [CHAMPIONSHIP]: Player ${snake.email} disconnected from ${currency}. Zero loot dropped.`);
           return;
         }
 

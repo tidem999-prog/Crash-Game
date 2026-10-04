@@ -22,6 +22,10 @@ const pendingDuels = {}; // maps duelId -> { id, betAmount, creatorEmail, player
 const activeDuels = {}; // maps duelId -> { id, roomId, betAmount, status, playerA_id, playerB_id, snakes: {}, pellets: [], timeLeft, startedAt, timer, currency }
 const activeDuelPlayers = {}; // maps socketId -> duelId
 
+// Disconnect grace period storage (15 segond pou rezo mobil 4G an Ayiti rekonekte san pèdi pyès)
+// maps effectiveUserId -> { timeout, socketId, currency, snake }
+const disconnectTimers = new Map();
+
 let gameLoopInterval = null;
 
 // Helper to generate a random color
@@ -245,6 +249,12 @@ const tickSandbox = async (currency) => {
       snake.angle += Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), 0.22);
     } else {
       // --- HUMAN PLAYER MOVEMENT ---
+      // Si jwè a dekonekte sou 4G, kite l an sekirite san mouvman pandan l ap rekonekte
+      if (snake.isDisconnected) {
+        snake.isInvincible = true;
+        return;
+      }
+
       // Pa kouri toutotan jwè a poko kòmanse jwe ak joystick la!
       if (!snake.hasStartedMoving) {
         snake.isInvincible = true;
@@ -252,7 +262,9 @@ const tickSandbox = async (currency) => {
       }
 
       // Check invincibility timeout
-      if (snake.isInvincible && now - snake.spawnTime > INVINCIBLE_TIME_MS) {
+      if (snake.invincibleUntil) {
+        snake.isInvincible = now < snake.invincibleUntil;
+      } else if (snake.isInvincible && now - snake.spawnTime > INVINCIBLE_TIME_MS) {
         snake.isInvincible = false;
       }
 
@@ -573,6 +585,7 @@ const tickSandbox = async (currency) => {
       const s = sandboxSnakes[id];
       acc[id] = {
         id: s.id,
+        userId: s.userId || s.id,
         email: s.email.split('@')[0],
         value: s.value,
         segments: s.segments.map(seg => ({ x: Math.round(seg.x), y: Math.round(seg.y) })),
@@ -580,6 +593,7 @@ const tickSandbox = async (currency) => {
         color: s.color,
         eliminations: s.eliminations,
         isInvincible: s.isInvincible,
+        isDisconnected: !!s.isDisconnected,
         hasStartedMoving: s.hasStartedMoving !== false,
         energy: s.energy,
         isFreePractice: !!s.isFreePractice
@@ -1186,6 +1200,39 @@ const initKetmesyeEngine = (socketIoInstance) => {
       const { userId, email, wager, currency } = data;
       const requestedCurrency = (currency || 'HTG').toUpperCase();
       const isFree = !!data.isFreeTrial || requestedCurrency === 'POINTS' || requestedCurrency === 'FREE';
+      const effectiveUserId = userId ? String(userId) : (email ? String(email) : null);
+
+      // --- 4G AUTO-RESUME: Rekipere koulèv la si li te dekonekte pandan 15 segond ki sot pase yo ---
+      if (effectiveUserId && disconnectTimers.has(effectiveUserId)) {
+        const pending = disconnectTimers.get(effectiveUserId);
+        clearTimeout(pending.timeout);
+        disconnectTimers.delete(effectiveUserId);
+
+        const cur = pending.currency;
+        const existingSnake = pending.snake;
+
+        if (existingSnake && snakes[cur]) {
+          console.log(`Ketmesye [4G AUTO-RESUME]: Player ${existingSnake.email} reconnected! Transferring to socket ${socket.id}`);
+          delete snakes[cur][pending.socketId];
+
+          existingSnake.id = socket.id;
+          existingSnake.isDisconnected = false;
+          existingSnake.isInvincible = true;
+          existingSnake.invincibleUntil = Date.now() + 3500; // 3.5s envansibilite lè l tounen
+
+          snakes[cur][socket.id] = existingSnake;
+          socket.join(`ketmesye_sandbox_${cur}`);
+
+          socket.emit('ketmesye_join_success', {
+            wager: existingSnake.wager,
+            initialValue: existingSnake.value,
+            newBalance: null,
+            currency: cur,
+            resumed: true
+          });
+          return;
+        }
+      }
 
       if (snakes.HTG[socket.id] || snakes.KET[socket.id] || (snakes.PIECES && snakes.PIECES[socket.id]) || (snakes.FREE && snakes.FREE[socket.id])) {
         return socket.emit('ketmesye_error', { message: 'Vous êtes déjà dans la partie.' });
@@ -1342,14 +1389,37 @@ const initKetmesyeEngine = (socketIoInstance) => {
           initialPath.push({ x: spawnX, y: spawnY + i * (15 / PATH_SPACING) });
         }
 
-        // Netwaye nenpòt ansyen koulèv fantom pou menm jwè a
+        // Tcheke si jwè a te deja gen yon koulèv vivan nan PIECES (anpeche pèdi 500 pyès sou mikwo-rekoneksyon)
         if (snakes.PIECES) {
-          Object.keys(snakes.PIECES).forEach(sId => {
+          let aliveExisting = null;
+          for (const sId of Object.keys(snakes.PIECES)) {
             const s = snakes.PIECES[sId];
-            if (s && (sId === socket.id || (email && s.email === email) || (userId && s.userId === userId))) {
+            if (s && (sId === socket.id || (effectiveUserId && String(s.userId) === effectiveUserId) || (email && s.email === email))) {
+              aliveExisting = s;
               delete snakes.PIECES[sId];
+              break;
             }
-          });
+          }
+
+          if (aliveExisting) {
+            console.log(`Snake Arena [PIECES]: Re-binding alive snake for ${email || socket.id}`);
+            aliveExisting.id = socket.id;
+            aliveExisting.isDisconnected = false;
+            aliveExisting.isInvincible = true;
+            aliveExisting.invincibleUntil = Date.now() + 3500;
+
+            snakes.PIECES[socket.id] = aliveExisting;
+            socket.join('ketmesye_sandbox_PIECES');
+
+            socket.emit('ketmesye_join_success', {
+              wager: aliveExisting.wager,
+              initialValue: aliveExisting.value,
+              newBalance: null,
+              currency: 'PIECES',
+              resumed: true
+            });
+            return;
+          }
         }
 
         snakes.PIECES[socket.id] = {
@@ -1643,6 +1713,12 @@ const initKetmesyeEngine = (socketIoInstance) => {
 
       // Si se PIECES, pa bezwen pase nan ansyen SQL la
       if (currency === 'PIECES') {
+        const effectiveUserId = snake.userId ? String(snake.userId) : (snake.email || socket.id);
+        if (disconnectTimers.has(effectiveUserId)) {
+          clearTimeout(disconnectTimers.get(effectiveUserId).timeout);
+          disconnectTimers.delete(effectiveUserId);
+        }
+
         const multiplier = parseFloat((payout / snake.wager).toFixed(2));
         socket.leave('ketmesye_sandbox_PIECES');
         delete snakes.PIECES[socket.id];
@@ -1966,41 +2042,72 @@ const initKetmesyeEngine = (socketIoInstance) => {
           return;
         }
 
-        // Spawn pellets along dead body path
-        const segmentCount = snake.segments.length;
-        const valuePerDrop = parseFloat(((snake.value * 0.5) / segmentCount).toFixed(4));
+        // --- 15 SECONDS DISCONNECT GRACE PERIOD POU TOUT JWÈ K AP PEYE (PIECES / HTG / KET) ---
+        // Anpeche jwè ki sou 4G mobil pèdi pyès yo lè rezo a fè yon ti koupe tou kout
+        const effectiveUserId = snake.userId ? String(snake.userId) : (snake.email || socket.id);
+        if (effectiveUserId) {
+          snake.isDisconnected = true;
+          snake.isInvincible = true;
+          snake.invincibleUntil = Date.now() + 15000; // 15 segond envansibilite
 
-        snake.segments.forEach(segment => {
-          pellets[currency].push({
-            id: Math.random().toString(36).substring(2, 9),
-            x: segment.x + (Math.random() * 10 - 5),
-            y: segment.y + (Math.random() * 10 - 5),
-            value: valuePerDrop,
-            color: '#fbbf24',
-            isCashDrop: true
-          });
-        });
-
-        // Update bet row to lost in database on disconnect si se pa PIECES
-        if (snake.betId) {
-          try {
-            await query(
-              "UPDATE bets SET payout_amount = 0.00, is_won = false WHERE id = $1",
-              [snake.betId]
-            );
-            // Process progression settlement (awards KET on HTG losses)
-            await processBetSettlement(snake.userId, snake.wager, 0.00, currency, 'ketmesye');
-            
-            const { recordPlatformRevenue } = require('./utils/competitions');
-            await recordPlatformRevenue(parseFloat(snake.wager), currency, 'ketmesye');
-          } catch (err) {
-            console.error('Error updating bet row on disconnect:', err);
+          if (disconnectTimers.has(effectiveUserId)) {
+            clearTimeout(disconnectTimers.get(effectiveUserId).timeout);
           }
-        }
 
-        if (currency !== 'PIECES') {
-          activePlayersStore.losePlayer(snake.userId, 'ketmesye', 'dead');
-          activePlayersStore.notify(`Le serpent de ${snake.email.split('@')[0]} s'est déconnecté et a perdu ${snake.value.toFixed(0)} ${currency} !`, 'danger');
+          const timeout = setTimeout(async () => {
+            disconnectTimers.delete(effectiveUserId);
+
+            // Tcheke si koulèv la toujou dekonekte apre 15 segond
+            const curSnake = snakes[currency] && snakes[currency][socket.id];
+            if (curSnake && curSnake.isDisconnected) {
+              console.log(`Ketmesye [GRACE PERIOD EXPIRED]: Eliminating ${curSnake.email} from ${currency}`);
+
+              // Spawn pellets along dead body path
+              const segmentCount = curSnake.segments.length;
+              const valuePerDrop = parseFloat(((curSnake.value * 0.5) / segmentCount).toFixed(4));
+
+              if (pellets[currency]) {
+                curSnake.segments.forEach(segment => {
+                  pellets[currency].push({
+                    id: Math.random().toString(36).substring(2, 9),
+                    x: segment.x + (Math.random() * 10 - 5),
+                    y: segment.y + (Math.random() * 10 - 5),
+                    value: valuePerDrop,
+                    color: '#fbbf24',
+                    isCashDrop: true
+                  });
+                });
+              }
+
+              // Update bet row to lost in database si se pa PIECES
+              if (curSnake.betId) {
+                try {
+                  await query(
+                    "UPDATE bets SET payout_amount = 0.00, is_won = false WHERE id = $1",
+                    [curSnake.betId]
+                  );
+                  // Process progression settlement (awards KET on HTG losses)
+                  await processBetSettlement(curSnake.userId, curSnake.wager, 0.00, currency, 'ketmesye');
+                  
+                  const { recordPlatformRevenue } = require('./utils/competitions');
+                  await recordPlatformRevenue(parseFloat(curSnake.wager), currency, 'ketmesye');
+                } catch (err) {
+                  console.error('Error updating bet row on grace expiration:', err);
+                }
+              }
+
+              if (currency !== 'PIECES') {
+                activePlayersStore.losePlayer(curSnake.userId, 'ketmesye', 'dead');
+                activePlayersStore.notify(`Le serpent de ${curSnake.email.split('@')[0]} s'est déconnecté et a perdu ${curSnake.value.toFixed(0)} ${currency} !`, 'danger');
+              }
+
+              delete snakes[currency][socket.id];
+            }
+          }, 15000);
+
+          disconnectTimers.set(effectiveUserId, { timeout, socketId: socket.id, currency, snake });
+          console.log(`Ketmesye: Started 15s disconnect grace period for ${snake.email} (${currency})`);
+          return;
         }
 
         delete snakes[currency][socket.id];

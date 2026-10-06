@@ -6,8 +6,8 @@ const { deductWager, creditPayout, broadcastBalanceUpdate } = require('./utils/b
 let io;
 
 // Game Config
-const MAP_WIDTH = 10000;
-const MAP_HEIGHT = 10000;
+const MAP_WIDTH = 3000;
+const MAP_HEIGHT = 3000;
 const TICK_RATE_MS = 50; // 20 updates per second
 const PATH_SPACING = 2; // Spacing of path history indices for body segments
 const INVINCIBLE_TIME_MS = 2000; // 2 seconds invincibility on spawn
@@ -68,30 +68,41 @@ spawnNormalPellets('KET', 450);
 spawnNormalPellets('PIECES', 450);
 spawnNormalPellets('FREE', 450);
 
-// --- 5-6 SMART HUNTER BOTS FOR FREE TRIAL (Esè Gratis) ---
-const BOT_NAMES = ['Viper99', 'Shadow', 'Mamba', 'Kobra', 'DragonX', 'Titan'];
-const BOT_COLORS = ['#ec4899', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4'];
+// --- SMART HUNTER BOTS POU ESÈ GRATIS AK ARÈN PIECES ---
+const BOT_NAMES = [
+  'Cobra_Noir', 'Python_Vert', 'Anaconda', 'Vipère_Rouge', 'Mamba_Dore',
+  'Titan_Bleu', 'Éclair', 'Dragon_Feu', 'Fantôme', 'Requin_Gris',
+  'Faucon', 'Tigre_Royal', 'Panda_Ninja', 'Léopard', 'Tonnerre',
+  'Comète_Violette', 'Phénix', 'Vortex', 'Guerrier', 'Chasseur'
+];
+const BOT_ASSASSINS = ['VIPER', 'HUNTER', 'PREDATOR', 'SHADOW', 'NINJA', 'REAPER', 'TITAN'];
+const BOT_COLORS = ['#ec4899', '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#fbbf24', '#f43f5e'];
 
-const spawnFreeBot = (botId, index = 0) => {
-  const name = BOT_NAMES[index % BOT_NAMES.length];
+const spawnBot = (currency, botId, index = 0) => {
+  if (!snakes[currency]) snakes[currency] = {};
+  const isAssassin = (index % 2 === 0);
+  const name = isAssassin
+    ? `☠️ ${BOT_ASSASSINS[(index >> 1) % BOT_ASSASSINS.length]}`
+    : BOT_NAMES[index % BOT_NAMES.length];
   const color = BOT_COLORS[index % BOT_COLORS.length];
   const spawnX = Math.floor(Math.random() * (MAP_WIDTH - 800)) + 400;
   const spawnY = Math.floor(Math.random() * (MAP_HEIGHT - 800)) + 400;
+  const segCount = isAssassin ? (Math.floor(Math.random() * 14) + 16) : (Math.floor(Math.random() * 8) + 10);
   const startSegments = [];
-  for (let s = 0; s < 8; s++) {
+  for (let s = 0; s < segCount; s++) {
     startSegments.push({ x: spawnX, y: spawnY + s * 14 });
   }
   const initialPath = [];
-  for (let p = 0; p < 60; p++) {
+  for (let p = 0; p < (segCount * PATH_SPACING + 20); p++) {
     initialPath.push({ x: spawnX, y: spawnY + p * (14 / PATH_SPACING) });
   }
 
-  snakes.FREE[botId] = {
+  snakes[currency][botId] = {
     id: botId,
     userId: botId,
     email: name,
     wager: 0,
-    value: 100.0,
+    value: isAssassin ? (140 + Math.random() * 80) : (70 + Math.random() * 50),
     segments: startSegments,
     pathHistory: initialPath,
     angle: Math.random() * Math.PI * 2,
@@ -103,36 +114,38 @@ const spawnFreeBot = (botId, index = 0) => {
     spawnTime: Date.now(),
     isBoosting: false,
     energy: 100,
-    currency: 'FREE',
+    currency,
     isBot: true,
-    isFreePractice: true
+    isAssassin,
+    isFreePractice: currency === 'FREE'
   };
 };
 
-const ensureFreeBots = () => {
-  if (!snakes.FREE) return;
-  const humanCount = Object.keys(snakes.FREE).filter(id => !snakes.FREE[id].isBot).length;
+const ensureBots = (currency) => {
+  if (!snakes[currency]) return;
+  const humanCount = Object.keys(snakes[currency]).filter(id => !snakes[currency][id].isBot).length;
   if (humanCount === 0) {
-    // If no human player is in FREE arena, clean up bots to save CPU
-    Object.keys(snakes.FREE).forEach(id => {
-      if (snakes.FREE[id].isBot) delete snakes.FREE[id];
+    // If no human player in this arena, clean up bots to save CPU
+    Object.keys(snakes[currency]).forEach(id => {
+      if (snakes[currency][id].isBot) delete snakes[currency][id];
     });
     return;
   }
 
-  // Ensure exactly 5-6 bots are present in the arena
-  for (let i = 0; i < 6; i++) {
-    const botId = `bot_${i}`;
-    if (!snakes.FREE[botId]) {
-      spawnFreeBot(botId, i);
+  // Ensure 18 bots are present in the arena for fast action and radar visibility
+  const TARGET_BOTS = 18;
+  for (let i = 0; i < TARGET_BOTS; i++) {
+    const botId = `bot_${currency}_${i}`;
+    if (!snakes[currency][botId]) {
+      spawnBot(currency, botId, i);
     }
   }
 };
 
 // Tick sandbox routine for a specific currency sandbox
 const tickSandbox = async (currency) => {
-  if (currency === 'FREE') {
-    ensureFreeBots();
+  if (currency === 'FREE' || currency === 'PIECES' || currency === 'HTG') {
+    ensureBots(currency);
   }
 
   const sandboxSnakes = snakes[currency];
@@ -268,12 +281,16 @@ const tickSandbox = async (currency) => {
         snake.isInvincible = false;
       }
 
-      // Energy and Boost speed logic (Egzak menm jan ak vibeht.com: 9 nòmal, 16 boost)
+      // Energy and Boost speed logic (Egzak menm jan ak vibeht.com: 9 nòmal, 16 boost + vitès dinamik selon tay)
+      const segCount = snake.segments.length;
+      const extraSegs = Math.max(0, segCount - 5);
+      const speedBonus = Math.min(3.5, extraSegs * 0.065);
+
       if (snake.isBoosting && snake.energy > 5) {
-        snake.speed = 16; // Boost speed
+        snake.speed = 16 + speedBonus * 1.25; // Boost speed
         snake.energy = Math.max(0, snake.energy - 1.8); // Drain energy
       } else {
-        snake.speed = 9; // Vitès nòmal egzakteman menm jan ak vibeht.com
+        snake.speed = 9 + speedBonus; // Vitès nòmal
         snake.energy = Math.min(100, snake.energy + 1.2); // Recover energy
       }
     }
@@ -438,13 +455,13 @@ const tickSandbox = async (currency) => {
           }
         }
 
-        // Respawn this bot after 3.5 seconds to keep 5-6 bots in the arena
+        // Respawn this bot after 3.5 seconds to keep 18 bots in the arena
         setTimeout(() => {
-          if (snakes.FREE) {
-            const humanCount = Object.keys(snakes.FREE).filter(id => !snakes.FREE[id].isBot).length;
-            if (humanCount > 0 && !snakes.FREE[deadId]) {
-              const idx = parseInt(deadId.replace('bot_', ''), 10) || 0;
-              spawnFreeBot(deadId, idx);
+          if (snakes[currency]) {
+            const humanCount = Object.keys(snakes[currency]).filter(id => !snakes[currency][id].isBot).length;
+            if (humanCount > 0 && !snakes[currency][deadId]) {
+              const idx = parseInt(deadId.split('_').pop(), 10) || 0;
+              spawnBot(currency, deadId, idx);
             }
           }
         }, 3500);

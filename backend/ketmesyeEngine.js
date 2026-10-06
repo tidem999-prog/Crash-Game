@@ -1207,6 +1207,28 @@ const cancelPendingDuel = async (duelId, reason = 'Jeu annulé.') => {
   broadcastPendingDuels();
 };
 
+// Helper to calculate active human players in each wager tier for PIECES arena
+const getLobbyStats = () => {
+  const counts = { 500: 0, 1000: 0, 2500: 0, 5000: 0 };
+  if (snakes.PIECES) {
+    for (const sId of Object.keys(snakes.PIECES)) {
+      const s = snakes.PIECES[sId];
+      if (s && !s.isBot && !s.isDisconnected) {
+        const w = parseFloat(s.wager) || 500;
+        const tier = [5000, 2500, 1000, 500].find(t => w >= t) || 500;
+        counts[tier] = (counts[tier] || 0) + 1;
+      }
+    }
+  }
+  return counts;
+};
+
+const broadcastLobbyStats = () => {
+  if (io) {
+    io.emit('ketmesye_lobby_stats', getLobbyStats());
+  }
+};
+
 // Initialize the socket.io handlers
 const initKetmesyeEngine = (socketIoInstance) => {
   io = socketIoInstance;
@@ -1216,7 +1238,16 @@ const initKetmesyeEngine = (socketIoInstance) => {
   gameLoopInterval = setInterval(handleGameTick, TICK_RATE_MS);
   console.log('Ketmesye: Game Loop tick initialized (50ms).');
 
+  // Voye estatistik prezans sal yo (500, 1000, 2500, 5000) an dirèk chak 3 segonn
+  setInterval(broadcastLobbyStats, 3000);
+
   io.on('connection', (socket) => {
+    // Voye statistik sal yo bay jwè a depi li fenk konekte nan lobby a
+    socket.emit('ketmesye_lobby_stats', getLobbyStats());
+
+    socket.on('ketmesye_get_lobby_stats', () => {
+      socket.emit('ketmesye_lobby_stats', getLobbyStats());
+    });
     
     // 1. Join game event
     socket.on('ketmesye_join', async (data) => {
@@ -1441,6 +1472,7 @@ const initKetmesyeEngine = (socketIoInstance) => {
               currency: 'PIECES',
               resumed: true
             });
+            broadcastLobbyStats();
             return;
           }
         }
@@ -1477,6 +1509,7 @@ const initKetmesyeEngine = (socketIoInstance) => {
         });
 
         console.log(`Snake Arena [PIECES]: ${email || socket.id} joined with ${entryWager} PIECES.`);
+        broadcastLobbyStats();
         return;
       }
 
@@ -1786,6 +1819,7 @@ const initKetmesyeEngine = (socketIoInstance) => {
         });
 
         console.log(`Snake Arena [PIECES]: Cashout success for ${snake.email || snake.userId} (+${payout} PIECES).`);
+        broadcastLobbyStats();
         return;
       }
 

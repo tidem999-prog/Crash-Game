@@ -1720,8 +1720,30 @@ const initKetmesyeEngine = (socketIoInstance) => {
     });
 
     // 3. Cash out event
-    socket.on('ketmesye_cashout', async () => {
-      const snake = getSnakeBySocketId(socket.id);
+    socket.on('ketmesye_cashout', async (data) => {
+      let snake = getSnakeBySocketId(socket.id);
+      if (!snake && data?.userId) {
+        const uIdStr = String(data.userId);
+        if (disconnectTimers.has(uIdStr)) {
+          const pending = disconnectTimers.get(uIdStr);
+          clearTimeout(pending.timeout);
+          snake = pending.snake;
+          disconnectTimers.delete(uIdStr);
+          if (snake && pending.currency && snakes[pending.currency]) {
+            snakes[pending.currency][socket.id] = snake;
+          }
+        }
+        if (!snake && snakes.PIECES) {
+          for (const sId of Object.keys(snakes.PIECES)) {
+            const s = snakes.PIECES[sId];
+            if (s && String(s.userId) === uIdStr) {
+              snake = s;
+              break;
+            }
+          }
+        }
+      }
+
       if (!snake) {
         return socket.emit('ketmesye_error', { message: 'Aucun serpent actif à encaisser.' });
       }
@@ -1744,7 +1766,15 @@ const initKetmesyeEngine = (socketIoInstance) => {
 
         const multiplier = parseFloat((payout / snake.wager).toFixed(2));
         socket.leave('ketmesye_sandbox_PIECES');
-        delete snakes.PIECES[socket.id];
+
+        // Netwaye tout referans koulèv sa a pou pa gen doublon
+        if (snakes.PIECES) {
+          for (const sId of Object.keys(snakes.PIECES)) {
+            if (snakes.PIECES[sId] === snake || snakes.PIECES[sId]?.id === snake.id || (snake.userId && String(snakes.PIECES[sId]?.userId) === String(snake.userId))) {
+              delete snakes.PIECES[sId];
+            }
+          }
+        }
 
         socket.emit('ketmesye_cashout_success', {
           payout,
@@ -1755,7 +1785,7 @@ const initKetmesyeEngine = (socketIoInstance) => {
           eliminations: snake.eliminations
         });
 
-        console.log(`Snake Arena [PIECES]: Cashout success for ${snake.email} (+${payout} PIECES).`);
+        console.log(`Snake Arena [PIECES]: Cashout success for ${snake.email || snake.userId} (+${payout} PIECES).`);
         return;
       }
 

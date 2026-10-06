@@ -122,7 +122,8 @@ const spawnBot = (currency, botId, index = 0) => {
 };
 
 const ensureBots = (currency) => {
-  if (!snakes[currency]) return;
+  // Sekirite: Zewo bot nan arèn peye (PIECES, HTG, KET). Bot sèlman nan FREE!
+  if (currency !== 'FREE' || !snakes[currency]) return;
   const humanCount = Object.keys(snakes[currency]).filter(id => !snakes[currency][id].isBot).length;
   if (humanCount === 0) {
     // If no human player in this arena, clean up bots to save CPU
@@ -132,7 +133,7 @@ const ensureBots = (currency) => {
     return;
   }
 
-  // Ensure 18 bots are present in the arena for fast action and radar visibility
+  // Ensure 18 bots are present in FREE arena for fast action and radar visibility
   const TARGET_BOTS = 18;
   for (let i = 0; i < TARGET_BOTS; i++) {
     const botId = `bot_${currency}_${i}`;
@@ -144,7 +145,8 @@ const ensureBots = (currency) => {
 
 // Tick sandbox routine for a specific currency sandbox
 const tickSandbox = async (currency) => {
-  if (currency === 'FREE' || currency === 'PIECES' || currency === 'HTG') {
+  // Bot sèlman nan mòd FREE (Esè Gratis). Zewo bot nan arèn peye (PIECES / HTG)!
+  if (currency === 'FREE') {
     ensureBots(currency);
   }
 
@@ -455,13 +457,13 @@ const tickSandbox = async (currency) => {
           }
         }
 
-        // Respawn this bot after 3.5 seconds to keep 18 bots in the arena
+        // Respawn this bot after 3.5 seconds to keep 18 bots in FREE arena
         setTimeout(() => {
-          if (snakes[currency]) {
-            const humanCount = Object.keys(snakes[currency]).filter(id => !snakes[currency][id].isBot).length;
-            if (humanCount > 0 && !snakes[currency][deadId]) {
+          if (currency === 'FREE' && snakes.FREE) {
+            const humanCount = Object.keys(snakes.FREE).filter(id => !snakes.FREE[id].isBot).length;
+            if (humanCount > 0 && !snakes.FREE[deadId]) {
               const idx = parseInt(deadId.split('_').pop(), 10) || 0;
-              spawnBot(currency, deadId, idx);
+              spawnBot('FREE', deadId, idx);
             }
           }
         }, 3500);

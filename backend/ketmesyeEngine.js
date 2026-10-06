@@ -464,9 +464,17 @@ const tickSandbox = async (currency) => {
         const killer = sandboxSnakes[killInfo.killerId];
         if (killer) {
           killer.eliminations += 1;
+          const rewardPieces = (currency.startsWith('CHAMP_') || snake.isChampionship || currency === 'FREE') ? 0.0 : +(snake.value * 0.90).toFixed(2);
+          if (rewardPieces > 0) {
+            killer.value = +(killer.value + rewardPieces).toFixed(2);
+          }
           const killerSocket = io.sockets.sockets.get(killInfo.killerId);
           if (killerSocket) {
-            killerSocket.emit('ketmesye_kill', { killed: snake.email.split('@')[0], isBot: false, rewardPieces: 0.0 });
+            killerSocket.emit('ketmesye_kill', { 
+              killed: snake.email.split('@')[0], 
+              isBot: false, 
+              rewardPieces: rewardPieces 
+            });
           }
         }
       }
@@ -475,18 +483,14 @@ const tickSandbox = async (currency) => {
       // NAN CHANPYONA (currency.startsWith('CHAMP_') oswa snake.isChampionship):
       // ZEWÒ PYÈS/BOUL KOULÈV MOURI! Espas la dwe rete 100% vid e pwòp san okenn kadav!
       if (!currency.startsWith('CHAMP_') && !snake.isChampionship) {
-        const segmentCount = snake.segments.length;
-        const totalValueToDrop = snake.value * 0.5;
-        const valuePerDrop = parseFloat((totalValueToDrop / segmentCount).toFixed(4));
-
-        // Drop pellets at every segment (random normal pellets if FREE; shiny yellow cash if real money)
+        // Drop pellets at every segment (random normal pellets if FREE; shiny yellow for GROWTH if real money)
         snake.segments.forEach(segment => {
           sandboxPellets.push({
             id: Math.random().toString(36).substring(2, 9),
             x: segment.x + (Math.random() * 10 - 5),
             y: segment.y + (Math.random() * 10 - 5),
-            value: currency === 'FREE' ? 1.0 : valuePerDrop,
-            color: currency === 'FREE' ? getRandomColor() : '#fbbf24', // Shiny yellow for cash, random for FREE
+            value: currency === 'FREE' ? 1.0 : 0.0, // 90% pyès ale dirèkteman sou sak touye l la; boul jòn sa yo se pou GRANDI kò a!
+            color: currency === 'FREE' ? getRandomColor() : '#fbbf24', // Shiny yellow for growth
             isCashDrop: currency !== 'FREE'
           });
         });
